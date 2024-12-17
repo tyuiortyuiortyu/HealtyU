@@ -10,5 +10,3 @@ const Cycle = () => {
 }
 
 export default Cycle
-
-const styles = StyleSheet.create({})

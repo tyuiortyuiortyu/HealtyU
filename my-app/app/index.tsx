@@ -11,8 +11,9 @@ const App = () => {
         <Text className='text-3xl font-aExLight'>HealthyU</Text>
         <Link href={"./(tabs)/profile"} className='text-xs'>Go to profile</Link>
       </View>
-    </SafeAreaView>
+    </SafeAreaView>    
   )
 }
 
 export default App
+

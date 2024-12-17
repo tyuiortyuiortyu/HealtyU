@@ -32,5 +32,3 @@ const RootLayout = () => {
 }
 
 export default RootLayout
-
-const styles = StyleSheet.create({})

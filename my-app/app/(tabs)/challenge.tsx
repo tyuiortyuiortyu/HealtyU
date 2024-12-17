@@ -10,5 +10,3 @@ const Challenge = () => {
 }
 
 export default Challenge
-
-const styles = StyleSheet.create({})

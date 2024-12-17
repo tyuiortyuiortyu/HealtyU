@@ -10,5 +10,3 @@ const MedReminder = () => {
 }
 
 export default MedReminder
-
-const styles = StyleSheet.create({})
