@@ -13,16 +13,18 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::create('notifications', function (Blueprint $table) {
+        Schema::create('medicines', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('user_id');
-            $table->dateTime('start');
-            $table->boolean('recieved');
-            $table->boolean('seen');
-            $table->string('message');
+            $table->unsignedBigInteger('unit_id');
+            $table->string('med_name');
+            $table->float('med_dose', 5,2);
+            $table->enum('food_relation', ['before','after','with']);
+            $table->integer('duration');
             $table->timestamps();
 
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
+            $table->foreign('unit_id')->references('id')->on('units')->onDelete('cascade');
         });
     }
 
@@ -33,6 +35,6 @@ return new class extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('notifications');
+        Schema::dropIfExists('medicines');
     }
 };

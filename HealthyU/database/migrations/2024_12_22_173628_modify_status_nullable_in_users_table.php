@@ -13,12 +13,9 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::create('challenges', function (Blueprint $table) {
-            $table->id();
-            $table->string('name', 50);
-            $table->text('description');
-            $table->string('image');
-            $table->timestamps();
+        Schema::table('users', function (Blueprint $table) {
+            $table->decimal('weight', 5,2)->nullable(false)->change();
+            $table->decimal('height', 5,2)->nullable(false)->change();
         });
     }
 
@@ -29,6 +26,9 @@ return new class extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('challenge');
+        Schema::table('users', function (Blueprint $table) {
+            $table->decimal('weight', 5,2)->nullable()->change();
+            $table->decimal('height', 5,2)->nullable()->change();
+        });
     }
 };
