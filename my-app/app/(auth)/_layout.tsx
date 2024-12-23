@@ -1,12 +1,12 @@
 import { StyleSheet, Text, View } from 'react-native'
 import React from 'react'
 
-const profile = () => {
+const _layout = () => {
   return (
     <View>
-      <Text>Profile</Text>
+      <Text>_layout</Text>
     </View>
   )
 }
 
-export default profile
+export default _layout
