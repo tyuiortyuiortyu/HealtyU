@@ -1,35 +1,42 @@
-
-import { Text, View, Image, TouchableOpacity, TextInput } from 'react-native';
+import { Text, View, Image, TouchableOpacity, TextInput, Modal } from 'react-native';
 import React, { useState } from 'react';
+
 import images from '../../constants/images';
-// import Slider from '@react-native-community/slider';
+import icons from '../../constants/icons';
+
+import { setShouldAnimateExitingForTag } from 'react-native-reanimated/lib/typescript/core';
 
 const BMI = () => {
   const [selectedGender, setSelectedGender] = useState(null); // 'male' or 'female'
-  const [continuePressed, setContinuePressed] = useState(false); // Untuk mengatur visibilitas elemen
+  const [continuePressed, setContinuePressed] = useState(false); // Controls main content visibility
 
-  const [weight, setWeight] = useState(60);
-  const [age, setAge] = useState(19);
-  const [height, setHeight] = useState(165);
-  // const [bmi, setBMI] = useState(null);// hasil dari BMI Calculator
+  const [weight, setWeight] = useState(0);
+  const [age, setAge] = useState(0);
+  const [height, setHeight] = useState(0);
 
-  const handleWeightChange = (increment) => {
-    setWeight((prev) => Math.max(1, prev + increment)); // Menghindari weight < -1
+  const [bmiResult, setBmiResult] = useState(null); // Store BMI result
+  const [showBMIResult, setShowBMIResult] = useState(false); // Toggle to show BMI result
+
+  const handleWeightChange = (newWeight) => {
+    setWeight(newWeight);
   };
 
-  const handleAgeChange = (increment) => {
-    setAge((prev) => Math.max(1, prev + increment)); // Menghindari usia < 1
+  const handleAgeChange = (newAge) => {
+    if(newAge >= 0){
+      setAge(newAge);
+    }
   };
 
   const handleHeightChange = (value) => {
     setHeight(value);
   };
 
-  // const calculateBMI = () => {
-  //   const heightInMeters = height / 100; // Konversi dari cm ke meter
-  //   const result = weight / (heightInMeters * heightInMeters); // Rumus BMI
-  //   setBMI(result.toFixed(2)); // Format BMI ke 2 angka desimal
-  // };
+  const calculateBMI = () => {
+    const heightInMeters = height / 100; // Convert Height cm -> m
+    const result = weight / (heightInMeters * heightInMeters); // Formula BMI
+    setBmiResult(result.toFixed(2)); // Simpan Hasil BMI
+    setShowBMIResult(true); // Tampilin Hasil BMI
+  };
 
   return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'flex-start', padding: 25 }}>
@@ -110,7 +117,8 @@ const BMI = () => {
           <TouchableOpacity
             style={{
               alignSelf: 'center',
-              backgroundColor: selectedGender ? '#2B4763' : 'white', // Biru jika gender dipilih, putih jika belum
+              // Biru jika gender dipilih, putih jika belum
+              backgroundColor: selectedGender ? '#2B4763' : 'white',
               paddingVertical: 15,
               paddingHorizontal: 30,
               borderRadius: 30,
@@ -127,7 +135,7 @@ const BMI = () => {
             }}
           >
             <Text style={{
-              fontSize: 18, color: selectedGender ? 'white' : '#B9BCC6', fontWeight: 'bold',}}>
+              fontSize: 18, color: selectedGender ? 'white' : '#B9BCC6', fontWeight: 'bold' }}>
               {/* putih jika gender dipilih, abu" kalau belum */}
               Continue
             </Text>
@@ -137,7 +145,7 @@ const BMI = () => {
         // Konten yang ditampilkan setelah tombol Continue ditekan
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           {/* Judul */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 8 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginRight: 8 }}>
             <Text style={{ fontSize: 50, fontWeight: 'bold', color: '#BBDA04', marginRight: 5 }}>
               BMI
             </Text>
@@ -146,11 +154,22 @@ const BMI = () => {
             </Text>
             <Image 
               source={images.bmi} 
-              style={{ width: 40, height: 40, marginLeft: 10 }} 
+              style={{ width: 40, height: 40, marginLeft: 10, marginRight: 20 }} 
             />
           </View>
 
-          {/* Kotak Weight dan Age bersebelahan */}
+          {/* Deskripsi We calculate the BMI index based on data such as age, height, and weight */}
+          <Text style={{ color: 'black', fontSize: 15, fontWeight: 'semibold', textAlign: 'left', marginBottom: 10 }}>
+            We calculate the BMI index based on data such as age, height, and weight.
+          </Text>
+
+          
+          {/* Ubah Nilai */}
+          <Text style={{ color: 'black', fontSize: 20, fontWeight: 'bold', textAlign: 'center', width: '100%', marginBottom: 10 }}>
+            Please change the value
+          </Text>
+
+          {/* Kotak Weight dan Age -> buat bersebelahan */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginBottom: 20 }}>
             {/* Kotak Weight */}
             <View
@@ -167,39 +186,56 @@ const BMI = () => {
                 marginHorizontal: 10, // Jarak antar kotak
               }}
             >
-              <Text style={{ fontSize: 18, color: '#9A9A9A', marginBottom: 5 }}>Weight (kg)</Text>
-              <Text style={{ fontSize: 50, color: '#4C837A', fontWeight: 'bold' }}>{weight}</Text>
+              <View style={{ width: '100%', alignItems: 'center' }}>
+                <Text style={{ fontSize: 18, color: '#9A9A9A', marginBottom: 2 }}>Weight (kg)</Text>
+                <TextInput
+                  style={{
+                    fontSize: 50,
+                    color: '#4C837A',
+                    fontWeight: 'bold',
+                    borderBottomWidth: 2,
+                    textAlign: 'center',
+                    marginVertical: 10,
+                  }}
+                  keyboardType="numeric"
+                  value={weight.toString()} // Variabel weight digunakan
+                  onChangeText={(value) => {
+                    const parsedValue = parseInt(value.replace(/[^0-9]/g, ''), 10) || 0;
+                    handleWeightChange(parsedValue >= 0 ? parsedValue : 0); // Validasi agar tidak negatif
+                  }}
+                />
+              </View>
+
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <TouchableOpacity
-                  onPress={() => handleWeightChange(-1)}
+                  onPress={() => handleWeightChange((weight - 1) >= 0 ? weight - 1 : 0)} // Mencegah nilai negatif
                   style={{
                     backgroundColor: 'white',
                     borderRadius: 50,
                     borderWidth: 2,
                     borderColor: '#8BADA7',
-                    padding: 10,
-                    marginHorizontal: 5,
                     width: 50,
                     height: 50,
                     justifyContent: 'center',
                     alignItems: 'center',
+                    marginHorizontal: 5,
                   }}
                 >
                   <Text style={{ fontSize: 30, color: '#8BADA7', fontWeight: 'bold' }}>−</Text>
                 </TouchableOpacity>
+
                 <TouchableOpacity
-                  onPress={() => handleWeightChange(1)}
+                  onPress={() => handleWeightChange(weight + 1)}
                   style={{
                     backgroundColor: 'white',
                     borderRadius: 50,
                     borderWidth: 2,
                     borderColor: '#8BADA7',
-                    padding: 10,
-                    marginHorizontal: 5,
                     width: 50,
                     height: 50,
                     justifyContent: 'center',
                     alignItems: 'center',
+                    marginHorizontal: 5,
                   }}
                 >
                   <Text style={{ fontSize: 30, color: '#8BADA7', fontWeight: 'bold' }}>+</Text>
@@ -222,39 +258,56 @@ const BMI = () => {
                 marginHorizontal: 10, // Jarak antar kotak
               }}
             >
-              <Text style={{ fontSize: 18, color: '#9A9A9A', marginBottom: 5 }}>Age (years)</Text>
-              <Text style={{ fontSize: 50, color: '#4C837A', fontWeight: 'bold' }}>{age}</Text>
+              <View style={{ width: '100%', alignItems: 'center' }}>
+                <Text style={{ fontSize: 18, color: '#9A9A9A', marginBottom: 2 }}>Age (years)</Text>
+                <TextInput
+                  style={{
+                    fontSize: 50,
+                    color: '#4C837A',
+                    fontWeight: 'bold',
+                    borderBottomWidth: 2,
+                    textAlign: 'center',
+                    marginVertical: 10,
+                  }}
+                  keyboardType="numeric"
+                  value={age.toString()} // Variabel age digunakan
+                  onChangeText={(value) => {
+                    const parsedValue = parseInt(value.replace(/[^0-9]/g, ''), 10) || 0;
+                    handleAgeChange(parsedValue >= 0 ? parsedValue : 0); // Validasi agar tidak negatif
+                  }}
+                />
+              </View>
+
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <TouchableOpacity
-                  onPress={() => handleAgeChange(-1)}
+                  onPress={() => handleAgeChange((age - 1) >= 0 ? age - 1 : 0)} // Mencegah nilai negatif
                   style={{
                     backgroundColor: 'white',
                     borderRadius: 50,
                     borderWidth: 2,
                     borderColor: '#8BADA7',
-                    padding: 10,
-                    marginHorizontal: 5,
                     width: 50,
                     height: 50,
                     justifyContent: 'center',
                     alignItems: 'center',
+                    marginHorizontal: 5,
                   }}
                 >
                   <Text style={{ fontSize: 30, color: '#8BADA7', fontWeight: 'bold' }}>−</Text>
                 </TouchableOpacity>
+
                 <TouchableOpacity
-                  onPress={() => handleAgeChange(1)}
+                  onPress={() => handleAgeChange(age + 1)}
                   style={{
                     backgroundColor: 'white',
                     borderRadius: 50,
                     borderWidth: 2,
                     borderColor: '#8BADA7',
-                    padding: 10,
-                    marginHorizontal: 5,
                     width: 50,
                     height: 50,
                     justifyContent: 'center',
                     alignItems: 'center',
+                    marginHorizontal: 5,
                   }}
                 >
                   <Text style={{ fontSize: 30, color: '#8BADA7', fontWeight: 'bold' }}>+</Text>
@@ -263,31 +316,125 @@ const BMI = () => {
             </View>
           </View>
 
-          {/* Input Tinggi */}
-          <View style={{ width: '100%', alignItems: 'center', marginBottom: 20 }}>
-            <Text style={{ fontSize: 20 }}>Height (cm)</Text>
-            <TextInput
-              style={{ borderBottomWidth: 2, fontSize: 30, textAlign: 'center', marginVertical: 10 }}
-              keyboardType="numeric"
-              value={height.toString()}
-              onChangeText={(value) => handleHeightChange(parseInt(value) || 0)}
-            />
+          {/* Kotak Height */}
+          <View
+            style={{
+              alignItems: 'center',
+              backgroundColor: '#FFFCF0',
+              padding: 15,
+              borderRadius: 20,
+              width: 300,
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.2,
+              shadowRadius: 4,
+              elevation: 5, // Efek shadow untuk Android
+              marginBottom: 20,
+            }}
+          >
+            <View style={{ width: '100%', alignItems: 'center' }}>
+              <Text style={{ fontSize: 18, color: '#9A9A9A', marginBottom: 2 }}>Height (cm)</Text>
+              <TextInput
+                style={{
+                  fontSize: 50,
+                  color: '#4C837A',
+                  fontWeight: 'bold',
+                  borderBottomWidth: 2,
+                  textAlign: 'center',
+                  marginVertical: 10,
+                }}
+                keyboardType="numeric"
+                value={height.toString()}
+                onChangeText={(value) => {
+                  const parsedValue = parseInt(value) || 0;
+                  handleHeightChange(parsedValue > 0 ? parsedValue : 0);
+                }}
+              />
+            </View>
+
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <TouchableOpacity
+                onPress={() => handleHeightChange(height - 1 > 0 ? height - 1 : 0)} // Mencegah nilai minus
+                style={{
+                  backgroundColor: 'white',
+                  borderRadius: 50,
+                  borderWidth: 2,
+                  borderColor: '#8BADA7',
+                  width: 50,
+                  height: 50,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  marginHorizontal: 5,
+                }}
+              >
+                <Text style={{ fontSize: 30, color: '#8BADA7', fontWeight: 'bold' }}>−</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => handleHeightChange(height + 1)}
+                style={{
+                  backgroundColor: 'white',
+                  borderRadius: 50,
+                  borderWidth: 2,
+                  borderColor: '#8BADA7',
+                  width: 50,
+                  height: 50,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  marginHorizontal: 5,
+                }}
+              >
+                <Text style={{ fontSize: 30, color: '#8BADA7', fontWeight: 'bold' }}>+</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Tombol Calculate */}
           <TouchableOpacity
             style={{
-              backgroundColor: '#2B4763',
+              alignSelf: 'center',
+              // Biru jika semua input > 0, putih jika ada yang 0
+              backgroundColor: (weight > 0 && age > 0 && height > 0) ? '#2B4763' : 'white',
               paddingVertical: 15,
-              paddingHorizontal: 60,
+              paddingHorizontal: 30,
               borderRadius: 30,
             }}
-            onPress={() => {
-              console.log(`Weight: ${weight}, Age: ${age}, Height: ${height}`);
-            }}
+            onPress={calculateBMI}
           >
-            <Text style={{ fontSize: 18, color: 'white', fontWeight: 'bold' }}>Calculate</Text>
+            <Text style={{
+            fontSize: 18, color: (weight > 0 && age > 0 && height > 0) ? 'white' : '#B9BCC6', fontWeight: 'bold' }}>
+            {/* putih jika gender dipilih, abu" kalau belum */}
+              Calculate
+            </Text>
           </TouchableOpacity>
+
+          {/* Konten yang ditampilin setelah tombol Calculate ditekan  */}
+          {showBMIResult && (
+            <Modal transparent={true} visible={showBMIResult} animationType="slide">
+              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+                <View style={{ backgroundColor: '#FFFCF0', padding: 50, borderRadius: 10, alignItems: 'center', width: '80%' }}>
+                  <Text style={{ fontSize: 24, fontWeight: 'bold' }}>
+                    Your BMI:
+                  </Text>
+                  <Text style={{ fontSize: 60, fontWeight: 'bold', color: '#4C837A', marginVertical: 15 }}>
+                    {bmiResult}
+                  </Text>
+                  <TouchableOpacity
+                    style={{
+                      backgroundColor: '#2B4763',
+                      paddingVertical: 10,
+                      paddingHorizontal: 30,
+                      borderRadius: 20,
+                    }}
+                    onPress={() => setShowBMIResult(false)}
+                  >
+                    <Text style={{ fontSize: 16, color: 'white', fontWeight: 'bold' }}>
+                      Close
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </Modal>
+          )}
         </View>
       )}
     </View>
