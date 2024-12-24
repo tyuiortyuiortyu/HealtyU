@@ -2,9 +2,8 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Fascades\DB;
+use Illuminate\Support\Facades\DB;
 use Faker\Factory as Faker;
 use Carbon\Carbon;
 
@@ -17,41 +16,54 @@ class UserSeeder extends Seeder
      */
     public function run()
     {
-        //
-        foreach(range(1,2) as $index){
-            DB::table('users')->insert([
-                'name' => $faker->name,
-                'email' => $faker->unique()->safeEmail,
-                'email_verified_at' => Carbon::now,
-                'username' => $faker->userName,
-                'password' => bcrypt($faker->password(8,16)),
-                'dob' => $faker->date,
-                'sex' => $faker->randomElement(['Male','Female']),
-                'weight' => $faker->randomFloat(2, 40, 100),
-                'height' => $faker->randomFloat(2, 150, 200),
-                'last_login' => Carbon::now(),
-                'date_created' => date('Y-m-d H:i:s'),
-                'date_modified' => date('Y-m-d H:i:s'),
-                'role' => 'admin'
-            ]);
-        }
+        $faker = Faker::create();
 
         DB::table('users')->insert([
-            'name' => $faker->name,
-            'email' => $faker->unique()->safeEmail,
-            'email_verified_at' => Carbon::now,
-            'username' => $faker->userName,
-            'password' => bcrypt($faker->password(8,16)),
-            'dob' => $faker->date,
-            'sex' => $faker->randomElement(['Male','Female']),
-            'weight' => $faker->randomFloat(2, 40, 100),
-            'height' => $faker->randomFloat(2, 150, 200),
-            'last_login' => Carbon::now(),
-            'date_created' => date('Y-m-d H:i:s'),
-            'date_modified' => date('Y-m-d H:i:s'),
-            'role' => 'user'
+            'name' => 'Michael Kurniawan',
+            'email' => 'mchlkk98@gmail.com',
+            'email_verified_at' => '2024-12-24 16:51:00',
+            'username' => 'michaelkurniawan',
+            'password' => bcrypt('mikel123'),
+            'dob' => '2005-10-10',
+            'sex' => 'Male',
+            'weight' => 58,
+            'height' => 177,
+            'last_login' => null,
+            'date_created' => Carbon::now()->format('Y-m-d H:i:s'),
+            'date_modified' => Carbon::now()->format('Y-m-d H:i:s'),
+            'role' => 'admin'
         ]);
 
+        DB::table('users')->insert([
+            'name' => 'Bodhi',
+            'email' => 'flavianus.thamzir@binus.ac.id',
+            'email_verified_at' => '2024-12-24 16:51:00',
+            'username' => 'flavi_bodhi',
+            'password' => bcrypt('bodhi123'),
+            'dob' => '2005-03-11',
+            'sex' => 'Male',
+            'weight' => $faker->randomFloat(2, 40, 100),
+            'height' => $faker->randomFloat(2, 150, 200),
+            'last_login' => null,
+            'date_created' => Carbon::now()->format('Y-m-d H:i:s'),
+            'date_modified' => Carbon::now()->format('Y-m-d H:i:s'),
+            'role' => 'admin'
+        ]);
 
+        DB::table('users')->insert([
+            'name' => 'Nikita',
+            'email' => 'nikita.niki2410@gmail.com',
+            'email_verified_at' => '2024-12-24 16:51:00',
+            'username' => 'nikita_smile',
+            'password' => bcrypt('smile123'),
+            'dob' => '2005-10-24',
+            'sex' => 'Female',
+            'weight' => $faker->randomFloat(2, 40, 100),
+            'height' => $faker->randomFloat(2, 150, 200),
+            'last_login' => null,
+            'date_created' => Carbon::now()->format('Y-m-d H:i:s'),
+            'date_modified' => Carbon::now()->format('Y-m-d H:i:s'),
+            'role' => 'user'
+        ]);
     }
 }
