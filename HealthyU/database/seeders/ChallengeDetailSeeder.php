@@ -16,14 +16,17 @@ class ChallengeDetailSeeder extends Seeder
      */
     public function run()
     {
+        $faker = \Faker\Factory::create();
         $now = Carbon::now()->setTimezone('Asia/Jakarta')->format('Y-m-d H:i:s');
 
-        DB::table('challenge_detail')->insert([
-            'challenge_id' => 1,
-            'user_id' => 3,
-            'start_date' => '2024-12-27 00:00:00',
+        for ($i = 0; $i < 5; $i++) {
+            DB::table('challenge_details')->insert([
+            'challenge_id' => $faker->numberBetween(1, 10),
+            'user_id' => $faker->numberBetween(1, 10),
+            'start_date' => $faker->dateTimeBetween('now', '+1 year')->format('Y-m-d H:i:s'),
             'created_at' => $now,
             'updated_at' => $now
-        ]);
+            ]);
+        }
     }
 }
