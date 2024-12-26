@@ -26,7 +26,7 @@ return new class extends Migration
             $table->decimal('weight', 5,2);
             $table->decimal('height', 5,2);
             $table->rememberToken();
-            $table->emun('role', ['user', 'admin'])->default('user');
+            $table->enum('role', ['user', 'admin'])->default('user');
             $table->timestamps();
         });
     }

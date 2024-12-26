@@ -19,7 +19,7 @@ return new class extends Migration
             $table->text('message');
             $table->timestamps();
 
-            $table->foreign('chat_room_id')->references('id')->on('chat_room')->onDelete('cascade');
+            $table->foreign('chat_room_id')->references('id')->on('chat_rooms')->onDelete('cascade');
         });
     }
 
