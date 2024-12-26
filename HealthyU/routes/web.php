@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ChallengeController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -16,3 +17,6 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return view('welcome');
 });
+
+Route::get('/challenge', [ChallengeController::class, 'index'])->name('challenges.index');
+Route::delete('/challenges/{id}', [ChallengeController::class, 'destroy'])->name('challenges.destroy');
