@@ -13,15 +13,15 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::create('challenge_detail', function (Blueprint $table) {
+        Schema::create('comments', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('challenge_id');
             $table->unsignedBigInteger('user_id');
-            $table->dateTime('start_date');
+            $table->unsignedBigInteger('post_id');
+            $table->string('content');
             $table->timestamps();
 
-            $table->foreign('challenge_id')->references('id')->on('challenges')->onDelete('cascade');
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
+            $table->foreign('post_id')->references('id')->on('posts')->onDelete('cascade');
         });
     }
 
@@ -32,6 +32,6 @@ return new class extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('challenge_detail');
+        Schema::dropIfExists('comments');
     }
 };
