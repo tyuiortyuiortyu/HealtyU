@@ -23,7 +23,7 @@ class ChallengeController extends Controller
      * @return \Illuminate\Http\Response
      */
     public function create(){
-        //
+        return view('admin/create');
     }
 
     /**
@@ -33,7 +33,19 @@ class ChallengeController extends Controller
      * @return \Illuminate\Http\Response
      */
     public function store(Request $request){
-        //
+        $request->validate([
+            'name' => 'required',
+            'description' => 'required',
+            'image' => 'required',
+        ]);
+
+        challenge::create([
+            'name' => $request->input('name'),
+            'description' => $request->input('description'),
+            'image' => $request->input('image'),
+        ]);
+
+        return redirect('admin/challenges');
     }
 
     /**

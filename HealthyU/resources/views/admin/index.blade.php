@@ -1,48 +1,38 @@
 @extends('admin/layout')
 
 @section('challenges')
-    <style>
-        th, td {
-            white-space: nowrap;
-        }
-        .table {
-            table-layout: fixed;
-            width: 100%;
-        }
-        .table th, .table td {
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-    </style>
-    <table class="table">
+    <a href="challenges/create" class="btn btn-primary mb-3 ms-3">+ Add Challenge</a>
+    <table class="table table-striped table-bordered">
         <thead>
             <tr>
-                <th style="width: 3%;">ID</th>
-                <th style="width: 15%;">Challenge Name</th>
-                <th style="width: 35%;">Description</th>
-                <th style="width: 15%;">Image</th>
-                <th style="width: 10%;">Created At</th>
-                <th style="width: 10%;">Updated At</th>
-                <th style="width: 12%;">Actions</th>
+                <th>ID</th>
+                <th style="width: 15%">Challenge Name</th>
+                <th>Description</th>
+                <th style="width: 10%;">Image</th>
+                <th style="width: 12.5%;">Created At</th>
+                <th style="width: 12.5%;">Updated At</th>
+                <th>Actions</th>
             </tr>
         </thead>
         <tbody>
             @foreach ($data as $item)
                 <tr>
-                    <td style="width: 3%;">{{ $item->id }}</td>
-                    <td style="width: 15%;">{{ $item->name }}</td>
-                    <td style="width: 35%;">{{ $item->description }}</td>
-                    <td style="width: 15%;">{{ $item->image }}</td>
-                    <td style="width: 10%;">{{ $item->created_at }}</td>
-                    <td style="width: 10%;">{{ $item->updated_at }}</td>
-                    <td style="width: 12%;">
-                        <a href="#" class="btn btn-secondary btn-sm">Detail</a>
-                        <a href="#" class="btn btn-warning btn-sm">Edit</a>
-                        <form action="{{ route('challenges.destroy', $item->id)}}" method="POST" style="display:inline;" onsubmit="return confirmDelete(event)">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
-                        </form>
+                    <td>{{ $item->id }}</td>
+                    <td style="width: 15%">{{ $item->name }}</td>
+                    <td>{{ $item->description }}</td>
+                    <td style="width: 10%;">{{ $item->image }}</td>
+                    <td style="width: 12.5%;">{{ $item->created_at }}</td>
+                    <td style="width: 12.5%;">{{ $item->updated_at }}</td>
+                    <td>
+                        <div class="d-flex">
+                            <a href="#" class="btn btn-secondary btn-sm me-2">Detail</a>
+                            <a href="#" class="btn btn-warning btn-sm me-2">Edit</a>
+                            <form action="{{ route('challenges.destroy', $item->id)}}" method="POST" style="display:inline;" onsubmit="return confirmDelete(event)">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                            </form>
+                        </div>
                     </td>
                 </tr>
             @endforeach

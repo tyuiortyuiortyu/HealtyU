@@ -13,26 +13,9 @@
                 <img src="/img/Logo HealthyU.png" alt="Logo HealthyU" width="50" height="50" class="d-inline-block align-top">
                 HealthyU Admin
             </a>
-            <div class="collapse navbar-collapse justify-content-end">
-                <span class="navbar-text">
-                    {{-- Welcome, {{ $adminName }} --}}
-                </span>
-            </div>
         </div>
     </nav>
-    <div class="d-flex justify-content-between align-items-center my-4">
-        <div class="dropdown">
-            <button class="btn btn-secondary dropdown-toggle" type="button" id="tableDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                Select Table
-            </button>
-            <ul class="dropdown-menu" aria-labelledby="tableDropdown">
-                <li><a class="dropdown-item" href="#">Challenges</a></li>
-                <li><a class="dropdown-item" href="#">Users</a></li>
-                <li><a class="dropdown-item" href="#">Medicines</a></li>
-            </ul>
-        </div>
-    </div>
-    <div class="class py-5">
+    <div class="class py-3">
         @yield('challenges')
     </div>
 

@@ -19,6 +19,5 @@ Route::get('/', function () {
 });
 
 Route::prefix('admin')->group(function () {
-    Route::get('/challenge', [ChallengeController::class, 'index'])->name('challenges.index');
-    Route::delete('/challenges/{id}', [ChallengeController::class, 'destroy'])->name('challenges.destroy');
+    Route::resource('challenges', ChallengeController::class);
 });

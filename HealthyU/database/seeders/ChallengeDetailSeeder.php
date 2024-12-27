@@ -17,7 +17,7 @@ class ChallengeDetailSeeder extends Seeder
     public function run()
     {
         $faker = \Faker\Factory::create();
-        $now = Carbon::now()->setTimezone('Asia/Jakarta')->format('Y-m-d H:i:s');
+        $now = Carbon::now()->format('Y-m-d H:i:s');
 
         for ($i = 0; $i < 5; $i++) {
             DB::table('challenge_details')->insert([
