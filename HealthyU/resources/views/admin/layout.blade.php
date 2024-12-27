@@ -10,12 +10,12 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container-fluid">
             <a class="navbar-brand d-flex align-items-center justify-content-center" href="{{ route('challenges.index') }}">
-                <img src="/img/Logo HealthyU.png" alt="Logo HealthyU" width="50" height="50" class="d-inline-block align-top">
+                <img src="/Logo HealthyU.png" alt="Logo HealthyU" width="50" height="50" class="d-inline-block align-top">
                 HealthyU Admin
             </a>
         </div>
     </nav>
-    <div class="class py-3">
+    <div class="class py-3 mx-4">
         @include('admin/message')
         @yield('challenges')
     </div>

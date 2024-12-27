@@ -8,7 +8,7 @@
                 <div class="card">
                     <div class="card-header">Edit Challenge</div>
                     <div class="card-body">
-                        <form method="POST" action="{{ route('challenges.update', $data->id) }}">
+                        <form method="POST" action="{{ route('challenges.update', $data->id) }}" enctype="multipart/form-data">
                             @csrf
                             @method('PUT')
                             <div class="mb-3 row">
@@ -32,7 +32,7 @@
                             <div class="mb-3 row">
                                 <label for="image" class="col-sm-2 col-form-label">Image</label>
                                 <div class="col-sm-10">
-                                    <input type="text" class="form-control" id="image" name="image" value="{{ $data->image }}">
+                                    <input type="file" class="form-control" id="image" name="image" value="{{ $data->image }}">
                                 </div>
                             </div>
                             <div class="mb-3 row">

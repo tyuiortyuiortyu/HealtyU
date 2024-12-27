@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\challenge;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Session;
 
 class ChallengeController extends Controller
@@ -41,13 +42,18 @@ class ChallengeController extends Controller
         $request->validate([
             'name' => 'required',
             'description' => 'required',
-            'image' => 'required',
+            'image' => 'required | mimes:jpeg,jpg,png',
         ]);
+
+        $photo_file = $request->file('image');
+        $photo_ext = $photo_file->extension();
+        $photo_name = date('YmdHis') . '.' . $photo_ext;
+        $photo_file->move(public_path('images'), $photo_name);
 
         challenge::create([
             'name' => $request->input('name'),
             'description' => $request->input('description'),
-            'image' => $request->input('image'),
+            'image' => $photo_name,
         ]);
 
         return redirect('admin/challenges')->with('success', 'Challenge created successfully');
@@ -60,7 +66,8 @@ class ChallengeController extends Controller
      * @return \Illuminate\Http\Response
      */
     public function show($id){
-        //
+        $data = challenge::where('id', $id)->first();
+        return view('admin/detail')->with('data', $data);
     }
 
     /**
@@ -85,21 +92,33 @@ class ChallengeController extends Controller
         $request->validate([
             'name' => 'required',
             'description' => 'required',
-            'image' => 'required',
         ]);
 
-        $challenge = challenge::findOrFail($id);
-
+        $data = challenge::findOrFail($id);
+        
         if(
-            $challenge->name === $request->input('name') &&
-            $challenge->description === $request->input('description') &&
-            $challenge->image === $request->input('image')
+            $data->name === $request->input('name') &&
+            $data->description === $request->input('description') &&
+            $data->image === $request->input('image')
         )return redirect()->back()->withErrors(['No changes detected. Please modify at least one field.']);
+            
+        if($request->hasFile('image')){
+            $request->validate([
+                'image' => 'required | mimes:jpeg,jpg,png',
+            ]);
 
-        $challenge->update([
+            $photo_file = $request->file('image');
+            $photo_ext = $photo_file->extension();
+            $photo_name = date('YmdHis') . '.' . $photo_ext;
+            $photo_file->move(public_path('images'), $photo_name);
+        
+            File::delete(public_path('images/' . $data->image));
+        }
+
+        $data->update([
             'name' => $request->input('name'),
             'description' => $request->input('description'),
-            'image' => $request->input('image'),
+            'image' => $photo_name,
         ]);
 
         return redirect('admin/challenges')->with('success', 'Challenge updated successfully');
@@ -113,6 +132,7 @@ class ChallengeController extends Controller
      */
     public function destroy($id){
         $data = challenge::findOrFail($id);
+        File::delete(public_path('images/' . $data->image));
         $data->delete();
         return redirect()->route('challenges.index')->with('success', 'Challenge deleted successfully');
     }

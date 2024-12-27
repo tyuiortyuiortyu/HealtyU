@@ -8,7 +8,7 @@
                 <div class="card">
                     <div class="card-header">Create New Challenge</div>
                     <div class="card-body">
-                        <form method="POST" action="{{ route('challenges.store') }}" class="form-inline">
+                        <form method="POST" action="{{ route('challenges.store') }}" class="form-inline" enctype="multipart/form-data">
                             @csrf
                             <div class="mb-3 row">
                                 <label for="name" class="col-sm-2 col-form-label">Name</label>
@@ -25,7 +25,7 @@
                             <div class="mb-3 row">
                                 <label for="image" class="col-sm-2 col-form-label">Image</label>
                                 <div class="col-sm-10">
-                                    <input type="text" class="form-control" id="image" name="image" value="{{ Session::get('image') }}">
+                                    <input type="file" class="form-control" id="image" name="image" value="{{ Session::get('image') }}">
                                 </div>
                             </div>
                             <div class="mb-3 row">
