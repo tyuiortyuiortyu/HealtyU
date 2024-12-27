@@ -26,7 +26,7 @@
                     <td>
                         <div class="d-flex">
                             <a href="#" class="btn btn-secondary btn-sm me-2">Detail</a>
-                            <a href="#" class="btn btn-warning btn-sm me-2">Edit</a>
+                            <a href='{{ url('/admin/challenges/' .$item->id. '/edit')}}' class="btn btn-warning btn-sm me-2">Edit</a>
                             <form action="{{ route('challenges.destroy', $item->id)}}" method="POST" style="display:inline;" onsubmit="return confirmDelete(event)">
                                 @csrf
                                 @method('DELETE')

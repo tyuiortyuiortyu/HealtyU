@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\challenge;
+use Illuminate\Support\Facades\Session;
 
 class ChallengeController extends Controller
 {
@@ -33,6 +34,10 @@ class ChallengeController extends Controller
      * @return \Illuminate\Http\Response
      */
     public function store(Request $request){
+        Session::flash('name', $request->input('name'));
+        Session::flash('description', $request->input('description'));
+        Session::flash('image', $request->input('image'));
+
         $request->validate([
             'name' => 'required',
             'description' => 'required',
@@ -45,7 +50,7 @@ class ChallengeController extends Controller
             'image' => $request->input('image'),
         ]);
 
-        return redirect('admin/challenges');
+        return redirect('admin/challenges')->with('success', 'Challenge created successfully');
     }
 
     /**
@@ -65,7 +70,8 @@ class ChallengeController extends Controller
      * @return \Illuminate\Http\Response
      */
     public function edit($id){
-        //
+        $data = challenge::where('id', $id)->first();
+        return view('admin.edit')->with('data', $data);
     }
 
     /**
@@ -76,7 +82,27 @@ class ChallengeController extends Controller
      * @return \Illuminate\Http\Response
      */
     public function update(Request $request, $id){
-        //
+        $request->validate([
+            'name' => 'required',
+            'description' => 'required',
+            'image' => 'required',
+        ]);
+
+        $challenge = challenge::findOrFail($id);
+
+        if(
+            $challenge->name === $request->input('name') &&
+            $challenge->description === $request->input('description') &&
+            $challenge->image === $request->input('image')
+        )return redirect()->back()->withErrors(['No changes detected. Please modify at least one field.']);
+
+        $challenge->update([
+            'name' => $request->input('name'),
+            'description' => $request->input('description'),
+            'image' => $request->input('image'),
+        ]);
+
+        return redirect('admin/challenges')->with('success', 'Challenge updated successfully');
     }
 
     /**
