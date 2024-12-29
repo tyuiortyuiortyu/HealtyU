@@ -5,26 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
     <title>Admin Menu</title>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand d-flex align-items-center justify-content-center" href="{{ route('challenges.index') }}">
-                <img src="/Logo HealthyU.png" alt="Logo HealthyU" width="50" height="50" class="d-inline-block align-top">
-                HealthyU Admin
-            </a>
-        </div>
-        <div class="d-flex justify-content-end mx-3">
-            <span class="text-white text-end text-truncate">Welcome, {{ session('name') }}</span>
-        </div>
-        <div class="me-3">
-            <a class="btn btn-danger" href="{{ route('session.logout') }}">
-                <i class="bi bi-door-open fs-4"></i>
-            </a>
-        </div>
-    </nav>
-    <div class="class py-3 mx-4">
+    <div style="font-family: 'Raleway', sans-serif;">@include('admin/layout/navbar')</div>
+    <div class="class py-3 mx-4" style="font-family: 'Raleway', sans-serif;">
         @include('admin/content/message')
         @yield('challenges')
     </div>
