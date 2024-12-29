@@ -19,10 +19,12 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::prefix('admin')->group(function () {
+Route::middleware('isLogin')->prefix('admin')->group(function () {
     Route::resource('challenges', ChallengeController::class);
 });
 
-Route::get('/session', [SessionController::class, 'index'])->name('session.index');
-Route::post('/session/login', [SessionController::class, 'login'])->name('session.login');
-Route::get('/session/logout', [SessionController::class, 'logout'])->name('session.logout');
+Route::prefix('session')->group(function () {
+    Route::middleware('alreadyLogin')->get('/', [SessionController::class, 'index'])->name('session.index');
+    Route::middleware('alreadyLogin')->post('/login', [SessionController::class, 'login'])->name('session.login');
+    Route::get('/logout', [SessionController::class, 'logout'])->name('session.logout');
+});
