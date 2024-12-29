@@ -17,7 +17,7 @@ class UserSeeder extends Seeder
     public function run()
     {
         $faker = Faker::create();
-        $now = Carbon::now()->setTimezone('Asia/Jakarta')->format('Y-m-d H:i:s');
+        $now = Carbon::now()->format('Y-m-d H:i:s');
 
         DB::table('users')->insert([
             'name' => 'Michael Kurniawan',
@@ -66,5 +66,23 @@ class UserSeeder extends Seeder
             'updated_at' => $now,
             'role' => 'user'
         ]);
+        
+        for ($i = 0; $i < 20; $i++) {
+            DB::table('users')->insert([
+                'name' => $faker->name,
+                'email' => $faker->unique()->safeEmail,
+                'email_verified_at' => $now,
+                'username' => $faker->unique()->userName,
+                'password' => bcrypt('healthyu123'),
+                'dob' => $faker->date('Y-m-d', '2005-12-31'),
+                'sex' => $faker->randomElement(['Male', 'Female']),
+                'weight' => $faker->randomFloat(2, 40, 100),
+                'height' => $faker->randomFloat(2, 150, 200),
+                'last_login' => null,
+                'created_at' => $now,
+                'updated_at' => $now,
+                'role' => $faker->randomElement(['user', 'admin'])
+            ]);
+        }
     }
 }

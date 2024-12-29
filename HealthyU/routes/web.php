@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\ChallengeController;
+use App\Http\Controllers\SessionController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
 
@@ -14,9 +16,20 @@ use App\Http\Controllers\UserController;
 |
 */
 
-Route::get('/', function () {
-    return view('/welcome');
+// Route::get('/', function () {
+//     return view('/welcome');
+// });
+
+Route::prefix('session')->group(function () {
+    Route::middleware('alreadyLogin')->get('/', [SessionController::class, 'index'])->name('session.index');
+    Route::middleware('alreadyLogin')->post('/login', [SessionController::class, 'login'])->name('session.login');
+    Route::get('/logout', [SessionController::class, 'logout'])->name('session.logout');
+    
+    Route::middleware('isLogin')->prefix('admin')->group(function () {
+        Route::resource('challenges', ChallengeController::class);
+    });
 });
 
 Route::get('/menu-admin/user',[UserController::class, 'index']);
 Route::get('/menu-admin/user/detail/{id}',[UserController::class, 'detail'])->where(['id'=>'[0-9]+']);
+

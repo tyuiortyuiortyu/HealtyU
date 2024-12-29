@@ -13,8 +13,13 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->dateTime('last_login')->nullable()->after('email_verified_at');
+        Schema::create('chat_details', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('chat_room_id');
+            $table->text('message');
+            $table->timestamps();
+
+            $table->foreign('chat_room_id')->references('id')->on('chat_rooms')->onDelete('cascade');
         });
     }
 
@@ -25,8 +30,6 @@ return new class extends Migration
      */
     public function down()
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn('last_login');
-        });
+        Schema::dropIfExists('chat_details');
     }
 };

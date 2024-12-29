@@ -17,7 +17,7 @@ class ChallengeSeeder extends Seeder
     public function run()
     {
         $faker = Faker::create();
-        $now = Carbon::now()->setTimezone('Asia/Jakarta')->format('Y-m-d H:i:s');
+        $now = Carbon::now()->format('Y-m-d H:i:s');
 
         DB::table('challenges')->insert([
             'name' => 'Step Towards Rewards',
@@ -26,13 +26,15 @@ class ChallengeSeeder extends Seeder
             'created_at' => $now,
             'updated_at' => $now
         ]);
-
-        DB::table('challenges')->insert([
-            'name' => 'Stride for Health',
-            'description' => 'Take 10000 steps daily to achieve your fitness goals. Every step counts towards a healthier you—stay active and reap the rewards!',
-            'image' => $faker->imageUrl(640,480,'walk'),
+        
+        for ($i = 0; $i < 20; $i++) {
+            DB::table('challenges')->insert([
+            'name' => $faker->sentence(3),
+            'description' => $faker->paragraph,
+            'image' => $faker->imageUrl(640, 480, 'challenge'),
             'created_at' => $now,
             'updated_at' => $now
-        ]);
+            ]);
+        }
     }
 }
