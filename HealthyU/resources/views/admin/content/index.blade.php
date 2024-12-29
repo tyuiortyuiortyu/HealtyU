@@ -1,4 +1,4 @@
-@extends('admin/layout')
+@extends('admin/layout/layout')
 
 @section('challenges')
     <a href="challenges/create" class="btn btn-primary mb-3 ms-3">+ Add Challenge</a>

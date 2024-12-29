@@ -7,8 +7,7 @@ use App\Models\challenge;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Session;
 
-class ChallengeController extends Controller
-{
+class ChallengeController extends Controller    {
     /**
      * Display a listing of the resource.
      *
@@ -16,7 +15,7 @@ class ChallengeController extends Controller
      */
     public function index(){
         $data = challenge::orderBy('id', 'asc')->paginate(10);
-        return view('admin/index')->with('data', $data);
+        return view('admin/content/index')->with('data', $data);
     }
 
     /**
@@ -25,7 +24,7 @@ class ChallengeController extends Controller
      * @return \Illuminate\Http\Response
      */
     public function create(){
-        return view('admin/create');
+        return view('admin/content/create');
     }
 
     /**
@@ -67,7 +66,7 @@ class ChallengeController extends Controller
      */
     public function show($id){
         $data = challenge::where('id', $id)->first();
-        return view('admin/detail')->with('data', $data);
+        return view('admin/content/detail')->with('data', $data);
     }
 
     /**
@@ -78,7 +77,7 @@ class ChallengeController extends Controller
      */
     public function edit($id){
         $data = challenge::where('id', $id)->first();
-        return view('admin.edit')->with('data', $data);
+        return view('admin/content/edit')->with('data', $data);
     }
 
     /**
@@ -118,7 +117,6 @@ class ChallengeController extends Controller
         $data->update([
             'name' => $request->input('name'),
             'description' => $request->input('description'),
-            'image' => $photo_name,
         ]);
 
         return redirect('admin/challenges')->with('success', 'Challenge updated successfully');

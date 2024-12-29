@@ -1,7 +1,8 @@
-@extends('admin/layout') 
+@extends('admin/layout/layout') 
 
 @section('challenges')
-    <div class="row">
+    <a href="{{ route('challenges.index') }}" class="btn btn-secondary m-3"><- Back</a>
+    <div class="row ms-3">
         <div class="col-md-6">
             <h2>{{ $data->name }}</h2>
             <p>{{ $data->description }}</p>

@@ -1,4 +1,4 @@
-@extends('admin/layout')
+@extends('admin/layout/layout')
 
 @section('challenges')
     <a href="{{ route('challenges.index') }}" class="btn btn-secondary ms-3"><- Back</a>

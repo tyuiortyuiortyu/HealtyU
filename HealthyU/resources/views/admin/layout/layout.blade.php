@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <title>Admin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+    <title>Admin Menu</title>
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
@@ -14,9 +15,17 @@
                 HealthyU Admin
             </a>
         </div>
+        <div class="d-flex justify-content-end mx-3">
+            <span class="text-white text-end text-truncate">Welcome, {{ session('name') }}</span>
+        </div>
+        <div class="me-3">
+            <a class="btn btn-danger" href="{{ route('session.logout') }}">
+                <i class="bi bi-door-open fs-4"></i>
+            </a>
+        </div>
     </nav>
     <div class="class py-3 mx-4">
-        @include('admin/message')
+        @include('admin/content/message')
         @yield('challenges')
     </div>
 
