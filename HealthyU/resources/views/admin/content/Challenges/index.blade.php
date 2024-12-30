@@ -1,7 +1,7 @@
 @extends('admin/layout/layout')
 
 @section('content')
-    <a href="challenges/create" class="btn btn-primary mb-3 ms-3">+ Add Challenge</a>
+    <a href="{{ route('challenges.create') }}" class="btn btn-primary mb-3 ms-3">+ Add Challenge</a>
     <table class="table table-striped table-bordered rounded">
         <thead>
             <tr>

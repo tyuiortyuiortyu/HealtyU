@@ -1,7 +1,7 @@
 @extends('admin/layout/layout')
 
 @section('content')
-    <a href="users/create" class="btn btn-primary mb-3 ms-3">+ Add User</a>
+    <a href="{{ route('users.create') }}" class="btn btn-primary mb-3 ms-3">+ Add User</a>
     <table class="table table-striped table-bordered rounded">
         <thead>
             <tr>

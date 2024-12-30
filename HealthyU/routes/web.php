@@ -28,5 +28,5 @@ Route::middleware('isLogin')->prefix('admin')->group(function () {
 Route::prefix('session')->group(function () {
     Route::middleware('alreadyLogin')->get('/', [SessionController::class, 'index'])->name('session.index');
     Route::middleware('alreadyLogin')->post('/login', [SessionController::class, 'login'])->name('session.login');
-    Route::get('/logout', [SessionController::class, 'logout'])->name('session.logout');
+    Route::middleware('notYetLogin')->get('/logout', [SessionController::class, 'logout'])->name('session.logout');
 });
