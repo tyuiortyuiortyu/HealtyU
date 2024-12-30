@@ -13,14 +13,14 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::create('chat_room', function (Blueprint $table) {
+        Schema::create('cycle_details', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('user_1');
-            $table->unsignedBigInteger('user_2');
+            $table->unsignedBigInteger('user_id');
+            $table->date('start');
+            $table->date('end');
             $table->timestamps();
 
-            $table->foreign('user_1')->references('id')->on('users')->onDelete('cascade');
-            $table->foreign('user_2')->references('id')->on('users')->onDelete('cascade');
+            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
         });
     }
 
@@ -31,6 +31,6 @@ return new class extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('chat_room');
+        Schema::dropIfExists('cycle_details');
     }
 };

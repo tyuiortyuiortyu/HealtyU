@@ -13,13 +13,13 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::create('step', function (Blueprint $table) {
+        Schema::create('chat_details', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('user_id');
-            $table->integer('step');
+            $table->unsignedBigInteger('chat_room_id');
+            $table->text('message');
             $table->timestamps();
 
-            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
+            $table->foreign('chat_room_id')->references('id')->on('chat_rooms')->onDelete('cascade');
         });
     }
 
@@ -30,6 +30,6 @@ return new class extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('step');
+        Schema::dropIfExists('chat_details');
     }
 };
