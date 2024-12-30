@@ -6,6 +6,7 @@ use Carbon\Carbon;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Faker\Factory as Faker;
 
 class ChallengeDetailSeeder extends Seeder
 {
@@ -16,7 +17,7 @@ class ChallengeDetailSeeder extends Seeder
      */
     public function run()
     {
-        $faker = \Faker\Factory::create();
+        $faker = Faker::create();
         $now = Carbon::now()->format('Y-m-d H:i:s');
 
         for ($i = 0; $i < 5; $i++) {
