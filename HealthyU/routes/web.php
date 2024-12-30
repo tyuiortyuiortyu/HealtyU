@@ -25,9 +25,10 @@ Route::prefix('session')->group(function () {
     Route::middleware('alreadyLogin')->post('/login', [SessionController::class, 'login'])->name('session.login');
     Route::get('/logout', [SessionController::class, 'logout'])->name('session.logout');
     
-    Route::middleware('isLogin')->prefix('admin')->group(function () {
-        Route::resource('challenges', ChallengeController::class);
-    });
+}); 
+
+Route::middleware('isLogin')->prefix('admin')->group(function () {
+    Route::resource('challenges', ChallengeController::class);
 });
 
 Route::get('/menu-admin/user',[UserController::class, 'index']);
