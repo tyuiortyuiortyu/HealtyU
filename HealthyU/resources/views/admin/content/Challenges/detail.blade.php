@@ -1,6 +1,6 @@
 @extends('admin/layout/layout') 
 
-@section('challenges')
+@section('content')
     <a href="{{ route('challenges.index') }}" class="btn btn-secondary m-3">&laquo; Back</a>
     <div class="card m-3">
         <div class="card-header">

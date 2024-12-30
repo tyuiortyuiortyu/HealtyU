@@ -1,6 +1,6 @@
 @extends('admin/layout/layout')
 
-@section('challenges')
+@section('content')
     <a href="{{ route('challenges.index') }}" class="btn btn-secondary ms-3">&laquo; Back</a>
     <div class="container mt-5">
         <div class="row justify-content-center">

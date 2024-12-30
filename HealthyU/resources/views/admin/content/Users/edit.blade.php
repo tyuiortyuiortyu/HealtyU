@@ -1,6 +1,6 @@
 @extends('admin/layout/layout')
 
-@section('users')
+@section('content')
     <div class="container mt-4">
         <a class="btn btn-secondary mb-3" href="{{ route('users.index') }}">&laquo; Back</a>
         <div class="card">
