@@ -12,7 +12,7 @@
                 @csrf
                 <div class="mb-3">
                     <label for="email" class="form-label">Email</label>
-                    <input type="email" class="form-control input-small" id="email" name="email" value="{{ Session::get('email') }}" placeholder="Enter your email">
+                    <input type="email" class="form-control input-small" id="email" name="email" value="{{ old('email') }}" placeholder="Enter your email">
                 </div>
                 <div class="mb-3">
                     <label for="password" class="form-label">Password</label>

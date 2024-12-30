@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ChallengeController;
+use App\Http\Controllers\UserController;
 use App\Http\Controllers\SessionController;
 use Illuminate\Support\Facades\Route;
 
@@ -21,6 +22,7 @@ Route::get('/', function () {
 
 Route::middleware('isLogin')->prefix('admin')->group(function () {
     Route::resource('challenges', ChallengeController::class);
+    Route::resource('users', UserController::class);
 });
 
 Route::prefix('session')->group(function () {
