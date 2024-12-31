@@ -37,7 +37,7 @@ class UserSeeder extends Seeder
             'name' => 'user',
             'email' => 'user@user.com',
             'username' => 'user',
-            'password' => bcrypt('user1234'),
+            'password' => bcrypt('admin123'),
             'dob' => $faker->date('Y-m-d', '2005-12-31'),
             'sex' => $faker->randomElement(['male','female']),
             'weight' => $faker->randomFloat(2, 40, 100),
@@ -45,7 +45,7 @@ class UserSeeder extends Seeder
             'last_login' => null,
             'role' => 'user'
         ]);
-        
+
         for ($i = 0; $i < 28; $i++) {
             User::create([
                 'name' => $faker->name,
