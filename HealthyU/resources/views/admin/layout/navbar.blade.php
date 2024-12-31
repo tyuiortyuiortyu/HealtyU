@@ -33,7 +33,7 @@
         </ul>
     </div>
     <div class="d-flex justify-content-end mx-3">
-        <span class="text-white text-end text-truncate">Welcome, {{ session('user_name') }}</span>
+        <span class="text-white text-end text-truncate">Welcome, {{ auth()->user()->name }}</span>
     </div>
     <div class="me-3">
         <a class="btn btn-danger" href="{{ route('session.logout') }}">

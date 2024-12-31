@@ -25,8 +25,9 @@ class SessionController extends Controller{
 
         if(Auth::attempt($login_info) && Auth::user()->role === 'admin'){
             $user = user::where('id', Auth::user()->id)->first();;
-            $user->update(['last_login' => now()]);
-            session(['user_name' => $user->name]);
+            $user->last_login = date('Y-m-d H:i:s');
+            $user->save();
+
             return redirect()->route('challenges.index')->with('success', 'Login success');
         }return redirect()->route('session.index')->withErrors('Invalid email or password');
     }
