@@ -17,6 +17,9 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             ChallengeSeeder::class,
             ChallengeDetailSeeder::class,
+            UnitSeeder::class,
+            MedicineSeeder::class,
+            MedScheduleSeeder::class,
         ]);
     }
 }

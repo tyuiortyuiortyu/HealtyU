@@ -11,7 +11,7 @@
                 <th style="width: 20%;">Email</th>
                 <th style="width: 10%;">Role</th>
                 <th style="width: 15%;">Last Login</th>
-                <th style="width: 10%;">Actions</th>
+                <th style="width: 7%;">Actions</th>
             </tr>
         </thead>
         <tbody>
@@ -23,7 +23,7 @@
                     <td style="width: 20%;">{{ $item->email }}</td>
                     <td style="width: 10%;">{{ $item->role }}</td>
                     <td style="width: 15%;">{{ $item->last_login }}</td>
-                    <td style="width: 10%;">
+                    <td style="width: 7%;">
                         <div class="d-flex justify-content-center">
                             <a href='{{ url('/admin/users/' .$item->id)}}' class="btn btn-secondary btn-sm me-2">Detail</a>
                             <a href='{{ url('/admin/users/' .$item->id. '/edit')}}' class="btn btn-warning btn-sm me-2">Edit</a>
