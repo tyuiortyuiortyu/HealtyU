@@ -15,25 +15,25 @@
                     Table
                 </a>
                 <ul class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
-                    <li><a class="dropdown-item" href="#">Users</a></li>
-                    <li><a class="dropdown-item" href="#">Challenges</a></li>
-                    <li><a class="dropdown-item" href="#">Challenge Details</a></li>
-                    <li><a class="dropdown-item" href="#">Cycle Details</a></li>
-                    <li><a class="dropdown-item" href="#">Posts</a></li>
-                    <li><a class="dropdown-item" href="#">Comments</a></li>
-                    <li><a class="dropdown-item" href="#">Steps</a></li>
-                    <li><a class="dropdown-item" href="#">Chat Rooms</a></li>
-                    <li><a class="dropdown-item" href="#">Chat Details</a></li>
-                    <li><a class="dropdown-item" href="#">Notifications</a></li>
-                    <li><a class="dropdown-item" href="#">Medicines</a></li>
-                    <li><a class="dropdown-item" href="#">Units</a></li>
-                    <li><a class="dropdown-item" href="#">Med Schedules</a></li>
+                    <li><a class="dropdown-item" href="{{ route('users.index') }}" data-table="Users">Users</a></li>
+                    <li><a class="dropdown-item" href="{{ route('challenges.index') }}" data-table="Challenges">Challenges</a></li>
+                    <li><a class="dropdown-item" href="#" data-table="Challenge Detail">Challenge Details</a></li>
+                    <li><a class="dropdown-item" href="#" data-table="Cycle Detail">Cycle Details</a></li>
+                    <li><a class="dropdown-item" href="#" data-table="Posts">Posts</a></li>
+                    <li><a class="dropdown-item" href="#" data-table="Comments">Comments</a></li>
+                    <li><a class="dropdown-item" href="#" data-table="Steps">Steps</a></li>
+                    <li><a class="dropdown-item" href="#" data-table="Chat Rooms">Chat Rooms</a></li>
+                    <li><a class="dropdown-item" href="#" data-table="Chat Details">Chat Details</a></li>
+                    <li><a class="dropdown-item" href="#" data-table="Notifications">Notifications</a></li>
+                    <li><a class="dropdown-item" href="#" data-table="Medicines">Medicines</a></li>
+                    <li><a class="dropdown-item" href="#" data-table="Units">Units</a></li>
+                    <li><a class="dropdown-item" href="#" data-table="Med Schedules">Med Schedules</a></li>
                 </ul>
             </li>
         </ul>
     </div>
     <div class="d-flex justify-content-end mx-3">
-        <span class="text-white text-end text-truncate">Welcome, {{ session('name') }}</span>
+        <span class="text-white text-end text-truncate">Welcome, {{ session('user_name') }}</span>
     </div>
     <div class="me-3">
         <a class="btn btn-danger" href="{{ route('session.logout') }}">

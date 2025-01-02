@@ -12,7 +12,9 @@
     <div style="font-family: 'Raleway', sans-serif;">@include('admin/layout/navbar')</div>
     <div class="class py-3 mx-4" style="font-family: 'Raleway', sans-serif;">
         @include('admin/content/message')
-        @yield('challenges')
+        <div id="content">
+            @yield('content')
+        </div>
     </div>
 
     <script>
@@ -23,6 +25,26 @@
             }
             return true;
         }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const dropdownItems = document.querySelectorAll('.dropdown-item');
+            const dropdownToggle = document.getElementById('navbarDropdownMenuLink');
+
+            // Set dropdown text from local storage
+            const savedTableName = localStorage.getItem('selectedTable');
+            if (savedTableName) {
+                dropdownToggle.textContent = savedTableName;
+            }
+
+            dropdownItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    const tableName = this.getAttribute('data-table');
+                    dropdownToggle.textContent = tableName;
+                    // Save selected table to local storage
+                    localStorage.setItem('selectedTable', tableName);
+                });
+            });
+        });
     </script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js" integrity="sha384-oBqDVmMz4fnFO9gybBogGzA5Yk5R5Q2z6b6Y6S1r24E6lg6Gm4Gczr6pFiG8Jr8K" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.min.js" integrity="sha384-ho+j7jyWK8fNQe+A12W8+6eY5d2y6b6Y6S1r24E6lg6Gm4Gczr6pFiG8Jr8K" crossorigin="anonymous"></script>

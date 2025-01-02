@@ -1,9 +1,9 @@
 <?php
 
 use App\Http\Controllers\ChallengeController;
+use App\Http\Controllers\UserController;
 use App\Http\Controllers\SessionController;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\UserController;
 
 /*
 |--------------------------------------------------------------------------
@@ -16,9 +16,14 @@ use App\Http\Controllers\UserController;
 |
 */
 
-// Route::get('/', function () {
-//     return view('/welcome');
-// });
+Route::get('/', function () {
+    return view('welcome');
+});
+
+Route::middleware('isLogin')->prefix('admin')->group(function () {
+    Route::resource('challenges', ChallengeController::class);
+    Route::resource('users', UserController::class);
+});
 
 Route::prefix('session')->group(function () {
     Route::middleware('alreadyLogin')->get('/', [SessionController::class, 'index'])->name('session.index');
