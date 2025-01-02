@@ -1,7 +1,10 @@
 <?php
 
 use App\Http\Controllers\ChallengeController;
+use App\Http\Controllers\MedicineController;
+use App\Http\Controllers\MedScheduleController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\UnitController;
 use App\Http\Controllers\SessionController;
 use Illuminate\Support\Facades\Route;
 
@@ -26,13 +29,13 @@ Route::get('/', function () {
 Route::middleware('isLogin')->prefix('admin')->group(function () {
     Route::resource('users', UserController::class);
     Route::resource('challenges', ChallengeController::class);
-    Route::resource('medicines', MedicinesController::class);
+    Route::resource('medicines', MedicineController::class);
     Route::resource('units', UnitController::class);
-    Route::resource('medicines', MedScheduleController::class);
+    Route::resource('medSchedules', MedScheduleController::class);
 });
 
 Route::prefix('session')->group(function () {
     Route::middleware('alreadyLogin')->get('/', [SessionController::class, 'index'])->name('session.index');
     Route::middleware('alreadyLogin')->post('/login', [SessionController::class, 'login'])->name('session.login');
-    Route::middleware('notYetLogin')->get('/logout', [SessionnController::class, 'logout'])->name('session.login');
-}); 
+    Route::middleware('notYetLogin')->get('/logout', [SessionController::class, 'logout'])->name('session.logout');
+});

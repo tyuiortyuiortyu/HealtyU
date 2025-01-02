@@ -3,7 +3,6 @@ import { View, Text, TouchableOpacity, Image, Switch, TextInput } from 'react-na
 
 import images from '../../constants/images';
 import icons from '../../constants/icons';
-import Images from '../../constants/images';
 
 const Profile = () => {
   const [isNotificationOn, setNotification] = useState(true);
@@ -144,7 +143,7 @@ const Profile = () => {
 
       {/* Tombol Save */}
       <TouchableOpacity
-        style={{
+        style={{ 
           alignSelf: 'center',
           backgroundColor: isFormValid ? '#2B4763' : 'white', // Biru jika form valid, putih jika tidak
           paddingVertical: 15,

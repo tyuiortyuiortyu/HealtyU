@@ -16,6 +16,12 @@ import keamanan from "../assets/icons/keamanan.png"
 import kebijakan from "../assets/icons/kebijakan.png"
 import notifikasi from "../assets/icons/notifikasi.png"
 
+import heart from "../assets/icons/heart.png"
+import fill_heart from "../assets/icons/fill_heart.png"
+import comment from "../assets/icons/comment.png"
+import share from "../assets/icons/share.png"
+import search from "../assets/icons/search.png"
+
 export default {
     bmi,
     challenge,
@@ -34,4 +40,10 @@ export default {
     keamanan,
     kebijakan,
     notifikasi,
+
+    heart,
+    fill_heart,
+    comment,
+    share,
+    search
 }

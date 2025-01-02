@@ -50,7 +50,7 @@ class ChallengeController extends Controller{
             'image' => $photo_name,
         ]);
 
-        return redirect('admin/challenges')->with('success', 'Challenge created successfully');
+        return redirect()->route('challenges.index')->with('success', 'Challenge created successfully');
     }
 
     /**
@@ -114,7 +114,7 @@ class ChallengeController extends Controller{
             'description' => $request->input('description'),
         ]);
 
-        return redirect('admin/challenges')->with('success', 'Challenge updated successfully');
+        return redirect()->route('challenges.index')->with('success', 'Challenge updated successfully');
     }
 
     /**
@@ -127,6 +127,6 @@ class ChallengeController extends Controller{
         $data = challenge::findOrFail($id);
         File::delete(public_path('images/' . $data->image));
         $data->delete();
-        return redirect('admin/challenges')->with('success', 'Challenge deleted successfully');
+        return redirect()->route('challenges.index')->with('success', 'Challenge deleted successfully');
     }
 }

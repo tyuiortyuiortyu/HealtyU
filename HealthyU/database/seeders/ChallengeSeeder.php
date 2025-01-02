@@ -6,6 +6,7 @@ use Illuminate\Database\Seeder;
 use Faker\Factory as Faker;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use App\Models\challenge;
 
 class ChallengeSeeder extends Seeder
 {
@@ -19,7 +20,7 @@ class ChallengeSeeder extends Seeder
         $faker = Faker::create();
         $now = Carbon::now()->format('Y-m-d H:i:s');
 
-        DB::table('challenges')->insert([
+        challenge::create([
             'name' => 'Step Towards Rewards',
             'description' => 'Walk 5000 steps to unlock exciting rewards. Each step you take brings you closer to a healthier lifestyle—keep moving and enjoy the benefits!',
             'image' => $faker->imageUrl(640,480,'walk'),
@@ -28,9 +29,9 @@ class ChallengeSeeder extends Seeder
         ]);
         
         for ($i = 0; $i < 20; $i++) {
-            DB::table('challenges')->insert([
+            challenge::create([
             'name' => $faker->sentence(3),
-            'description' => $faker->paragraph,
+            'description' => $faker->text(255),
             'image' => $faker->imageUrl(640, 480, 'challenge'),
             'created_at' => $now,
             'updated_at' => $now
