@@ -16,26 +16,23 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+
+
+
 Route::get('/', function () {
     return view('welcome');
 });
 
 Route::middleware('isLogin')->prefix('admin')->group(function () {
-    Route::resource('challenges', ChallengeController::class);
     Route::resource('users', UserController::class);
+    Route::resource('challenges', ChallengeController::class);
+    Route::resource('medicines', MedicinesController::class);
+    Route::resource('units', UnitController::class);
+    Route::resource('medicines', MedScheduleController::class);
 });
 
 Route::prefix('session')->group(function () {
     Route::middleware('alreadyLogin')->get('/', [SessionController::class, 'index'])->name('session.index');
     Route::middleware('alreadyLogin')->post('/login', [SessionController::class, 'login'])->name('session.login');
-    Route::get('/logout', [SessionController::class, 'logout'])->name('session.logout');
-    
+    Route::middleware('notYetLogin')->get('/logout', [SessionnController::class, 'logout'])->name('session.login');
 }); 
-
-Route::middleware('isLogin')->prefix('admin')->group(function () {
-    Route::resource('challenges', ChallengeController::class);
-});
-
-Route::get('/menu-admin/user',[UserController::class, 'index']);
-Route::get('/menu-admin/user/detail/{id}',[UserController::class, 'detail'])->where(['id'=>'[0-9]+']);
-
