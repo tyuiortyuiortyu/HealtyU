@@ -42,4 +42,10 @@ export default {
   addMed,
   cancelMed,
   arrowDown,
+
+  heart,
+  fill_heart,
+  comment,
+  share,
+  search,
 };
