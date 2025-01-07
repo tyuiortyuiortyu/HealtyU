@@ -1,15 +1,5 @@
 import React, { useState } from "react";
-import {
-  StyleSheet,
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  FlatList,
-  Image,
-  Modal,
-  ScrollView,
-} from "react-native";
+import { StyleSheet, View, Text, TextInput, TouchableOpacity, FlatList, Image, Modal, ScrollView, } from "react-native";
 
 import icons from "../../constants/icons";
 import images from "../../constants/images";
