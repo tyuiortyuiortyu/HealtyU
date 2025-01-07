@@ -100,10 +100,25 @@ const Community = () => {
     setNewPostImage(null); // Clear image when closing the new post screen
   };
 
+  // const handlePost = () => {
+  //   console.log("Post submitted!");
+  //   setIsNewPostScreenVisible(false);
+  //   // Here you can handle posting the new image/caption
+  // };
+
   const handlePost = () => {
-    console.log("Post submitted!");
-    setIsNewPostScreenVisible(false);
-    // Here you can handle posting the new image/caption
+    if (postText.trim()) {
+      const newPost = {
+        text: postText,
+        image: newPostImage,
+        id: Date.now(), // Unique ID for each post
+      };
+
+      setPosts([newPost, ...posts]); // Add the new post to the top of the list
+    }
+    setPostText(""); // Clear the input field
+    setNewPostImage(null); // Clear the image
+    setIsNewPostScreenVisible(false); // Close the new post screen
   };
 
   const handleAddImage = () => {
@@ -304,8 +319,8 @@ const Community = () => {
             )}
           />
 
-                    {/* Share Modal */}
-                    <Modal
+          {/* Share Modal */}
+          <Modal
             visible={shareModalVisible}
             transparent={true}
             animationType="slide"
@@ -336,6 +351,39 @@ const Community = () => {
                   marginTop: 20,
                   padding: 10,
                   alignItems: "center",
+                }}
+              >
+                <Text style={{ color: "#fff" }}>Share on Facebook</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{
+                  backgroundColor: "#25D366",
+                  paddingVertical: 10,
+                  paddingHorizontal: 20,
+                  borderRadius: 5,
+                  marginBottom: 10,
+                }}
+              >
+                <Text style={{ color: "#fff" }}>Share on WhatsApp</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{
+                  backgroundColor: "#007BFF",
+                  paddingVertical: 10,
+                  paddingHorizontal: 20,
+                  borderRadius: 5,
+                  marginBottom: 10,
+                }}
+              >
+                <Text style={{ color: "#fff" }}>Copy Link</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setShareModalVisible(false)}
+                style={{
+                  backgroundColor: "#ccc",
+                  paddingVertical: 10,
+                  paddingHorizontal: 20,
+                  borderRadius: 5,
                 }}
               >
                 <Text style={{ color: "#007BFF" }}>Close</Text>
@@ -547,7 +595,7 @@ const Community = () => {
           />
         </TouchableOpacity>
       </Modal>
-
+      
       {/* Floating Action Button */}
       <TouchableOpacity
         style={{
