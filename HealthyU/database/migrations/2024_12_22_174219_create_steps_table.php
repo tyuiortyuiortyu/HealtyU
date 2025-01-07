@@ -13,9 +13,13 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->decimal('weight', 5,2)->nullable(false)->change();
-            $table->decimal('height', 5,2)->nullable(false)->change();
+        Schema::create('steps', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('user_id');
+            $table->integer('step');
+            $table->timestamps();
+
+            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
         });
     }
 
@@ -26,9 +30,6 @@ return new class extends Migration
      */
     public function down()
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->decimal('weight', 5,2)->nullable()->change();
-            $table->decimal('height', 5,2)->nullable()->change();
-        });
+        Schema::dropIfExists('steps');
     }
 };

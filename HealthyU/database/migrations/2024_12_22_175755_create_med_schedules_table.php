@@ -13,15 +13,13 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::create('challenge_detail', function (Blueprint $table) {
+        Schema::create('med_schedules', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('challenge_id');
-            $table->unsignedBigInteger('user_id');
-            $table->dateTime('start_date');
+            $table->unsignedBigInteger('med_id');
+            $table->time('time_to_take');
             $table->timestamps();
 
-            $table->foreign('challenge_id')->references('id')->on('challenges')->onDelete('cascade');
-            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
+            $table->foreign('med_id')->references('id')->on('medicines')->onDelete('cascade');
         });
     }
 
@@ -32,6 +30,6 @@ return new class extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('challenge_detail');
+        Schema::dropIfExists('med_schedules');
     }
 };

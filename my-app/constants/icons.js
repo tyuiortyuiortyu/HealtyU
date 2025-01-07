@@ -20,6 +20,12 @@ import addMed from "../assets/icons/addMed.png";
 import cancelMed from "../assets/icons/cancelMed.png";
 import arrowDown from "../assets/icons/Bawah.png";
 
+import heart from "../assets/icons/heart.png"
+import fill_heart from "../assets/icons/fill_heart.png"
+import comment from "../assets/icons/comment.png"
+import share from "../assets/icons/share.png"
+import search from "../assets/icons/search.png"
+
 export default {
   bmi,
   challenge,
@@ -43,9 +49,18 @@ export default {
   cancelMed,
   arrowDown,
 
+  spy,
+  pop_eye,
+  ubah_profile,
+  bantuan,
+  hubungi,
+  keamanan,
+  kebijakan,
+  notifikasi,
+
   heart,
   fill_heart,
   comment,
   share,
-  search,
-};
+  search
+}

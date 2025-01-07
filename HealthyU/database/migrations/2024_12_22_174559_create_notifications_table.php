@@ -13,11 +13,13 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::create('cycle_detail', function (Blueprint $table) {
+        Schema::create('notifications', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('user_id');
-            $table->date('start');
-            $table->date('end');
+            $table->dateTime('start');
+            $table->boolean('recieved');
+            $table->boolean('seen');
+            $table->string('message');
             $table->timestamps();
 
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
@@ -31,6 +33,6 @@ return new class extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('cycle_detail');
+        Schema::dropIfExists('notifications');
     }
 };
