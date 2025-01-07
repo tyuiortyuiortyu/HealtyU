@@ -64,7 +64,7 @@ const login = () => {
           onPress={() => setShowPassword((prev) => !prev)} // Toggle visibilitas password
         >
           <Ionicons
-            name={showPassword ? "eye-off-outline" : "eye-outline"} // Ikon mata terbuka/tutup
+            name={showPassword ? "eye-outline" : "eye-off-outline"} // Ikon mata terbuka/tutup
             size={24}
             color="#aaa"
           />
