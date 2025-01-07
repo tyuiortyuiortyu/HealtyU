@@ -17,19 +17,20 @@ import tetes from "../assets/images/Tetes.png";
 import krim from "../assets/images/Krim.png";
 import tablet from "../assets/images/Tablet.png";
 
+import add_image from "../assets/images/add_image.png"
+
 export default {
   female,
   male,
   bmi,
   logo,
-
   twitter,
   facebook,
   apple,
   google,
   profile,
   edit_profile,
-
+  add_image,
   reminder1,
   pil,
   sirup,
