@@ -10,6 +10,8 @@ import google from "../assets/images/google.png"
 import profile from "../assets/images/foto_profile.png"
 import edit_profile from "../assets/images/edit.png"
 
+import add_image from "../assets/images/add_image.png"
+
 export default {
     female,
     male,
@@ -22,4 +24,6 @@ export default {
     google,
     profile,
     edit_profile,
+
+    add_image,
 }

@@ -22,6 +22,9 @@ import comment from "../assets/icons/comment.png"
 import share from "../assets/icons/share.png"
 import search from "../assets/icons/search.png"
 
+import three_dots from "../assets/icons/three_dots.png"
+import x from "../assets/icons/x.png"
+
 export default {
     bmi,
     challenge,
@@ -45,5 +48,8 @@ export default {
     fill_heart,
     comment,
     share,
-    search
+    search,
+
+    three_dots,
+    x,
 }
