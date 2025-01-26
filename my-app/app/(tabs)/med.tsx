@@ -792,6 +792,7 @@ const styles = StyleSheet.create({
     // borderWidth: 1, // Debugging border
     // borderColor: "green",
   },
+  // tes
 });
 
 export default MedReminder;
