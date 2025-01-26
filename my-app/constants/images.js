@@ -19,6 +19,17 @@ import tablet from "../assets/images/Tablet.png";
 
 import add_image from "../assets/images/add_image.png"
 
+import confetti from "../assets/images/confetti.png";
+import trophy from "../assets/images/trophy.png";
+import weight from "../assets/images/weight.png";
+import calories from "../assets/images/calories.png";
+import reward from "../assets/images/reward.png";
+import target from "../assets/images/target.png";
+
+import monster1 from "../assets/images/monster1.png";
+import monster2 from "../assets/images/monster2.png";
+import monster3 from "../assets/images/monster3.png";
+
 export default {
   female,
   male,
@@ -37,4 +48,16 @@ export default {
   tetes,
   krim,
   tablet,
+
+  confetti,
+  trophy,
+  weight,
+  calories,
+  reward,
+  target,
+
+  monster1,
+  monster2,
+  monster3,
+
 };
