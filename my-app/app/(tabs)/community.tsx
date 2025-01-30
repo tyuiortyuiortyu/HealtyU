@@ -1,6 +1,18 @@
 import React, { useState } from "react";
-import { StyleSheet, View, Text, TextInput, TouchableOpacity, FlatList, Image, Modal, ScrollView, } from "react-native";
+import {
+  StyleSheet,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  FlatList,
+  Image,
+  Modal,
+  ScrollView,
+} from "react-native";
+import * as ImagePicker from "expo-image-picker"; // Untuk memilih gambar dari perangkat
 
+// Pastikan Anda memiliki file icons.js dan images.js yang sesuai
 import icons from "../../constants/icons";
 import images from "../../constants/images";
 
@@ -10,14 +22,16 @@ const Community = () => {
   const [shareModalVisible, setShareModalVisible] = useState(false);
   const [commentModalVisible, setCommentModalVisible] = useState(false);
   const [popupVisible, setPopupVisible] = useState(false);
+  const [selectedPost, setSelectedPost] = useState(null); // Untuk menyimpan postingan yang dipilih
   const [posts, setPosts] = useState([
     {
       id: "1",
       name: "Nikita",
       profilePicture: "https://via.placeholder.com/100",
-      postImage: "https://example.com/post1.jpg",
+      postImage: "https://via.placeholder.com/300",
       caption: "This is a sample caption.",
-      fullCaption: "This is a sample caption. Tap 'see more' to expand. Here is the full caption that gets displayed when expanded.",
+      fullCaption:
+        "This is a sample caption. Tap 'see more' to expand. Here is the full caption that gets displayed when expanded.",
       time: new Date(Date.now() - 3600 * 1000).toLocaleTimeString([], {
         hour: "2-digit",
         minute: "2-digit",
@@ -31,7 +45,15 @@ const Community = () => {
   const [isNewPostScreenVisible, setIsNewPostScreenVisible] = useState(false);
   const [postText, setPostText] = useState("");
   const [newPostImage, setNewPostImage] = useState(null);
+  const [isLeaveModalVisible, setIsLeaveModalVisible] = useState(false);
+  const [commentText, setCommentText] = useState("");
 
+  const [currentUser, setCurrentUser] = useState({
+    name: "Nikita", // Nama pengguna yang sedang login
+    profilePicture: "https://via.placeholder.com/100", // Foto profil pengguna
+  });
+
+  // Fungsi untuk memperluas/menyembunyikan caption
   const toggleCaption = (id) => {
     setPosts((prevPosts) =>
       prevPosts.map((post) =>
@@ -42,15 +64,18 @@ const Community = () => {
     );
   };
 
+  // Fungsi untuk menangani pencarian
   const handleSearchPress = () => {
     setIsSearching(true);
   };
 
+  // Fungsi untuk membatalkan pencarian
   const handleCancelSearch = () => {
     setSearchText("");
     setIsSearching(false);
   };
 
+  // Fungsi untuk menyukai postingan
   const handleLike = (id) => {
     setPosts((prevPosts) =>
       prevPosts.map((post) =>
@@ -65,56 +90,103 @@ const Community = () => {
     );
   };
 
-  // const handleComment = () => alert("Comment functionality coming soon!");
-  // const handleShare = () => alert("Share functionality coming soon!");
-  // const handleThreeDots = () => alert("Options functionality coming soon!");
-
+  // Fungsi untuk menampilkan modal komentar
   const handleComment = () => {
     setCommentModalVisible(true);
   };
 
+  // Fungsi untuk menampilkan modal share
   const handleShare = () => {
     setShareModalVisible(true);
   };
 
-  const handleThreeDots = () => {
-    setPopupVisible(true);
+  // Fungsi untuk menampilkan popup menu
+  const handleThreeDots = (post) => {
+    setSelectedPost(post); // Simpan postingan yang dipilih
+    setPopupVisible(true); // Tampilkan popup menu
   };
 
+  // Fungsi untuk menampilkan layar posting baru
   const handlePlusButtonPress = () => {
     setIsNewPostScreenVisible(true);
   };
 
+  // Fungsi untuk menutup layar posting baru
   const handleCloseNewPostScreen = () => {
-    setIsNewPostScreenVisible(false);
-    setNewPostImage(null); // Clear image when closing the new post screen
+    if (postText.trim() || newPostImage) {
+      setIsLeaveModalVisible(true); // Tampilkan modal konfirmasi
+    } else {
+      setIsNewPostScreenVisible(false); // Langsung tutup jika tidak ada perubahan
+    }
   };
 
-  // const handlePost = () => {
-  //   console.log("Post submitted!");
-  //   setIsNewPostScreenVisible(false);
-  //   // Here you can handle posting the new image/caption
-  // };
+  // Fungsi untuk meninggalkan layar posting baru tanpa menyimpan
+  const handleLeaveWithoutSaving = () => {
+    setIsNewPostScreenVisible(false);
+    setPostText("");
+    setNewPostImage(null);
+    setIsLeaveModalVisible(false);
+  };
 
+  // Fungsi untuk membatalkan meninggalkan layar posting baru
+  const handleCancelLeave = () => {
+    setIsLeaveModalVisible(false);
+  };
+
+  // Fungsi untuk memposting konten baru
   const handlePost = () => {
-    if (postText.trim()) {
+    if (postText.trim() || newPostImage) {
       const newPost = {
-        text: postText,
-        image: newPostImage,
-        id: Date.now(), // Unique ID for each post
+        id: Date.now().toString(),
+        name: currentUser.name, // Gunakan nama pengguna yang sedang login
+        profilePicture: currentUser.profilePicture, // Gunakan foto profil pengguna
+        postImage: newPostImage || "https://via.placeholder.com/300", // Gunakan gambar yang dipilih atau placeholder
+        caption: postText, // Caption yang dimasukkan
+        fullCaption: postText, // Caption lengkap (sama dengan caption)
+        time: new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }), // Waktu posting
+        isCaptionExpanded: false, // Caption belum diperluas
+        isLiked: false, // Postingan belum disukai
+        likes: 0, // Jumlah likes awal
+        comments: 0, // Jumlah komentar awal
       };
 
-      setPosts([newPost, ...posts]); // Add the new post to the top of the list
+      // Tambahkan postingan baru ke daftar postingan
+      setPosts([newPost, ...posts]);
+
+      // Reset state setelah posting
+      setPostText("");
+      setNewPostImage(null);
+      setIsNewPostScreenVisible(false); // Tutup modal posting baru
     }
-    setPostText(""); // Clear the input field
-    setNewPostImage(null); // Clear the image
-    setIsNewPostScreenVisible(false); // Close the new post screen
   };
 
-  const handleAddImage = () => {
-    console.log("Add image pressed");
-    // Add logic for adding an image (perhaps open file picker)
-    setNewPostImage("https://via.placeholder.com/300"); // Placeholder image for now
+  // Fungsi untuk menambahkan gambar dari perangkat
+  const handleAddImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      alert("Sorry, we need camera roll permissions to make this work!");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      setNewPostImage(result.uri); // Set URI gambar yang dipilih
+    }
+  };
+
+  // Fungsi untuk menyembunyikan semua postingan dari pengguna tertentu
+  const hideAllUpdatesFrom = (name) => {
+    setPosts((prevPosts) => prevPosts.filter((post) => post.name !== name));
+    setPopupVisible(false); // Tutup popup setelah menyembunyikan postingan
   };
 
   return (
@@ -148,7 +220,7 @@ const Community = () => {
         ) : (
           <TouchableOpacity onPress={handleSearchPress}>
             <Image
-              source={ icons.search}
+              source={icons.search}
               style={{ width: 20, height: 20, marginLeft: 20 }}
             />
           </TouchableOpacity>
@@ -166,13 +238,13 @@ const Community = () => {
         <>
           {/* Greeting */}
           <Text style={{ fontSize: 18, fontWeight: "bold", marginBottom: 20 }}>
-            Hi Nikita, <Text style={{ fontSize: 20 }}>👋</Text>
+            Hi {currentUser.name}, <Text style={{ fontSize: 20 }}>👋</Text>
           </Text>
 
           {/* Posts */}
           <FlatList
             data={posts}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item) => item.id.toString()}
             renderItem={({ item }) => (
               <View
                 style={{
@@ -204,18 +276,16 @@ const Community = () => {
                       marginRight: 10,
                     }}
                   />
-                  <Text
-                    style={{ fontSize: 16, fontWeight: "bold", flex: 1 }}
-                  >
+                  <Text style={{ fontSize: 16, fontWeight: "bold", flex: 1 }}>
                     {item.name}
                   </Text>
 
-                  <TouchableOpacity onPress={handleThreeDots}>
-                    <Image source={icons.three_dots} 
-                      style={{ width: 20, height: 20, resizeMode: 'contain' }}
+                  <TouchableOpacity onPress={() => handleThreeDots(item)}>
+                    <Image
+                      source={icons.three_dots}
+                      style={{ width: 20, height: 20, resizeMode: "contain" }}
                     />
                   </TouchableOpacity>
-
                 </View>
 
                 {/* Post Image */}
@@ -336,16 +406,25 @@ const Community = () => {
                 Share this post
               </Text>
               <TouchableOpacity
-                onPress={() => setShareModalVisible(false)}
+                onPress={() => {
+                  // Handle share on Facebook
+                  setShareModalVisible(false);
+                }}
                 style={{
-                  marginTop: 20,
-                  padding: 10,
-                  alignItems: "center",
+                  backgroundColor: "#1877F2",
+                  paddingVertical: 10,
+                  paddingHorizontal: 20,
+                  borderRadius: 5,
+                  marginBottom: 10,
                 }}
               >
                 <Text style={{ color: "#fff" }}>Share on Facebook</Text>
               </TouchableOpacity>
               <TouchableOpacity
+                onPress={() => {
+                  // Handle share on WhatsApp
+                  setShareModalVisible(false);
+                }}
                 style={{
                   backgroundColor: "#25D366",
                   paddingVertical: 10,
@@ -357,6 +436,10 @@ const Community = () => {
                 <Text style={{ color: "#fff" }}>Share on WhatsApp</Text>
               </TouchableOpacity>
               <TouchableOpacity
+                onPress={() => {
+                  // Handle copy link
+                  setShareModalVisible(false);
+                }}
                 style={{
                   backgroundColor: "#007BFF",
                   paddingVertical: 10,
@@ -417,7 +500,8 @@ const Community = () => {
                   paddingLeft: 10,
                 }}
                 placeholder="Write a comment..."
-                onChangeText={(text) => console.log(text)}
+                value={commentText}
+                onChangeText={setCommentText}
               />
               <TouchableOpacity
                 onPress={() => setCommentModalVisible(false)}
@@ -461,16 +545,20 @@ const Community = () => {
                 }}
               >
                 <TouchableOpacity
-                  onPress={() => console.log("Edit Post")}
+                  onPress={() => console.log("Hide this post")}
                   style={{ paddingVertical: 10 }}
                 >
-                  <Text>Edit Post</Text>
+                  <Text>Hide this post</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  onPress={() => console.log("Delete Post")}
+                  onPress={() => {
+                    if (selectedPost) {
+                      hideAllUpdatesFrom(selectedPost.name);
+                    }
+                  }}
                   style={{ paddingVertical: 10 }}
                 >
-                  <Text>Delete Post</Text>
+                  <Text>Hide all updates from {selectedPost?.name}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => setPopupVisible(false)}
@@ -493,7 +581,7 @@ const Community = () => {
             backgroundColor: "#fff",
           }}
         >
-          {/* Header dengan tombol Close dan Post */}
+          {/* Header with Close and Post buttons */}
           <View
             style={{
               flexDirection: "row",
@@ -513,12 +601,12 @@ const Community = () => {
             </TouchableOpacity>
             <TouchableOpacity
               onPress={handlePost}
-              disabled={!postText.trim()}
+              disabled={!postText.trim() && !newPostImage}
             >
               <Text
                 style={{
                   fontSize: 18,
-                  color: postText.trim() ? "#007BFF" : "#ccc",
+                  color: postText.trim() || newPostImage ? "#007BFF" : "#ccc",
                 }}
               >
                 Post
@@ -526,20 +614,42 @@ const Community = () => {
             </TouchableOpacity>
           </View>
 
-          {/* Gambar yang ditambahkan */}
+          {/* Image added */}
           {newPostImage && (
-            <Image
-              source={{ uri: newPostImage }}
-              style={{
-                width: "100%",
-                height: 200,
-                borderRadius: 10,
-                marginTop: 10,
-              }}
-            />
+            <View style={{ position: "relative", marginTop: 10 }}>
+              <Image
+                source={{ uri: newPostImage }}
+                style={{
+                  width: "100%",
+                  height: 200,
+                  borderRadius: 10,
+                }}
+              />
+              {/* Button to remove image */}
+              <TouchableOpacity
+                onPress={() => setNewPostImage(null)} // Hapus gambar yang dipilih
+                style={{
+                  position: "absolute",
+                  top: 10,
+                  right: 10,
+                  backgroundColor: "rgba(0, 0, 0, 0.6)",
+                  borderRadius: 15,
+                  padding: 5,
+                }}
+              >
+                <Image
+                  source={icons.close} // Pastikan Anda memiliki ikon close di file icons.js
+                  style={{
+                    width: 20,
+                    height: 20,
+                    tintColor: "#fff",
+                  }}
+                />
+              </TouchableOpacity>
+            </View>
           )}
 
-          {/* Input untuk teks */}
+          {/* Text input */}
           <TextInput
             style={{
               height: 120,
@@ -556,7 +666,7 @@ const Community = () => {
           />
         </ScrollView>
 
-        {/* Tombol Add Image */}
+        {/* Add Image Button */}
         <TouchableOpacity
           onPress={handleAddImage}
           style={{
@@ -585,7 +695,79 @@ const Community = () => {
           />
         </TouchableOpacity>
       </Modal>
-      
+
+      {/* Leave without saving popup */}
+      <Modal
+        visible={isLeaveModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={handleCancelLeave}
+      >
+        <View
+          style={{
+            flex: 1,
+            justifyContent: "center",
+            alignItems: "center",
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: "#fff",
+              padding: 20,
+              borderRadius: 10,
+              width: 300,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.1,
+              shadowRadius: 5,
+              elevation: 5,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 15,
+                marginBottom: 20,
+                textAlign: "center",
+                color: "#666",
+              }}
+            >
+              Leave without saving your post? Your changes won’t be saved.
+            </Text>
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+              }}
+            >
+              <TouchableOpacity
+                onPress={handleCancelLeave}
+                style={{
+                  paddingVertical: 10,
+                  paddingHorizontal: 20,
+                  borderRadius: 20,
+                  borderWidth: 1,
+                  borderColor: "#ccc",
+                }}
+              >
+                <Text style={{ fontWeight: "bold", color: "black" }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleLeaveWithoutSaving}
+                style={{
+                  paddingVertical: 10,
+                  paddingHorizontal: 20,
+                  borderRadius: 20,
+                  backgroundColor: "#ff4444",
+                }}
+              >
+                <Text style={{ fontWeight: "bold", color: "white" }}>Leave</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* Floating Action Button */}
       <TouchableOpacity
         style={{
