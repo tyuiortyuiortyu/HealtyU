@@ -1,2 +1,2 @@
-# HealtyU
-Aplikasi HealtyU
+# HealthyU
+Aplikasi HealthyU
