@@ -24,7 +24,12 @@ class AuthController extends Controller
     }
 
     public function register(RegistrationRequest $request){
-        $user = User::create($request->validated());
+        $user = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'username' => $request->username,
+            'password' => bcrypt($request->password)
+        ]);
 
         if($user){
             $token = auth()->login($user);

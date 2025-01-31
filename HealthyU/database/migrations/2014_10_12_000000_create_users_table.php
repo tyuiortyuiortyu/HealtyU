@@ -20,11 +20,11 @@ return new class extends Migration
             $table->timestamp('email_verified_at')->nullable();
             $table->dateTime('last_login')->nullable();
             $table->string('username', 50)->unique();
-            $table->string('password',60); //ini karena mau pake bcrypt makanya lengthnya 60
-            $table->date('dob');
-            $table->string('sex', 6);
-            $table->decimal('weight', 5,2);
-            $table->decimal('height', 5,2);
+            $table->string('password', 60); //ini karena mau pake bcrypt makanya lengthnya 60
+            $table->date('dob')->nullable();
+            $table->string('sex', 6)->nullable();
+            $table->decimal('weight', 5,2)->nullable();
+            $table->decimal('height', 5,2)->nullable();
             $table->rememberToken();
             $table->enum('role', ['user', 'admin'])->default('user');
             $table->timestamps();
