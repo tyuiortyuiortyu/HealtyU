@@ -4,11 +4,13 @@ import {
   Dimensions,
   Text,
   View,
+  KeyboardAvoidingView,
   Image,
   TouchableOpacity,
   Modal,
   TextInput,
   ScrollView,
+  Platform,
 } from "react-native";
 
 import DateTimePicker from "@react-native-community/datetimepicker";
@@ -33,6 +35,8 @@ const MedReminder = () => {
   const [isTimePickerVisible, setIsTimePickerVisible] = useState(false); // Untuk menampilkan/menyembunyikan TimePicker
   const [medList, setMedList] = useState([]);
   const [medImage, setMedImage] = useState(null);
+  const [isDropdownVisible, setDropdownVisible] = useState(false);
+  const [selectedUnit, setSelectedUnit] = useState("mg");
 
   const handleAddMedPress = () => {
     setShowImages(!showImages);
@@ -70,6 +74,7 @@ const MedReminder = () => {
     setMedImage(imageSource);
     setTimeout(() => setShowDetailsModal(true), 300);
   };
+
   const handleNextPress = () => {
     if (!medName || !medDose) {
       alert("Please fill in all the medication details before proceeding!");
@@ -117,6 +122,21 @@ const MedReminder = () => {
     setIsTimePickerVisible(false);
   };
 
+  const handleIconPress = () => {
+    setDropdownVisible(!isDropdownVisible);
+  };
+
+  const closeDropdown = () => {
+    setDropdownVisible(false); // Menutup dropdown
+  };
+
+  const handleSelectUnit = (unit) => {
+    setSelectedUnit(unit);
+    closeDropdown();
+  };
+
+  const availableUnits = ["mg", "mL"].filter((unit) => unit !== selectedUnit); // Menyaring opsi
+
   return (
     <View style={styles.container}>
       <View style={styles.topContainer}>
@@ -145,9 +165,6 @@ const MedReminder = () => {
         contentContainerStyle={{
           alignItems: "center",
           justifyContent: "flex-start", // Menambahkan agar konten ada di tengah vertikal
-          paddingBottom: 20,
-          borderWidth: 1, // Debugging border
-          borderColor: "blue",
         }}
       >
         {medList.length === 0 ? (
@@ -235,30 +252,68 @@ const MedReminder = () => {
         animationType="fade"
         onRequestClose={() => setShowDetailsModal(false)}
       >
-        <View style={styles.dimmedBackground}>
-          <View style={styles.detailModalContainer}>
-            <Text style={styles.detailTitle}>Add Details</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Name"
-              value={medName}
-              onChangeText={setMedName}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Dosage"
-              value={medDose}
-              onChangeText={setMedDose}
-              keyboardType="numeric"
-            />
-            <TouchableOpacity
-              style={styles.nextButton}
-              onPress={handleNextPress}
-            >
-              <Text style={styles.nextButtonText}>Next</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+        <KeyboardAvoidingView
+          style={styles.dimmedBackground}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
+        >
+          <ScrollView
+            contentContainerStyle={styles.scrollContainer}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.detailModalContainer}>
+              <Text style={styles.detailTitle}>Add Details</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Name"
+                value={medName}
+                onChangeText={setMedName}
+              />
+
+              <View style={styles.inputWithIcon}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Dosage"
+                  value={medDose}
+                  onChangeText={setMedDose}
+                  keyboardType="numeric"
+                />
+                <TouchableOpacity
+                  style={styles.unitWrapper}
+                  onPress={handleIconPress}
+                >
+                  <Text style={styles.unitText}>{selectedUnit}</Text>
+                  <Image
+                    source={icons.arrowDown} // Ganti dengan ikon panah bawah
+                    style={styles.icon}
+                  />
+                </TouchableOpacity>
+              </View>
+
+              {/* Dropdown Modal */}
+              {isDropdownVisible && (
+                <View style={styles.dropdownContainer}>
+                  {availableUnits.map((unit) => (
+                    <TouchableOpacity
+                      key={unit}
+                      style={styles.dropdownItem}
+                      onPress={() => handleSelectUnit(unit)}
+                    >
+                      <Text style={styles.dropdownText}>{unit}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+
+              <TouchableOpacity
+                style={styles.nextButton}
+                onPress={handleNextPress}
+              >
+                <Text style={styles.nextButtonText}>Next</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Modal Atur Pengingat */}
@@ -364,6 +419,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
+  scrollContainer: {
+    flexGrow: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   reminderModalContainer: {
     justifyContent: "center",
     backgroundColor: "#FFF",
@@ -379,6 +439,21 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     marginBottom: -500,
   },
+  detailModalContainer: {
+    justifyContent: "center", // Posisikan ke bawah layar
+    backgroundColor: "#FFF", // Warna latar modal
+    borderRadius: 20, // Membuat sudut membulat
+    padding: 20, // Ruang dalam modal
+    alignItems: "center", // Elemen di tengah horizontal
+    width: "100%", // Sesuaikan lebar modal
+    height: "33%", // Tinggi modal (atur sesuai kebutuhan)
+    elevation: 5, // Bayangan di Android
+    shadowColor: "#000", // Bayangan di iOS
+    shadowOpacity: 0.2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    top: 200,
+  },
   reminderTitle: {
     fontSize: 18,
     fontWeight: "bold",
@@ -391,21 +466,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#EAEAEA",
     borderRadius: 10,
   },
-  detailModalContainer: {
-    justifyContent: "flex-end", // Posisikan ke bawah layar
-    backgroundColor: "#FFF", // Warna latar modal
-    borderRadius: 20, // Membuat sudut membulat
-    padding: 20, // Ruang dalam modal
-    alignItems: "center", // Elemen di tengah horizontal
-    width: "100%", // Sesuaikan lebar modal
-    height: "33%", // Tinggi modal (atur sesuai kebutuhan)
-    elevation: 5, // Bayangan di Android
-    shadowColor: "#000", // Bayangan di iOS
-    shadowOpacity: 0.2,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-    marginBottom: -400,
-  },
   detailTitle: { fontSize: 18, fontWeight: "bold", marginBottom: 10 },
   input: {
     width: 350,
@@ -416,6 +476,16 @@ const styles = StyleSheet.create({
     padding: 10,
     marginVertical: 10,
     backgroundColor: "#EAEAEA",
+    // borderWidth: 1, // Debugging border
+    // borderColor: "blue",
+    
+  },
+  inputWithIcon: {
+    // flexDirection: "row",
+    // alignItems: "center",
+    // marginBottom: 16, // Sesuaikan dengan jarak antar elemen
+    // borderWidth: 1, // Debugging border
+    // borderColor: "green",
   },
   nextButton: {
     backgroundColor: "#000000",
@@ -428,7 +498,7 @@ const styles = StyleSheet.create({
     justifyContent: "flex-start",
     alignItems: "flex-start",
     padding: 16,
-    marginTop: 100,
+    marginTop: 20,
     marginLeft: 40,
   },
   title: {
@@ -485,7 +555,6 @@ const styles = StyleSheet.create({
     height: 10,
     marginBottom: -20,
     marginLeft: 10,
-    
   },
   text3Box: {
     fontSize: 14,
@@ -499,36 +568,33 @@ const styles = StyleSheet.create({
     marginTop: -120,
   },
   midText: {
-    marginTop: 40,
-    marginLeft: 50,
+    marginTop: 20,
+    marginLeft: 30,
+    marginBottom: 20,
     fontSize: 30,
     color: "#000000",
   },
   iconAdd: {
     position: "absolute",
-    bottom: 50,
+    bottom: 5,
     left: "50%",
     transform: [{ translateX: -25 }],
-    
   },
   addMed: {
     width: 50,
     height: 50,
-    
   },
   cancelMed: {
     width: 50,
     height: 50,
   },
   modalContainer: {
-    position: "absolute",
     alignSelf: "center",
-    bottom: "25%", // Sesuaikan posisi
+    top: "20%", // Sesuaikan posisi
     width: "95%",
-    height: "auto", // Tinggi otomatis sesuai konten
+    height: "20%", // Tinggi otomatis sesuai konten
     justifyContent: "center",
     alignItems: "center",
-    
   },
   backgroundBox: {
     backgroundColor: "#FFF",
@@ -543,7 +609,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 4,
     marginTop: 30,
-    
   },
   chooseContainer: {
     marginBottom: 0,
@@ -622,18 +687,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 5,
-    
   },
   medListContainer: {
-    // marginHorizontal: 10, // Margin relative to screen width
-    // marginRight: 10,
-    // marginTop: 20,
     flex: 1,
-    paddingBottom: 20,
-    borderWidth: 1, // Debugging border
-    borderColor: "red",
-
-    // alignItems: "center",
     width: "100%",
   },
   noMedText: {
@@ -650,12 +706,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#ff44", // Background color
     marginBottom: 15,
     // marginHorizontal: width * 0.03, // Horizontal margin relative to screen width
-    // width: "100%", // Full width of the parent container
+    width: "85%", // Full width of the parent container
     flexWrap: "wrap", // Allow items to wrap
     overflow: "hidden", // Prevent overflow
-    borderWidth: 1, // Debugging border
-    borderColor: "green",
-  
+
+    // borderWidth: 1, // Debugging border
+    // borderColor: "green",
   },
   medIcon: {
     width: 50,
@@ -671,25 +727,72 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "flex-start",
     paddingVertical: 5,
-    borderWidth: 1, // Debugging border
-    borderColor: "green",
+    // borderWidth: 1, // Debugging border
+    // borderColor: "green",
   },
   medName: {
-    fontSize: 16, // Font size relative to screen width
+    fontSize: 20, // Font size relative to screen width
     fontWeight: "bold",
   },
   medType: {
-    fontSize: 14, // Font size relative to screen width
+    fontSize: 16, // Font size relative to screen width
     color: "#666",
   },
   medDate: {
-    fontSize: 14, // Font size relative to screen width
+    fontSize: 16, // Font size relative to screen width
     color: "#666",
   },
   medTime: {
-    fontSize: 14, // Font size relative to screen width
+    fontSize: 16, // Font size relative to screen width
     color: "#666",
   },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  dropdownContainer: {
+    position: "absolute",
+    bottom: 10, // Sesuaikan ini agar dropdown berada tepat di bawah input
+    right: 20, // Sesuaikan ini agar sejajar dengan ikon
+    backgroundColor: "#EAEAEA",
+    borderRadius: 8,
+    padding: 10,
+    elevation: 5,
+    marginBottom: 5
+    // borderWidth: 1, // Debugging border
+    // borderColor: "green",
+  },
+  dropdownItem: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    // borderWidth: 1, // Debugging border
+    // borderColor: "green",
+  },
+  dropdownText: {
+    fontSize: 16,
+    color: "#000",
+    fontWeight: "bold",
+  },
+  unitWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: 50,
+    bottom: 50,
+    left: 280
+    // borderWidth: 1, // Debugging border
+    // borderColor: "red",
+  },
+  unitText: {
+    fontSize: 16,
+    color: "#000",
+    marginRight: 4,
+    fontWeight: "bold",
+    // borderWidth: 1, // Debugging border
+    // borderColor: "green",
+  },
+  // tes
 });
 
 export default MedReminder;
