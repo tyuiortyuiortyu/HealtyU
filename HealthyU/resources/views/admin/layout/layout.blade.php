@@ -30,8 +30,7 @@
             const dropdownItems = document.querySelectorAll('.dropdown-item');
             const dropdownToggle = document.getElementById('navbarDropdownMenuLink');
 
-            // Set dropdown text from local storage
-            const savedTableName = localStorage.getItem('selectedTable');
+            const savedTableName = localStorage.getItem('selectedTable') || 'Users';
             if (savedTableName) {
                 dropdownToggle.textContent = savedTableName;
             }
@@ -40,7 +39,6 @@
                 item.addEventListener('click', function() {
                     const tableName = this.getAttribute('data-table');
                     dropdownToggle.textContent = tableName;
-                    // Save selected table to local storage
                     localStorage.setItem('selectedTable', tableName);
                 });
             });
