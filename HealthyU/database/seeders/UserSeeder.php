@@ -37,7 +37,7 @@ class UserSeeder extends Seeder
             'name' => 'user',
             'email' => 'user@user.com',
             'username' => 'user',
-            'password' => bcrypt('admin123'),
+            'password' => bcrypt('user123'),
             'dob' => $faker->date('Y-m-d', '2005-12-31'),
             'sex' => $faker->randomElement(['male','female']),
             'weight' => $faker->randomFloat(2, 40, 100),

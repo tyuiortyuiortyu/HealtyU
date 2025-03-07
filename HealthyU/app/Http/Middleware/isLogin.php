@@ -17,7 +17,7 @@ class isLogin
      */
     public function handle(Request $request, Closure $next)
     {
-        if(Auth::check()){
+        if(Auth::guard('web')->check()){
             return $next($request);
         }return redirect()->route('session.index')->withErrors('You must login first');
     }
