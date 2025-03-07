@@ -8,4 +8,5 @@ use Illuminate\Database\Eloquent\Model;
 class MedSchedule extends Model
 {
     use HasFactory;
+    protected $table = "med_schedules";
 }
