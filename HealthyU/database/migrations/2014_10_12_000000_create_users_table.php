@@ -17,7 +17,6 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('email')->unique();
-            $table->timestamp('email_verified_at')->nullable();
             $table->dateTime('last_login')->nullable();
             $table->string('username', 50)->unique();
             $table->string('password', 60); //ini karena mau pake bcrypt makanya lengthnya 60
@@ -25,7 +24,6 @@ return new class extends Migration
             $table->string('sex', 6)->nullable();
             $table->decimal('weight', 5,2)->nullable();
             $table->decimal('height', 5,2)->nullable();
-            $table->rememberToken();
             $table->enum('role', ['user', 'admin'])->default('user');
             $table->timestamps();
         });

@@ -2,96 +2,105 @@
 
 namespace App\Http\Controllers\api\auth;
 
-use App\Customs\Services\EmailVerificationService;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\LoginRequest;
-use App\Http\Requests\RegistrationRequest;
-use App\Http\Requests\VerifyEmailRequest;
-use App\Http\Requests\ResendEmailVerificationLinkRequest;
 use Illuminate\Support\Str;
 use App\Models\User;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Support\Facades\Auth;
+use App\Helpers\ApiResponse;
+use Tymon\JWTAuth\Facades\JWTAuth;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Http\Request;
+use Exception;
+use Tymon\JWTAuth\Exceptions\TokenInvalidException;
+use App\Helpers\ValidateJwt;
 
 class AuthController extends Controller
 {
 
-    public function __construct(private EmailVerificationService $service){
-
-    }
-
-    public function login(LoginRequest $request) {
-        $credentials = $request->validated();
-        $user = \App\Models\User::where('email', $credentials['email'])->first();
+    public function login(Request $request) {
+        $credentials = $request->only('email', 'password');
+        $user = \App\Models\User::where('email', $credentials['email'])->where('role', 'user')->first();
     
-        if (!$user || $user->role !== 'user') {
-            return response()->json([
-                'status' => 'failed',
-                'message' => 'You are not authorized to log in.'
-            ], 403);
+        if (!$user || $user->role != 'user') {
+            return ApiResponse::mapResponse(null, "E002", "Unauthorized User");
         }
 
-        $remember = $request->has('remember');
-    
-        if (!$token = auth()->attempt($credentials, $remember)) {
-            return response()->json([
-                'status' => 'failed',
-                'message' => 'Invalid Credentials'
-            ], 401);
+        if (!$token = JWTAuth::attempt($credentials)) {
+            return ApiResponse::mapResponse(null, "E001");
         }
-    
+
+        $data = [
+            'access_token' => $token
+        ];
+
         $user->update([
             'last_login' => now(),
-            'remember_token' => $remember ? Str::random(60) : null
         ]);
-    
-        return $this->responseWithToken($token, $user);
+
+        return ApiResponse::mapResponse($data, "S001");
     }
 
-    public function resendEmailVerificationLink(ResendEmailVerificationLinkRequest $request){
-        return $this->service->resendVerificationLink($request->email);
-    }
+    public function register(Request $request){
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string',
+            'email' => 'required|email|unique:users,email',
+            'username' => 'required|string|unique:users,username',
+            'password' => 'required|string|min:8|confirmed|regex:/[a-z]/|regex:/[A-Z]/|regex:/[0-9]/',
+        ]);
 
-    public function verifyUserEmail(VerifyEmailRequest $request){
-        return $this->service->verifyUserEmail($request->email, $request->token);
-    }
+        if($validator->fails()){
+           return ApiResponse::mapResponse(null,"E002", $validator->errors());
+        }
 
-    public function register(RegistrationRequest $request){
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'username' => $request->username,
-            'password' => bcrypt($request->password)
+            'password' => bcrypt($request->password),
         ]);
 
-        if($user){
-            $this->service->sendVerificationLink($user);
-            $token = auth()->login($user);
-            return $this->responseWithToken($token, $user);
-        }else {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Registration failed'
-            ], 500);
-        }
-    }
+        $data = [
+            'access_token' => JWTAuth::fromUser($user)
+        ];
 
-    public function responseWithToken($token, $user){
-        return response()->json([
-            'status' => 'success',
-            'user' => $user,
-            'access_token' => $token,
-            'type' => 'bearer',
-        ]);
+        return ApiResponse::mapResponse($data, "S001");
     }
 
     public function logout(){
-        $user = auth()->user();
-        if($user){
-            $user->update(['remember_token' => null]);
-        }
+        try {
+            // Ambil token dari request
+            $token = JWTAuth::getToken();
 
-        Auth::logout();
-        return response()->json(['message' => 'Successfully logged out']);
+            if (!$token || !JWTAuth::parseToken()->authenticate()) {
+                return;
+            }
+
+            // Invalidate token
+            JWTAuth::invalidate($token);
+
+            return ApiResponse::mapResponse(null,"S001");
+        } catch (TokenInvalidException $e) {
+            return ApiResponse::mapResponse(null,"E004");
+        } catch (Exception $e) {
+            return ApiResponse::mapResponse(null,"E002", "Failed to logout");
+        }
+    }
+    
+    public function getUserData(){
+        $user = ValidateJwt::validateAndGetUser();
+
+        $data = [
+            'name' => $user->name,
+            'email' => $user->email,
+            'username' => $user->username,
+            'dob' => $user->dob,
+            'sex' => $user->sex,
+            'weight' => $user->weight,
+            'height' => $user->height,
+            // 'posts' => $posts
+        ];
+
+        return ApiResponse::mapResponse($data, "S001");
     }
 }
