@@ -39,7 +39,7 @@ class Kernel extends HttpKernel
         ],
 
         'api' => [
-            // \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
+            \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
             'throttle:api',
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
         ],
@@ -66,5 +66,12 @@ class Kernel extends HttpKernel
         'isLogin' => \App\Http\Middleware\isLogin::class,
         'alreadyLogin' => \App\Http\Middleware\alreadyLogin::class,
         'notYetLogin' => \App\Http\Middleware\notYetLogin::class,
+        'jwt' => \App\Http\Middleware\JwtMiddleware::class,
     ];
+
+    protected $except = [
+        'start',
+        'end',
+    ];
+    
 }
