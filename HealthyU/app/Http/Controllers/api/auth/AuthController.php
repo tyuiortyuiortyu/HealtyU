@@ -69,26 +69,6 @@ class AuthController extends Controller
 
         return ApiResponse::mapResponse($data, "S001");
     }
-
-    public function logout() {
-        try {
-            // Ambil token dari request
-            $token = JWTAuth::getToken();
-
-            if (!$token || !JWTAuth::parseToken()->authenticate()) {
-                return;
-            }
-
-            // Invalidate token
-            JWTAuth::invalidate($token);
-
-            return ApiResponse::mapResponse(null,"S001");
-        } catch (TokenInvalidException $e) {
-            return ApiResponse::mapResponse(null,"E004");
-        } catch (Exception $e) {
-            return ApiResponse::mapResponse(null,"E002", "Failed to logout");
-        }
-    }
     
     public function getUserData() {
         $user = ValidateJwt::validateAndGetUser();
@@ -105,6 +85,44 @@ class AuthController extends Controller
         ];
 
         return ApiResponse::mapResponse($data, "S001");
+    }
+
+    public function updateProfile(Request $request) {
+        $user = ValidateJwt::validateAndGetUser();
+
+        if (!$user) {
+            return ApiResponse::mapResponse(null, "E002", "Unauthorized User");
+        }
+
+        $validator = Validator::make($request->all(), [
+            'name' => 'sometimes|required|string',
+            'email' => 'sometimes|required|email|unique:users,email,'.$user->id,
+            'username' => 'sometimes|required|string|unique:users,username,'.$user->id,
+            'dob' => 'nullable|date',
+            'sex' => 'nullable|in:male,female',
+            'height' => 'nullable|numeric|min:50|max:300',
+            'weight' => 'nullable|numeric|min:10|max:500',
+        ]);
+
+        if ($validator->fails()) {
+            return ApiResponse::mapResponse(null, "E002", $validator->errors());
+        }
+
+        $user->update($request->only([
+            'name', 'email', 'username', 'dob', 'sex', 'height', 'weight'
+        ]));
+
+        $data = [
+            'name' => $user->name,
+            'email' => $user->email,
+            'username' => $user->username,
+            'dob' => $user->dob,
+            'sex' => $user->sex,
+            'weight' => $user->weight,
+            'height' => $user->height,
+        ];
+
+        return ApiResponse::mapResponse($data, "S001", "Profile updated");
     }
 
     public function resetPassword(Request $request) {
@@ -131,5 +149,25 @@ class AuthController extends Controller
         Mail::to($user->email)->send(new ResetPasswordMail($token));
 
         return ApiResponse::mapResponse(null, "S001", "Email sent");
+    }
+
+    public function logout() {
+        try {
+            // Ambil token dari request
+            $token = JWTAuth::getToken();
+
+            if (!$token || !JWTAuth::parseToken()->authenticate()) {
+                return;
+            }
+
+            // Invalidate token
+            JWTAuth::invalidate($token);
+
+            return ApiResponse::mapResponse(null,"S001");
+        } catch (TokenInvalidException $e) {
+            return ApiResponse::mapResponse(null,"E004");
+        } catch (Exception $e) {
+            return ApiResponse::mapResponse(null,"E002", "Failed to logout");
+        }
     }
 }
