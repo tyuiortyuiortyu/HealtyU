@@ -17,10 +17,13 @@ import { Picker } from '@react-native-picker/picker';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ApiHelper } from '../helpers/ApiHelper'; // Pastikan ApiHelper sudah diimpor
+import { ApiHelper } from '../helpers/ApiHelper';
+import { ProfileResponse } from '../response/ProfileResponse';
+
+const API_BASE_URL = 'https://your-api-endpoint.com'; // disini bang
 
 const Profile = () => {
-  const [profileImage, setProfileImage] = useState(null);
+  const [profileImage, setProfileImage] = useState<string | null>(null);
   const [isNotificationOn, setNotification] = useState(true);
   const [isEditing, setEditing] = useState(false);
   const [showHalloPage, setShowHalloPage] = useState(false);
@@ -39,7 +42,7 @@ const Profile = () => {
   const [inputUsername, setInputUsername] = useState('');
   const [inputName, setInputName] = useState('');
   const [inputEmail, setInputEmail] = useState('');
-  const [inputDob, setInputDob] = useState(null);
+  const [inputDob, setInputDob] = useState<Date | null>(null);
   const [inputGender, setInputGender] = useState('');
   const [inputHeight, setInputHeight] = useState('');
   const [inputWeight, setInputWeight] = useState('');
@@ -47,34 +50,169 @@ const Profile = () => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [originalProfileData, setOriginalProfileData] = useState(null);
 
-  const [isLoading, setIsLoading] = useState(true); // State untuk loading
-  const [error, setError] = useState(null); // State untuk error
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (isEditing) {
-      setOriginalProfileData({ ...profileData });
-
-      setInputUsername(profileData.username);
-      setInputName(profileData.name);
-      setInputEmail(profileData.email);
-      setInputDob(profileData.dob ? new Date(profileData.dob) : null);
-      setInputGender(profileData.gender);
-      setInputHeight(profileData.height.replace(' cm', ''));
-      setInputWeight(profileData.weight.replace(' kg', ''));
+  // Fungsi untuk mengambil data profil dari API
+  const handleProfile = async () => {
+    try {
+      const accessToken = await AsyncStorage.getItem('access_token');
+  
+      if (!accessToken) {
+        Alert.alert('Error', 'No access token found. Please log in again.');
+        return;
+      }
+  
+      const response = await ApiHelper.request<ProfileResponse>(
+        `${API_BASE_URL}/profile`,
+        'GET',
+        null,
+        accessToken
+      );
+  
+      console.log('Response dari API Profil:', response);
+  
+      if (!response.output_schema) {
+        const errorMessage = response.error_schema?.error_message || 'Failed to fetch profile data.';
+        Alert.alert('Error', errorMessage);
+        return;
+      }
+  
+      // Simpan data profil ke state
+      setProfileData({
+        username: response.output_schema.username || '',
+        name: response.output_schema.name || '',
+        email: response.output_schema.email || '',
+        dob: response.output_schema.dob || '',
+        gender: response.output_schema.gender || '',
+        height: String(response.output_schema.height) || '',
+        weight: String(response.output_schema.weight) || '',
+      });
+  
+      // Simpan gambar profil ke state
+      if (response.output_schema.profile_picture) {
+        setProfileImage(response.output_schema.profile_picture);
+      }
+  
+      await AsyncStorage.setItem('profile_data', JSON.stringify(response.output_schema));
+    } catch (error) {
+      console.error('Profile error:', error);
+      setError((error as Error).message || 'Failed to fetch profile data.');
     }
-  }, [isEditing]);
+  };
 
-  useEffect(() => {
-    if (showHalloPage) {
-      setInputUsername(profileData.username);
-      setInputName(profileData.name);
-      setInputEmail(profileData.email);
-      setInputDob(profileData.dob ? new Date(profileData.dob) : null);
-      setInputGender(profileData.gender);
-      setInputHeight(profileData.height.replace(' cm', ''));
-      setInputWeight(profileData.weight.replace(' kg', ''));
+  // Fungsi untuk mengambil gambar dari galeri
+  const pickImage = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'We need gallery access to set profile picture.');
+        return;
+      }
+  
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 1,
+      });
+  
+      if (!result.canceled && result.assets.length > 0) {
+        setProfileImage(result.assets[0].uri); // Simpan URI gambar ke state
+      }
+    } catch (error) {
+      console.error('Image picker error:', error);
+      Alert.alert('Error', 'Failed to pick an image. Please try again.');
     }
-  }, [showHalloPage]);
+  };
+
+  // Fungsi untuk menyimpan perubahan profil ke API
+    const saveProfileData = async () => {
+    try {
+        setIsLoading(true);
+        setError(null);
+
+        const accessToken = await AsyncStorage.getItem('access_token');
+
+        if (!accessToken) {
+        Alert.alert('Error', 'No access token found. Please log in again.');
+        return;
+        }
+
+        // Buat FormData untuk mengirim gambar dan data lainnya
+        const formData = new FormData();
+
+        // Tambahkan data profil ke FormData
+        formData.append('username', inputUsername);
+        formData.append('name', inputName);
+        formData.append('email', inputEmail);
+        formData.append('dob', inputDob ? inputDob.toISOString().split('T')[0] : '');
+        formData.append('gender', inputGender);
+        formData.append('height', `${inputHeight} cm`);
+        formData.append('weight', `${inputWeight} kg`);
+
+        // Jika ada gambar profil, tambahkan ke FormData
+        if (profileImage) {
+        formData.append('profile_picture', {
+            uri: profileImage,
+            name: 'profile.jpg', // Nama file
+            type: 'image/jpeg', // Tipe file
+        } as any);
+        }
+
+        // Kirim data ke API menggunakan ApiHelper
+        const response = await ApiHelper.request(
+        `${API_BASE_URL}/profile`,
+        'POST',
+        formData,
+        accessToken,
+        true // Set header multipart/form-data
+        );
+
+        // Perbarui state dengan data yang baru
+        setProfileData({
+        username: inputUsername,
+        name: inputName,
+        email: inputEmail,
+        dob: inputDob ? inputDob.toISOString().split('T')[0] : '',
+        gender: inputGender,
+        height: `${inputHeight} cm`,
+        weight: `${inputWeight} kg`,
+        });
+
+        setEditing(false);
+        setShowHalloPage(false);
+        setIsLoading(false);
+
+        Alert.alert('Success', 'Profile updated successfully!');
+    } catch (error) {
+        console.error('Save profile error:', error);
+        if (error instanceof Error) {
+        setError(error.message || 'Failed to save profile data.');
+        } else {
+        setError('Failed to save profile data.');
+        }
+        setIsLoading(false);
+        Alert.alert('Error', 'Failed to save profile data. Please try again.');
+    }
+    };
+
+  // Memuat data profil saat komponen pertama kali di-render
+  useEffect(() => {
+    const fetchProfileData = async () => {
+      try {
+        setIsLoading(true);
+        await handleProfile();
+      } catch (error) {
+        console.error('Failed to fetch profile data:', error);
+        setError('Failed to fetch profile data. Please try again.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProfileData();
+  }, []);
 
   const toggleNotification = () => setNotification((prev) => !prev);
 
@@ -110,13 +248,13 @@ const Profile = () => {
     }
   };
 
-  const onChangeDate = (event, selectedDate) => {
+  const onChangeDate = (event: any, selectedDate: Date | undefined) => {
     const currentDate = selectedDate || inputDob;
     setShowDatePicker(Platform.OS === 'ios');
     setInputDob(currentDate);
   };
 
-  const validateNumberInput = (text, setState) => {
+  const validateNumberInput = (text: string, setState: React.Dispatch<React.SetStateAction<string>>) => {
     const numericRegex = /^[0-9]*$/;
     if (numericRegex.test(text)) {
       setState(text);
@@ -140,130 +278,6 @@ const Profile = () => {
     setLeaveModalVisible(true);
   };
 
-  useEffect(() => {
-    (async () => {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'We need gallery access to set profile picture.');
-      }
-    })();
-  }, []);
-
-  const pickImage = async () => {
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 1,
-    });
-
-    if (!result.canceled && result.assets.length > 0) {
-      setProfileImage(result.assets[0].uri);
-    }
-  };
-
-  const login = async (email, password) => {
-    try {
-      const response = await fetch('http://your-backend-url/api/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await response.json();
-
-      if (data.access_token) {
-        await AsyncStorage.setItem('token', data.access_token);
-        await AsyncStorage.setItem('user', JSON.stringify(data.user));
-        console.log('Login berhasil');
-      } else {
-        console.log('Token tidak ditemukan');
-      }
-    } catch (error) {
-      console.error('Login error:', error);
-    }
-  };
-
-  const [user, setUser] = useState(null);
-
-  // Fungsi untuk mengambil data profil dari API
-  const fetchProfileData = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      // Panggil API menggunakan ApiHelper
-      const data = await ApiHelper.request('/api/profile', 'GET');
-
-      // Update state dengan data yang diterima
-      setProfileData({
-        username: data.username,
-        name: data.name,
-        email: data.email,
-        dob: data.dob,
-        gender: data.gender,
-        height: data.height,
-        weight: data.weight,
-      });
-
-      setIsLoading(false);
-    } catch (err) {
-      setError(err.message || 'Failed to fetch profile data');
-      setIsLoading(false);
-    }
-  };
-
-  // Ambil data profil saat komponen dimount
-  useEffect(() => {
-    fetchProfileData();
-  }, []);
-
-  // Fungsi untuk menyimpan perubahan profil ke API
-  const saveProfileData = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      const updatedData = {
-        username: inputUsername,
-        name: inputName,
-        email: inputEmail,
-        dob: inputDob.toISOString().split('T')[0],
-        gender: inputGender,
-        height: `${inputHeight} cm`,
-        weight: `${inputWeight} kg`,
-      };
-
-      // Panggil API untuk menyimpan perubahan
-      await ApiHelper.request('/api/profile', 'POST', updatedData);
-
-      // Update state dengan data yang baru
-      setProfileData(updatedData);
-      setEditing(false);
-      setShowHalloPage(false);
-      setIsLoading(false);
-    } catch (err) {
-      setError(err.message || 'Failed to save profile data');
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    const fetchUserData = async () => {
-      const userData = await AsyncStorage.getItem('user');
-      if (userData) {
-        setUser(JSON.parse(userData));
-      }
-    };
-    fetchUserData();
-  }, []);
-
-  if (!user) {
-    return <Text>Loading...</Text>;
-  }
-
   // Tampilkan loading indicator jika data sedang dimuat
   if (isLoading) {
     return (
@@ -278,7 +292,7 @@ const Profile = () => {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <Text style={{ color: 'red', fontSize: 18 }}>{error}</Text>
-        <TouchableOpacity onPress={fetchProfileData} style={{ marginTop: 10 }}>
+        <TouchableOpacity onPress={handleProfile} style={{ marginTop: 10 }}>
           <Text style={{ color: 'blue', fontSize: 16 }}>Try Again</Text>
         </TouchableOpacity>
       </View>
@@ -292,30 +306,30 @@ const Profile = () => {
           <Text style={{ color: 'red', fontSize: 16, fontWeight: 'bold' }}>Cancel</Text>
         </TouchableOpacity>
 
-        <View style={{ flex: 1, alignItems: 'center', padding: 20, marginBottom: 20 }}>
-          <TouchableOpacity onPress={pickImage}>
+        <View style={{ flex: 1, alignItems: 'center', padding: 20, marginBottom: 20, backgroundColor: "#fff" }}>
+        <TouchableOpacity onPress={pickImage}>
             <View
-              style={{
+                style={{
                 width: 100,
                 height: 100,
                 borderRadius: 50,
                 justifyContent: 'center',
                 alignItems: 'center',
                 backgroundColor: '#ccc',
-              }}
+                }}
             >
-              {profileImage && (
+                {profileImage ? (
                 <Image
-                  source={{ uri: profileImage }}
-                  style={{ width: 100, height: 100, borderRadius: 50 }}
-                  resizeMode="cover"
+                    source={{ uri: profileImage }}
+                    style={{ width: 100, height: 100, borderRadius: 50 }}
+                    resizeMode="cover"
                 />
-              )}
+                ) : (
+                <MaterialIcons name="person" size={50} color="#fff" />
+                )}
             </View>
           </TouchableOpacity>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10 }}>
-            <Text style={{ fontSize: 25, fontWeight: 'bold', marginRight: 10 }}>{profileData.name}</Text>
-          </View>
+          <Text style={{ fontSize: 25, fontWeight: 'bold' }}>{profileData.name}</Text>
           <Text style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>{profileData.email}</Text>
         </View>
 
@@ -337,7 +351,7 @@ const Profile = () => {
             }}
             value={inputUsername}
             onChangeText={setInputUsername}
-            editable={true}
+            editable={isEditing}
           />
 
           <Text style={{ fontSize: 16, marginBottom: 2, marginLeft: 4 }}>Name</Text>
@@ -401,7 +415,7 @@ const Profile = () => {
                 onPress={() => setShowDatePicker(true)}
               >
                 <Text style={{ color: inputDob ? '#000' : '#888' }}>
-                  {inputDob ? inputDob.toISOString().split('T')[0] : 'Enter your date of birth'}
+                  {inputDob ? new Date(inputDob).toISOString().split('T')[0] : 'Enter your date of birth'}
                 </Text>
               </TouchableOpacity>
               {showDatePicker && (
@@ -530,7 +544,7 @@ const Profile = () => {
           >
             <View
               style={{
-                backgroundColor: '#fff',
+                backgroundColor: "#fff",
                 padding: 20,
                 borderRadius: 10,
                 width: 300,
@@ -716,7 +730,7 @@ const Profile = () => {
                 disabled={true}
               >
                 <Text style={{ color: inputDob ? '#000' : '#888' }}>
-                  {inputDob ? inputDob.toISOString().split('T')[0] : 'Enter your date of birth'}
+                  {inputDob ? new Date(inputDob).toISOString().split('T')[0] : 'Enter your date of birth'}
                 </Text>
               </TouchableOpacity>
               {showDatePicker && (

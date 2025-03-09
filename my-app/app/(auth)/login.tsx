@@ -13,26 +13,28 @@ import { useRouter } from "expo-router"; // Import useRouter hook
 import AsyncStorage from "@react-native-async-storage/async-storage"; // Import AsyncStorage
 import images from "../../constants/images";
 import { ApiHelper } from '../helpers/ApiHelper';
+import { LoginResponse } from "../response/LoginResponse";
 
 const Login = () => {
+  // URL API backend
+  const API_BASE_URL = 'https://your-api-endpoint.com'; // Ganti dengan URL API Anda
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
 
-  // URL API backend
-  const API_BASE_URL = 'https://your-api-endpoint.com'; // taruh di sini bang
-
-  // Fungsi untuk memanggil API login
-  const loginUser = async (email: string, password: string) => {
-    const url = `${API_BASE_URL}/login`; 
-    const model = { email, password };
-
+  // Fungsi untuk mengambil data pengguna setelah login berhasil
+  const fetchUserData = async (token: string) => {
     try {
-      const response = await ApiHelper.request(url, "POST", model);
-      return response;
+      const response = await ApiHelper.request<LoginResponse>(`${API_BASE_URL}/getUserData`, "GET", null, token);
+
+      // Simpan data pengguna ke AsyncStorage
+      await AsyncStorage.setItem("userData", JSON.stringify(response.output_schema));
+      console.log('User data saved:', response.output_schema);
     } catch (error) {
-      throw error;
+      console.error('Failed to fetch user data:', error);
+      throw new Error('Failed to fetch user data');
     }
   };
 
@@ -42,23 +44,54 @@ const Login = () => {
       Alert.alert("Validation", "Please fill in both email and password");
       return;
     }
-
+  
     try {
-      const response = await loginUser(email, password);
-
+      const loginData = { email, password };
+      console.log('Data yang dikirim:', loginData); // Log data yang dikirim
+  
+      const response = await ApiHelper.request<LoginResponse>(`${API_BASE_URL}/login`, "POST", loginData);
+      console.log('Response dari API:', response); // Log response dari API
+  
+      // Validasi apakah login berhasil (cek access_token)
+      if (!response.output_schema?.access_token) {
+        const errorMessage = response.error_schema?.error_message || "Login failed. Please try again.";
+        Alert.alert("Login Failed", errorMessage);
+        return;
+      }
+  
       // Simpan token ke AsyncStorage
-      await AsyncStorage.setItem("access_token", response.token);
-
+      await AsyncStorage.setItem("access_token", response.output_schema.access_token);
+  
       // Simpan status login ke AsyncStorage
       await AsyncStorage.setItem("isLoggedIn", "true");
-
+  
+      // Ambil data pengguna setelah login berhasil
+      await fetchUserData(response.output_schema.access_token);
+  
+      // Tampilkan pesan sukses
       Alert.alert("Login Success", "You are logged in!");
-      router.push("../(tabs)/profile");
-    } catch (error) {
-      Alert.alert("Login Failed", error.message || "An error occurred during login");
+      router.push("/profile"); // Arahkan ke halaman profile setelah login berhasil
+    } catch (error: any) {
+      console.error('Login error:', error); // Log error
+      if (error.response) {
+        const errorMessage = error.response.error_schema?.error_message || "An error occurred during login";
+        Alert.alert("Login Failed", errorMessage);
+      } else {
+        const errorMessage = "Network error. Please check your internet connection.";
+        Alert.alert("Login Failed", errorMessage);
+      }
     }
   };
 
+  const checkAsyncStorage = async () => {
+    const token = await AsyncStorage.getItem("access_token");
+    const userData = await AsyncStorage.getItem("userData");
+    console.log('Token:', token);
+    console.log('User Data:', userData);
+  };
+  
+  checkAsyncStorage();
+  
   return (
     <View style={{ backgroundColor: "#FFFFFF", flex: 1, justifyContent: "center", alignItems: "center", paddingBottom: 20 }}>
       <View style={{ marginRight: 20, paddingRight: 30, marginBottom: 60 }}>

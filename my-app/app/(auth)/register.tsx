@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import images from '../../constants/images';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { ApiHelper } from '../helpers/ApiHelper';
-import { RegisterModel } from '../models/RegisterModel';
 import { RegisterResponse } from '../response/RegisterResponse';
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -34,7 +33,7 @@ const RegisterScreen = () => {
     const handleApiRegister = async () => {
         setIsLoading(true); 
         setError(''); // Reset error state sebelum memulai proses registrasi
-
+    
         try {
             // Validasi input
             if (!name || !email || !password || !confirmPassword) {
@@ -42,50 +41,64 @@ const RegisterScreen = () => {
                 Alert.alert('Error', 'Please fill in all required fields.');
                 return;
             }
-
+    
             if (password !== confirmPassword) {
                 setError('Password and confirmation password do not match.');
                 Alert.alert('Error', 'Password and confirmation password do not match.');
                 return;
             }
-
+    
             if (!validateEmail(email)) {
                 setError('Please enter a valid email address.');
                 Alert.alert('Error', 'Please enter a valid email address.');
                 return;
             }
-
+    
             if (!isPasswordValid()) {
                 setError('Password does not meet the requirements.');
                 Alert.alert('Error', 'Password does not meet the requirements.');
                 return;
             }
-
+    
             // Buat objek RegisterModel dari data yang diinput
-            const registerData = new RegisterModel(name, email, password);
-
+            const password_confirmation = confirmPassword;
+            const registerData = { name, email, username, password, password_confirmation };
+    
+            console.log('Data yang dikirim:', registerData); // Log data yang dikirim
+    
             // Panggil API menggunakan ApiHelper dengan URL lengkap
             const response = await ApiHelper.request<RegisterResponse>(`${API_BASE_URL}/register`, 'POST', registerData);
-
+    
+            console.log('Response dari API:', response); // Log response dari API
+    
             // Cek jika response valid dan mengandung access_token
             if (response?.output_schema?.access_token) {
                 // Simpan access_token ke AsyncStorage
                 await AsyncStorage.setItem('access_token', response.output_schema.access_token);
-
-                // Simpan data user lainnya jika ada
-                if (response.output_schema.user_id) {
-                    await AsyncStorage.setItem('user_id', response.output_schema.user_id.toString());
-                }
+    
+                // Simpan data user lainnya
                 if (response.output_schema.name) {
                     await AsyncStorage.setItem('name', response.output_schema.name);
                 }
                 if (response.output_schema.email) {
                     await AsyncStorage.setItem('email', response.output_schema.email);
                 }
+                if (response.output_schema.username) {
+                    await AsyncStorage.setItem('username', response.output_schema.username);
+                }
+                if (response.output_schema.password) {
+                    await AsyncStorage.setItem('password', response.output_schema.password);
+                }
+                if (response.output_schema.password_confirmation) {
+                    await AsyncStorage.setItem('password_confirmation', response.output_schema.password_confirmation);
+                }
+
+                // Simpan status register ke AsyncStorage
+                await AsyncStorage.setItem("isRegisterIn", "true");
 
                 // Tampilkan pesan sukses
                 Alert.alert('Success', 'Registration successful!');
-                router.push("/login"); // Arahkan ke halaman login setelah registrasi berhasil
+                router.push("/profile"); // Arahkan ke halaman profile setelah registrasi berhasil
             } else {
                 // Jika tidak ada access_token, tampilkan pesan error dari API atau default
                 const errorMessage = response?.error_schema?.error_message || 'Registration failed. Please try again.';

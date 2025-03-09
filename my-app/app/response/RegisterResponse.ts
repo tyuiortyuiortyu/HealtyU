@@ -26,18 +26,22 @@ export class RegisterResponse {
     error_schema: ErrorSchema;
     output_schema: {
         access_token: string;
-        user_id?: number; // Tambahkan properti user_id (opsional)
-        name?: string;   // Tambahkan properti name (opsional)
-        email?: string;  // Tambahkan properti email (opsional)
+        name?: string;  
+        email?: string;
+        username?: string;
+        password?: string;
+        password_confirmation?: string;
     };
 
     constructor(
         error_schema: ErrorSchema,
         output_schema: {
             access_token: string;
-            user_id?: number;
             name?: string;
             email?: string;
+            username?: string;
+            password?: string;
+            password_confirmation?: string;
         }
     ) {
         this.error_schema = error_schema;
