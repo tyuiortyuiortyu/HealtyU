@@ -90,7 +90,7 @@ const Cycle = () => {
           setPainLevel(Array(5).fill(false));
           setBleedingLevel(Array(5).fill(false));
           setMoodLevel(Array(5).fill(false));
-          
+
           const guestData = await AsyncStorage.getItem('guest_cycle_data');
           if (guestData) {
             const data = JSON.parse(guestData);
@@ -167,7 +167,7 @@ const Cycle = () => {
       };
 
       const endpoint = periodStartDate ? `${API_CYCLE_URL}/update` : API_CYCLE_URL;
-      await ApiHelper.request(endpoint, periodStartDate ? 'PUT' : 'POST', payload, accessToken);
+      await ApiHelper.request(endpoint, periodStartDate ? 'GET' : 'POST', payload, accessToken);
     } catch (error) {
       console.error('Failed to save cycle data:', error);
       Alert.alert('Error', 'Failed to save cycle data');
