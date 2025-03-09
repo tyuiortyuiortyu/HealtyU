@@ -9,6 +9,7 @@ import {
   Animated,
   ScrollView,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import {
   addDays,
@@ -22,12 +23,16 @@ import {
   isAfter,
   isSameDay
 } from 'date-fns';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ApiHelper } from '../helpers/ApiHelper';
+
+const API_CYCLE_URL = 'http://127.0.0.1:8000/api/cycles';
 
 const Cycle = () => {
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(today);
   const [viewFullCalendar, setViewFullCalendar] = useState(false);
-  const [periodStartDate, setPeriodStartDate] = useState(null);
+  const [periodStartDate, setPeriodStartDate] = useState<Date | null>(null);
   const [periodDays, setPeriodDays] = useState(4);
   const [cycleLength, setCycleLength] = useState(28);
   const [isStartingPeriod, setIsStartingPeriod] = useState(false);
@@ -41,13 +46,16 @@ const Cycle = () => {
   const [showCycleLengthPicker, setShowCycleLengthPicker] = useState(false);
   const [showPeriodDaysPicker, setShowPeriodDaysPicker] = useState(false);
 
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const painAnims = useState(Array(5).fill(null).map(() => new Animated.Value(0)))[0];
   const bleedingAnims = useState(Array(5).fill(null).map(() => new Animated.Value(0)))[0];
   const moodAnims = useState(Array(5).fill(null).map(() => new Animated.Value(0)))[0];
 
   const screenWidth = Dimensions.get('window').width;
 
-  const animateIconChange = (animationValue) => {
+  const animateIconChange = (animationValue: Animated.Value) => {
     Animated.timing(animationValue, {
       toValue: 1,
       duration: 300,
@@ -57,7 +65,7 @@ const Cycle = () => {
     });
   };
 
-  const getAnimatedStyle = (animationValue) => {
+  const getAnimatedStyle = (animationValue: Animated.Value) => {
     return {
       transform: [{
         rotate: animationValue.interpolate({
@@ -68,32 +76,158 @@ const Cycle = () => {
     };
   };
 
-  const handleSelectPainLevel = (index) => {
-    const newPainLevel = [...painLevel];
-    for (let i = 0; i < 5; i++) {
-      newPainLevel[i] = i <= index;
+  useEffect(() => {
+    const loadCycleData = async () => {
+      try {
+        const isGuest = await AsyncStorage.getItem('isGuest');
+        if (isGuest === 'true') {
+          const guestData = await AsyncStorage.getItem('guest_cycle_data');
+          if (guestData) {
+            const data = JSON.parse(guestData);
+            setPeriodStartDate(data.periodStart ? new Date(data.periodStart) : null);
+            setCycleLength(data.cycleLength || 28);
+            setPeriodDays(data.periodDays || 4);
+            setSelectedCycleLength(data.cycleLength || 28);
+            setSelectedPeriodDays(data.periodDays || 4);
+            setPainLevel(data.painLevel || Array(5).fill(false));
+            setBleedingLevel(data.bleedingLevel || Array(5).fill(false));
+            setMoodLevel(data.moodLevel || Array(5).fill(false));
+          }
+          setIsLoading(false);
+          return;
+        }
+
+        const accessToken = await AsyncStorage.getItem('access_token');
+        if (!accessToken) throw new Error('No access token found');
+
+        const response = await ApiHelper.request(`${API_CYCLE_URL}`, 'GET', null, accessToken);
+        const data = response.data;
+
+        setPeriodStartDate(data.period_start ? new Date(data.period_start) : null);
+        setCycleLength(data.cycle_length || 28);
+        setPeriodDays(data.period_days || 4);
+        setSelectedCycleLength(data.cycle_length || 28);
+        setSelectedPeriodDays(data.period_days || 4);
+        setPainLevel(Array(5).fill(false).map((_, i) => i < data.pain_level));
+        setBleedingLevel(Array(5).fill(false).map((_, i) => i < data.bleeding_level));
+        setMoodLevel(Array(5).fill(false).map((_, i) => i < data.mood_level));
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Failed to load cycle data:', error);
+        setError(error.message);
+        setIsLoading(false);
+      }
+    };
+
+    loadCycleData();
+  }, []);
+
+  const saveCycleData = async (data: any) => {
+    try {
+      const isGuest = await AsyncStorage.getItem('isGuest');
+      if (isGuest === 'true') {
+        const guestData = {
+          periodStart: periodStartDate?.toISOString(),
+          cycleLength,
+          periodDays,
+          painLevel,
+          bleedingLevel,
+          moodLevel,
+          ...data
+        };
+        await AsyncStorage.setItem('guest_cycle_data', JSON.stringify(guestData));
+        return;
+      }
+
+      const accessToken = await AsyncStorage.getItem('access_token');
+      if (!accessToken) throw new Error('No access token');
+
+      const payload = {
+        period_start: periodStartDate?.toISOString(),
+        cycle_length: cycleLength,
+        period_days: periodDays,
+        pain_level: painLevel.lastIndexOf(true) + 1 || 0,
+        bleeding_level: bleedingLevel.lastIndexOf(true) + 1 || 0,
+        mood_level: moodLevel.lastIndexOf(true) + 1 || 0,
+        ...data
+      };
+
+      const endpoint = periodStartDate ? `${API_CYCLE_URL}/update` : API_CYCLE_URL;
+      await ApiHelper.request(endpoint, periodStartDate ? 'PUT' : 'POST', payload, accessToken);
+    } catch (error) {
+      console.error('Failed to save cycle data:', error);
+      Alert.alert('Error', 'Failed to save cycle data');
     }
+  };
+
+  const handleSelectDate = async (date: Date) => {
+    if (isAfter(date, today)) {
+      Alert.alert('Error', 'Cannot select future dates');
+      return;
+    }
+    
+    if (isValid(date)) {
+      setPeriodStartDate(date);
+      await saveCycleData({ period_start: date.toISOString() });
+      Alert.alert(
+        'Period Started',
+        `Period start date set to ${format(date, 'dd MMM yyyy')}`
+      );
+      setIsStartingPeriod(false);
+    }
+  };
+
+  const handleSelectPainLevel = async (index: number) => {
+    const newPainLevel = painLevel.map((_, i) => i <= index);
     setPainLevel(newPainLevel);
     animateIconChange(painAnims[index]);
+    await saveCycleData({ pain_level: index + 1 });
   };
 
-  const handleSelectBleedingLevel = (index) => {
-    const newBleedingLevel = [...bleedingLevel];
-    for (let i = 0; i < 5; i++) {
-      newBleedingLevel[i] = i <= index;
-    }
+  const handleSelectBleedingLevel = async (index: number) => {
+    const newBleedingLevel = bleedingLevel.map((_, i) => i <= index);
     setBleedingLevel(newBleedingLevel);
     animateIconChange(bleedingAnims[index]);
+    await saveCycleData({ bleeding_level: index + 1 });
   };
 
-  const handleSelectMoodLevel = (index) => {
-    const newMoodLevel = [...moodLevel];
-    for (let i = 0; i < 5; i++) {
-      newMoodLevel[i] = i <= index;
-    }
+  const handleSelectMoodLevel = async (index: number) => {
+    const newMoodLevel = moodLevel.map((_, i) => i <= index);
     setMoodLevel(newMoodLevel);
     animateIconChange(moodAnims[index]);
+    await saveCycleData({ mood_level: index + 1 });
   };
+
+  const handleCycleLengthUpdate = async (newLength: number) => {
+    setCycleLength(newLength);
+    setSelectedCycleLength(newLength);
+    await saveCycleData({ cycle_length: newLength });
+  };
+
+  const handlePeriodDaysUpdate = async (newDays: number) => {
+    setPeriodDays(newDays);
+    setSelectedPeriodDays(newDays);
+    await saveCycleData({ period_days: newDays });
+  };
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#0000ff" />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text style={{ color: 'red', fontSize: 18 }}>{error}</Text>
+        <TouchableOpacity onPress={() => window.location.reload()} style={{ marginTop: 10 }}>
+          <Text style={{ color: 'blue', fontSize: 16 }}>Try Again</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   const getPeriodDates = (startDate) => {
     const dates = [];
@@ -225,21 +359,6 @@ const Cycle = () => {
 
   const handleStartPeriod = () => {
     setIsStartingPeriod(true);
-  };
-
-  const handleSelectDate = (date) => {
-    if (isAfter(date, today)) {
-      Alert.alert('Error', 'Cannot select a date after today.');
-      return;
-    }
-    if (isValid(date)) {
-      setPeriodStartDate(date);
-      Alert.alert(
-        'Period Started',
-        `Your period start date is set to ${format(date, 'dd MMM yyyy')}`
-      );
-      setIsStartingPeriod(false);
-    }
   };
 
   const toggleCalendarView = () => {
@@ -442,12 +561,12 @@ const Cycle = () => {
   const keyExtractor = (item) => item.toISOString();
 
   return (
-    <ScrollView style={{ flex: 1 }}>
-      <View style={{ flexGrow: 1, padding: 20, backgroundColor: '#f5f5f5' }}>
+    <ScrollView style={{ flex: 1}}>
+      <View style={{ flexGrow: 1, padding: 20, backgroundColor: '#fff' }}>
         <Text style={{ fontSize: 30, fontWeight: 'bold', marginBottom: 5 }}>{getGreeting()},</Text>
         <Text style={{ fontSize: 30, color: '#333', marginBottom: 20 }}>{userName}</Text>
 
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, marginHorizontal: 8 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 13, marginHorizontal: 8 }}>
           <TouchableOpacity disabled={!viewFullCalendar} onPress={handlePrevMonth}>
             <Text style={[{ fontSize: 20, fontWeight: 'bold', color: '#007BFF' }, !viewFullCalendar && { color: '#d3d3d3' }]}>{'<'}</Text>
           </TouchableOpacity>
@@ -503,7 +622,7 @@ const Cycle = () => {
         )}
 
         <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10 }}>Last Menstrual Period</Text>
-        <View style={{ padding: 10, backgroundColor: '#fff', borderRadius: 20, marginBottom: 20, shadowColor: '#000', shadowOffset: { width: 2, height: 2 }, shadowOpacity: 0.4, shadowRadius: 4, elevation: 5 }}>
+        <View style={{ padding: 15, backgroundColor: '#fff', borderRadius: 20, borderWidth: 0.1, borderColor: '#000' , marginBottom: 20, shadowColor: '#000', shadowOffset: { width: 5, height: 5 }, shadowOpacity: 0.6, shadowRadius: 4, elevation: 5 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
             <Text>Start Date:</Text>
             <Text style={{ marginLeft: 30 }}>{periodStartDate ? format(periodStartDate, 'dd MMM yyyy') : 'Not set'}</Text>
@@ -514,7 +633,7 @@ const Cycle = () => {
               <Text style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 10, padding: 5, width: 50, textAlign: 'center' }}>{cycleLength}</Text>
             </TouchableOpacity>
           </View>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
             <Text>Period Length:</Text>
             <TouchableOpacity onPress={() => setShowPeriodDaysPicker(true)}>
               <Text style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 10, padding: 5, width: 50, textAlign: 'center' }}>{periodDays}</Text>
@@ -523,7 +642,7 @@ const Cycle = () => {
         </View>
 
         <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10 }}>Period History</Text>
-        <View style={{ padding: 10, backgroundColor: '#fff', borderRadius: 20, marginBottom: 20, shadowColor: '#000', shadowOffset: { width: 2, height: 2 }, shadowOpacity: 0.4, shadowRadius: 4, elevation: 5 }}>
+        <View style={{ padding: 15, backgroundColor: '#fff', borderRadius: 20, borderWidth: 0.1, borderColor: '#000', marginBottom: 20, shadowColor: '#000', shadowOffset: { width: 5, height: 5 }, shadowOpacity: 0.6, shadowRadius: 4, elevation: 5 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
             <Text>Pain:</Text>
             <View style={{ flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', borderRadius: 20 }}>
@@ -552,7 +671,7 @@ const Cycle = () => {
               ))}
             </View>
           </View>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 0 }}>
             <Text>Mood:</Text>
             <View style={{ flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', borderRadius: 20 }}>
               {[0, 1, 2, 3, 4].map((level) => (
@@ -570,8 +689,8 @@ const Cycle = () => {
 
         <Modal visible={viewFullCalendar} animationType="slide" transparent={true} onRequestClose={toggleCalendarView}>
           <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
-            <View style={{ backgroundColor: '#fff', width: '90%', padding: 15, borderRadius: 10 }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, marginHorizontal: 8 }}>
+            <View style={{ backgroundColor: '#fff', width: '90%', padding: 25, borderRadius: 10 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, marginHorizontal: 8 }}>
                 <TouchableOpacity onPress={handlePrevMonth}>
                   <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#007BFF' }}>{'<'}</Text>
                 </TouchableOpacity>
@@ -617,34 +736,36 @@ const Cycle = () => {
           </View>
         </Modal>
 
-        <Modal visible={showCycleLengthPicker} transparent={true} animationType="slide" onRequestClose={() => setShowCycleLengthPicker(false)}>
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
-            <View style={{ backgroundColor: 'white', width: 300, borderRadius: 10, padding: 10 }}>
-              <Text style={{ fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginBottom: 10 }}>Cycle Length:</Text>
-              <FlatList data={cycleOptions} keyExtractor={(item) => String(item)} renderItem={renderCycleOption} style={{ maxHeight: 200 }} />
-              <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginTop: 15 }}>
-                <TouchableOpacity
-                  style={{ padding: 10, borderRadius: 5, backgroundColor: '#d3d3d3' }}
-                  onPress={() => {
-                    setShowCycleLengthPicker(false);
-                    setSelectedCycleLength(cycleLength);
-                  }}
-                >
-                  <Text style={{ fontWeight: 'bold', fontSize: 16 }}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={{ padding: 10, borderRadius: 5, backgroundColor: '#FFC0CB' }}
-                  onPress={() => {
-                    setCycleLength(selectedCycleLength);
-                    setShowCycleLengthPicker(false);
-                  }}
-                >
-                  <Text style={{ fontWeight: 'bold', fontSize: 16 }}>Confirm</Text>
-                </TouchableOpacity>
-              </View>
+        <Modal visible={showCycleLengthPicker} transparent={true} animationType="slide">
+        <View style={{ flex: 1, justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <View style={{ backgroundColor: 'white', margin: 20, padding: 20, borderRadius: 10 }}>
+            <Text style={{ fontSize: 20, marginBottom: 10 }}>Select Cycle Length</Text>
+            <FlatList
+              data={cycleOptions}
+              keyExtractor={(item) => item.toString()}
+              renderItem={renderCycleOption}
+              contentContainerStyle={{ maxHeight: 200 }}
+            />
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 20 }}>
+              <TouchableOpacity
+                style={{ padding: 10, backgroundColor: '#ccc', borderRadius: 5 }}
+                onPress={() => setShowCycleLengthPicker(false)}
+              >
+                <Text>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ padding: 10, backgroundColor: 'pink', borderRadius: 5 }}
+                onPress={() => {
+                  handleCycleLengthUpdate(selectedCycleLength);
+                  setShowCycleLengthPicker(false);
+                }}
+              >
+                <Text>Confirm</Text>
+              </TouchableOpacity>
             </View>
           </View>
-        </Modal>
+        </View>
+      </Modal>
 
         <Modal visible={showPeriodDaysPicker} transparent={true} animationType="slide" onRequestClose={() => setShowPeriodDaysPicker(false)}>
           <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
