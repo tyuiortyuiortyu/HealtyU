@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useRouter } from 'expo-router';
 import { Picker } from '@react-native-picker/picker';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -20,7 +21,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiHelper } from '../helpers/ApiHelper';
 import { ProfileResponse } from '../response/ProfileResponse';
 
-const API_BASE_URL = 'http://192.168.100.45:8000/api/auth'; // ini kann?
+const API_BASE_URL = 'http://192.168.100.45:8000/api/auth';
 
 const Profile = () => {
   const [profileImage, setProfileImage] = useState<string | null>(null);
@@ -52,60 +53,41 @@ const Profile = () => {
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
-//   // Fungsi untuk mengambil data profil dari API
-//   const fetchProfileData = async () => {
-//     try {
-//       setIsLoading(true);
-//       const accessToken = await AsyncStorage.getItem('access_token');
-
-//       if (!accessToken) {
-//         Alert.alert('Error', 'No access token found. Please log in again.');
-//         return;
-//       }
-
-//       const response = await ApiHelper.request<ProfileResponse>(
-//         `${API_BASE_URL}/profile`,
-//         'GET',
-//         null,
-//         accessToken
-//       );
-
-//       if (!response.output_schema) {
-//         const errorMessage = response.error_schema?.error_message || 'Failed to fetch profile data.';
-//         Alert.alert('Error', errorMessage);
-//         return;
-//       }
-
-//       setProfileData({
-//         username: response.output_schema.username || '',
-//         name: response.output_schema.name || '',
-//         email: response.output_schema.email || '',
-//         dob: response.output_schema.dob || '',
-//         gender: response.output_schema.gender || '',
-//         height: String(response.output_schema.height) || '',
-//         weight: String(response.output_schema.weight) || '',
-//       });
-
-//       if (response.output_schema.profile_picture) {
-//         setProfileImage(response.output_schema.profile_picture);
-//       }
-
-//       await AsyncStorage.setItem('profile_data', JSON.stringify(response.output_schema));
-//     } catch (error) {
-//       console.error('Profile error:', error);
-//       setError((error as Error).message || 'Failed to fetch profile data.');
-//     } finally {
-//       setIsLoading(false);
-//     }
-//   };
+  // Memuat data profil dari AsyncStorage saat komponen pertama kali di-render
+  // Memuat data profil dari AsyncStorage saat komponen pertama kali di-render
+  useEffect(() => {
+    const checkGuestStatus = async () => {
+      const isGuest = await AsyncStorage.getItem('isGuest');
+      if (isGuest === 'true') {
+        // Jika guest, set profil sebagai guest
+        setProfileData({
+          username: 'Guest',
+          name: 'Guest',
+          email: '',
+          dob: '',
+          gender: '',
+          height: '',
+          weight: '',
+        });
+        setProfileImage(null); // Tidak ada gambar profil untuk guest
+        setIsLoading(false);
+      } else {
+        // Jika bukan guest, ambil data profil dari AsyncStorage atau API
+        fetchProfileDataFromStorage();
+      }
+    };
+  
+    checkGuestStatus();
+  }, []);
 
   // Fungsi untuk mengambil data profil dari AsyncStorage
   const fetchProfileDataFromStorage = async () => {
     try {
       setIsLoading(true);
       const storedProfileData = await AsyncStorage.getItem('profile_data');
-
+  
       if (storedProfileData) {
         const parsedProfileData = JSON.parse(storedProfileData);
         setProfileData({
@@ -117,7 +99,7 @@ const Profile = () => {
           height: String(parsedProfileData.height) || '',
           weight: String(parsedProfileData.weight) || '',
         });
-
+  
         if (parsedProfileData.profile_picture) {
           setProfileImage(parsedProfileData.profile_picture);
         }
@@ -132,22 +114,8 @@ const Profile = () => {
     }
   };
 
-    // Memuat data profil dari AsyncStorage saat komponen pertama kali di-render
-    useEffect(() => {
-        fetchProfileDataFromStorage();
-        }, []);
-
-        // Tampilkan loading indicator jika data sedang dimuat
-        if (isLoading) {
-        return (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <ActivityIndicator size="large" color="#0000ff" />
-            </View>
-        );
-    }
-
-   // Fungsi untuk menyimpan perubahan profil ke API
-   const saveProfileData = async () => {
+  // Fungsi untuk menyimpan perubahan profil ke API
+  const saveProfileData = async () => {
     try {
       setIsLoading(true);
       setError(null);
@@ -297,25 +265,34 @@ const Profile = () => {
     setLeaveModalVisible(true);
   };
 
+  // Fungsi untuk logout
+  const handleLogout = async () => {
+    try {
+      await AsyncStorage.removeItem('isGuest'); // Hapus status guest
+      await AsyncStorage.removeItem('profile_data'); // Hapus data profil
+      router.push('/login'); // Navigasi ke halaman login
+    } catch (error) {
+      console.error('Error during logout:', error);
+      Alert.alert('Error', 'Failed to logout. Please try again.');
+    }
+  };
+
   const pickImage = async () => {
     try {
-      // Meminta izin untuk mengakses galeri
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Permission Denied', 'Sorry, we need camera roll permissions to make this work!');
         return;
       }
-  
-      // Membuka galeri untuk memilih gambar
+
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 1,
       });
-  
+
       if (!result.canceled) {
-        // Set gambar yang dipilih ke state profileImage
         setProfileImage(result.assets[0].uri);
       }
     } catch (error) {
@@ -331,31 +308,36 @@ const Profile = () => {
           <Text style={{ color: 'red', fontSize: 16, fontWeight: 'bold' }}>Cancel</Text>
         </TouchableOpacity>
 
-        <View style={{ flex: 1, alignItems: 'center', padding: 20, marginBottom: 20, backgroundColor: "#fff" }}>
-        <TouchableOpacity onPress={pickImage}>
-            <View
+        <View style={{ alignItems: 'center', padding: 20 }}>
+            <TouchableOpacity onPress={pickImage}>
+                <View
                 style={{
-                width: 100,
-                height: 100,
-                borderRadius: 50,
-                justifyContent: 'center',
-                alignItems: 'center',
-                backgroundColor: '#ccc',
+                    width: 100,
+                    height: 100,
+                    borderRadius: 50,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    backgroundColor: '#ccc',
                 }}
-            >
+                >
                 {profileImage ? (
-                <Image
+                    <Image
                     source={{ uri: profileImage }}
                     style={{ width: 100, height: 100, borderRadius: 50 }}
                     resizeMode="cover"
-                />
+                    />
                 ) : (
-                <MaterialIcons name="person" size={50} color="#fff" />
+                    <MaterialIcons name="person" size={50} color="#fff" />
                 )}
-            </View>
-          </TouchableOpacity>
-          <Text style={{ fontSize: 25, fontWeight: 'bold' }}>{profileData.name}</Text>
-          <Text style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>{profileData.email}</Text>
+                </View>
+            </TouchableOpacity>
+            {/* Nama di bawah foto profil */}
+            <Text style={{ fontSize: 25, fontWeight: 'bold', marginTop: 10 }}>{profileData.name}</Text>
+            {profileData.name === 'Guest' ? (
+                <Text style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>Guest Account</Text>
+            ) : (
+                <Text style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>{profileData.email}</Text>
+            )}
         </View>
 
         <View style={{ alignItems: 'flex-start' }}>
@@ -855,34 +837,42 @@ const Profile = () => {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#f5f5f5', marginTop: 25 }}>
-      <View style={{ alignItems: 'center', padding: 20 }}>
-        <TouchableOpacity>
-          <View
+        <View style={{ alignItems: 'center', padding: 20 }}>
+        <TouchableOpacity onPress={pickImage}>
+            <View
             style={{
-              width: 100,
-              height: 100,
-              borderRadius: 50,
-              justifyContent: 'center',
-              alignItems: 'center',
-              backgroundColor: '#ccc',
+                width: 100,
+                height: 100,
+                borderRadius: 50,
+                justifyContent: 'center',
+                alignItems: 'center',
+                backgroundColor: '#ccc',
             }}
-          >
-            {profileImage && (
-              <Image
+            >
+            {profileImage ? (
+                <Image
                 source={{ uri: profileImage }}
                 style={{ width: 100, height: 100, borderRadius: 50 }}
                 resizeMode="cover"
-              />
+                />
+            ) : (
+                <MaterialIcons name="person" size={50} color="#fff" />
             )}
-          </View>
+            </View>
         </TouchableOpacity>
-        <Text style={{ fontSize: 25, fontWeight: 'bold' }}>{profileData.name}</Text>
-        <Text style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>{profileData.email}</Text>
-      </View>
+        {/* Nama di bawah foto profil */}
+        <Text style={{ fontSize: 25, fontWeight: 'bold', marginTop: 10 }}>{profileData.name}</Text>
+        {profileData.name === 'Guest' ? (
+            <Text style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>Guest Account</Text>
+        ) : (
+            <Text style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>{profileData.email}</Text>
+        )}
+        </View>
 
-      <View style={{ marginTop: 12, paddingHorizontal: 20 }}>
+        {/* Tombol dan opsi lainnya */}
+        <View style={{ marginTop: 12, paddingHorizontal: 20 }}>
         <TouchableOpacity
-          style={{
+            style={{
             flexDirection: 'row',
             alignItems: 'center',
             backgroundColor: '#fff',
@@ -894,11 +884,17 @@ const Profile = () => {
             shadowOpacity: 0.5,
             shadowRadius: 4,
             elevation: 2,
-          }}
-          onPress={() => setEditing(true)}
+            }}
+            onPress={() => {
+            if (profileData.name !== 'Guest') {
+                setEditing(true);
+            } else {
+                Alert.alert('Info', 'Guest users cannot edit profiles.');
+            }
+            }}
         >
-          <MaterialIcons name="edit" size={20} color="#000" style={{ marginRight: 10 }} />
-          <Text style={{ fontSize: 16, flex: 1, fontWeight: '600' }}>Ubah Informasi Profil</Text>
+            <MaterialIcons name="edit" size={20} color="#000" style={{ marginRight: 10 }} />
+            <Text style={{ fontSize: 16, flex: 1, fontWeight: '600' }}>Ubah Informasi Profil</Text>
         </TouchableOpacity>
 
         <View
@@ -956,6 +952,14 @@ const Profile = () => {
           <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', padding: 15, marginTop: -8 }}>
             <MaterialIcons name="privacy-tip" size={20} color="#000" style={{ marginRight: 10 }} />
             <Text style={{ fontSize: 16, flex: 1, fontWeight: '600' }}>Kebijakan Privasi</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={{ flexDirection: 'row', alignItems: 'center', padding: 15, marginTop: -8 }}
+            onPress={handleLogout}  
+          >
+            <MaterialIcons name="logout" size={20} color="#000" style={{ marginRight: 10 }} />
+            <Text style={{ fontSize: 16, flex: 1, fontWeight: '600' }}>Log Out</Text>
           </TouchableOpacity>
         </View>
       </View>

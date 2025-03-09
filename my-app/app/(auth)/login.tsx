@@ -9,33 +9,30 @@ import {
   Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router"; // Import useRouter hook
-import AsyncStorage from "@react-native-async-storage/async-storage"; // Import AsyncStorage
+import { useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import images from "../../constants/images";
 import { ApiHelper } from '../helpers/ApiHelper';
 import { LoginResponse } from "../response/LoginResponse";
 
 const Login = () => {
-  // URL API backend
-  const API_BASE_URL = 'https://your-api-endpoint.com'; // Ganti dengan URL API Anda
+  const API_BASE_URL = 'https://your-api-endpoint.com';
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const router = useRouter();
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
 
-  // Fungsi untuk mengambil data pengguna setelah login berhasil
   const fetchUserData = async (token: string) => {
     try {
       const response = await ApiHelper.request<LoginResponse>(
-        `${API_BASE_URL}/getUserData`, // URL API`,
-        "GET", // Method
-        null, // Body (tidak diperlukan untuk GET)
-        token // Token untuk authorization
+        `${API_BASE_URL}/getUserData`,
+        "GET",
+        null,
+        token
       );
-  
-      // Simpan data pengguna ke AsyncStorage
       await AsyncStorage.setItem("userData", JSON.stringify(response.output_schema));
       console.log('User data saved:', response.output_schema);
     } catch (error) {
@@ -44,45 +41,34 @@ const Login = () => {
     }
   };
 
-  // Fungsi untuk menangani login
   const handleLogin = async () => {
     if (!email || !password) {
       Alert.alert("Validation", "Please fill in both email and password");
       return;
     }
-  
+
     try {
       const loginData = { email, password };
-      console.log('Data yang dikirim:', loginData); // Log data yang dikirim
-  
       const response = await ApiHelper.request<LoginResponse>(
-        `${API_BASE_URL}/login`, // URL API,
-        "POST", // Method
-        loginData // Body
+        `${API_BASE_URL}/login`,
+        "POST",
+        loginData
       );
-      console.log('Response dari API:', response); // Log response dari API
-  
-      // Validasi apakah login berhasil (cek access_token)
+
       if (!response.output_schema?.access_token) {
         const errorMessage = response.error_schema?.error_message || "Login failed. Please try again.";
         Alert.alert("Login Failed", errorMessage);
         return;
       }
-  
-      // Simpan token ke AsyncStorage
+
       await AsyncStorage.setItem("access_token", response.output_schema.access_token);
-  
-      // Simpan status login ke AsyncStorage
       await AsyncStorage.setItem("isLoggedIn", "true");
-  
-      // Ambil data pengguna setelah login berhasil
       await fetchUserData(response.output_schema.access_token);
-  
-      // Tampilkan pesan sukses
+
       Alert.alert("Login Success", "You are logged in!");
-      router.push("/profile"); // Arahkan ke halaman profile setelah login berhasil
+      router.push("/profile");
     } catch (error: any) {
-      console.error('Login error:', error); // Log error
+      console.error('Login error:', error);
       if (error.response) {
         const errorMessage = error.response.error_schema?.error_message || "An error occurred during login";
         Alert.alert("Login Failed", errorMessage);
@@ -93,141 +79,182 @@ const Login = () => {
     }
   };
 
-  const checkAsyncStorage = async () => {
-    const token = await AsyncStorage.getItem("access_token");
-    const userData = await AsyncStorage.getItem("userData");
-    console.log('Token:', token);
-    console.log('User Data:', userData);
-  };
-  
-  checkAsyncStorage();
-
-  // Fungsi untuk mengirim permintaan reset password
   const handleResetPassword = async () => {
     if (!email) {
-        Alert.alert('Error', 'Please enter your email address.');
-        return;
+      Alert.alert('Error', 'Please enter your email address.');
+      return;
     }
 
     setIsLoading(true);
 
     try {
-        // Data yang akan dikirim ke API
-        const resetData = { email };
+      const resetData = { email };
+      const response: { success?: boolean; error?: string } = await ApiHelper.request(
+        `${API_BASE_URL}/resetPassword`,
+        'POST',
+        resetData
+      );
 
-        // Panggil API reset password
-        const response: { success?: boolean; error?: string } = await ApiHelper.request(
-            `${API_BASE_URL}/getUserData`, // URL API resetPassword
-            'POST', // Method
-            resetData // Body
-        );
-
-        // Cek jika response valid
-        if (response?.success) {
-            Alert.alert('Success', 'Password reset link has been sent to your email.');
-            router.push('/login'); // Arahkan ke halaman login setelah berhasil
-        } else {
-            const errorMessage = response?.error || 'Failed to send reset password request.';
-            Alert.alert('Error', errorMessage);
-        }
+      if (response?.success) {
+        Alert.alert('Success', 'Password reset link has been sent to your email.');
+        setShowForgotPassword(false);
+      } else {
+        const errorMessage = response?.error || 'Failed to send reset password request.';
+        Alert.alert('Error', errorMessage);
+      }
     } catch (error) {
-        console.error('Reset password error:', error);
-        Alert.alert('Error', 'An error occurred. Please try again later.');
+      console.error('Reset password error:', error);
+      Alert.alert('Error', 'An error occurred. Please try again later.');
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
   };
 
   return (
     <View style={{ backgroundColor: "#FFFFFF", flex: 1, justifyContent: "center", alignItems: "center", paddingBottom: 20 }}>
-      <View style={{ marginRight: 20, paddingRight: 30, marginBottom: 60 }}>
-        <Text style={{ textAlign: "left", fontSize: 30, fontWeight: "bold" }}>
-          Welcome Back! Glad{"\n"}to see you. Again!
-        </Text>
-      </View>
+      {/* Welcome Back Text */}
+      {!showForgotPassword && (
+        <View style={{ marginRight: 20, paddingRight: 30, marginBottom: 60 }}>
+          <Text style={{ textAlign: "left", fontSize: 30, fontWeight: "bold" }}>
+            Welcome Back! Glad{"\n"}to see you. Again!
+          </Text>
+        </View>
+      )}
 
       <View style={{ marginBottom: 50, alignItems: 'center', width: '100%' }}>
-        {/* Email Input Field */}
-        <View style={{
-            flexDirection: 'row', alignItems: 'center', width: '85%', borderWidth: 1, borderColor: '#ddd',
-            backgroundColor: '#fff', borderRadius: 8, marginBottom: 20, paddingHorizontal: 10, elevation: 5
-        }}>
-            <TextInput
-                style={{ flex: 1, fontSize: 16, paddingVertical: 12, color: '#000' }}
-                placeholder="Enter your email address"
-                placeholderTextColor="#8A8A8A"
-                value={email}
-                onChangeText={setEmail}
-            />
-        </View>
-
-        {/* Password Input Field */}
-        <View style={{
-            flexDirection: 'row', alignItems: 'center', width: '85%', borderWidth: 1, borderColor: '#ddd',
-            backgroundColor: '#fff', borderRadius: 8, marginBottom: 10, paddingHorizontal: 10, elevation: 5
-        }}>
-            <TextInput
-                style={{ flex: 1, fontSize: 16, paddingVertical: 12, color: '#000' }}
-                placeholder="Enter your password"
-                placeholderTextColor="#8A8A8A"
-                secureTextEntry={!showPassword}
-                value={password}
-                onChangeText={setPassword}
-            />
-            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                <Ionicons
-                    name={showPassword ? "eye-outline" : "eye-off-outline"}
-                    size={24}
-                    color="#aaa"
+        {/* Email and Password Input Fields */}
+        {!showForgotPassword && (
+          <>
+            <View style={{
+                flexDirection: 'row', alignItems: 'center', width: '85%', borderWidth: 1, borderColor: '#ddd',
+                backgroundColor: '#fff', borderRadius: 8, marginBottom: 20, paddingHorizontal: 10, elevation: 5
+            }}>
+                <TextInput
+                    style={{ flex: 1, fontSize: 16, paddingVertical: 12, color: '#000' }}
+                    placeholder="Enter your email address"
+                    placeholderTextColor="#8A8A8A"
+                    value={email}
+                    onChangeText={setEmail}
                 />
-            </TouchableOpacity>
-        </View>
+            </View>
+
+            <View style={{
+                flexDirection: 'row', alignItems: 'center', width: '85%', borderWidth: 1, borderColor: '#ddd',
+                backgroundColor: '#fff', borderRadius: 8, marginBottom: 10, paddingHorizontal: 10, elevation: 5
+            }}>
+                <TextInput
+                    style={{ flex: 1, fontSize: 16, paddingVertical: 12, color: '#000' }}
+                    placeholder="Enter your password"
+                    placeholderTextColor="#8A8A8A"
+                    secureTextEntry={!showPassword}
+                    value={password}
+                    onChangeText={setPassword}
+                />
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                    <Ionicons
+                        name={showPassword ? "eye-outline" : "eye-off-outline"}
+                        size={24}
+                        color="#aaa"
+                    />
+                </TouchableOpacity>
+            </View>
+          </>
+        )}
 
         {/* Forgot Password Link */}
-        <Text style={{ left: 220, width: "78%", marginTop: 5 }} onPress={() => router.push("./register")}>
-          Forgot Password
-        </Text>
-      </View>
-
-      {/* Login Button */}
-      <TouchableOpacity
-        style={{ 
-          backgroundColor: "#E7E8EE", 
-          width: "70%", 
-          height: 60, 
-          justifyContent: "center", 
-          alignItems: "center", 
-          marginTop: 20, 
-          borderRadius: 10 
-        }}
-        onPress={handleLogin}
-      >
-        <Text style={{ color: "#000000", fontSize: 18, textAlign: "center", fontWeight: "bold" }}>Login</Text>
-      </TouchableOpacity>
-
-      {/* Divider */}
-      <View style={{ flexDirection: "row", alignItems: "center", marginVertical: 20, width: "75%" }}>
-        <View style={{ flex: 1, height: 1, backgroundColor: "#EDEEF2" }} />
-        <Text style={{ color: "#ADB0BB", fontSize: 14, fontWeight: "bold", textAlign: "center" }}>Or Login with</Text>
-        <View style={{ flex: 1, height: 1, backgroundColor: "#EDEEF2" }} />
-      </View>
-
-      {/* Social Login Icons */}
-      <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", marginBottom: 70 }}>
-        <Image source={images.google} style={{ width: 50, height: 50, resizeMode: "contain", marginHorizontal: 10, marginTop: 10 }} />
-        <Image source={images.apple} style={{ width: 50, height: 50, resizeMode: "contain", marginHorizontal: 10, marginTop: 10 }} />
-        <Image source={images.facebook} style={{ width: 50, height: 50, resizeMode: "contain", marginHorizontal: 10, marginTop: 10 }} />
-        <Image source={images.twitter} style={{ width: 50, height: 50, resizeMode: "contain", marginHorizontal: 10, marginTop: 10 }} />
-      </View>
-
-      {/* Register Link */}
-      <View style={{ marginTop: 5 }}>
-        <Text style={{ fontSize: 18, textAlign: "center" }}>
-          Don't have an account?{" "}
-          <Text style={{ color: "#2B4763", fontWeight: "bold" }} onPress={() => router.push("./register")}>
-            Register
+        {!showForgotPassword && (
+          <Text
+            style={{ left: 220, width: "78%", marginTop: 5 }}
+            onPress={() => setShowForgotPassword(!showForgotPassword)}
+          >
+            Forgot Password
           </Text>
-        </Text>
+        )}
+
+        {/* Forgot Password Form */}
+        {showForgotPassword && (
+          <View style={{ width: "85%", marginTop: 20 }}>
+            <Text style={{ fontSize: 16, marginBottom: 10, textAlign: "center" }}>
+              Enter your email to reset your password
+            </Text>
+            <TextInput
+              style={{
+                width: "100%",
+                height: 50,
+                borderWidth: 1,
+                borderColor: "#ddd",
+                borderRadius: 8,
+                paddingHorizontal: 10,
+                marginBottom: 20,
+                fontSize: 16,
+              }}
+              placeholder="Enter your email address"
+              placeholderTextColor="#8A8A8A"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+            <TouchableOpacity
+              style={{
+                width: "100%",
+                height: 50,
+                backgroundColor: "#2B4763",
+                justifyContent: "center",
+                alignItems: "center",
+                borderRadius: 8,
+              }}
+              onPress={handleResetPassword}
+              disabled={isLoading}
+            >
+              <Text style={{ color: "#FFFFFF", fontSize: 18, fontWeight: "bold" }}>
+                {isLoading ? "Sending..." : "Send Reset Link"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Login Button, Divider, Social Icons, and Register Link */}
+        {!showForgotPassword && (
+          <>
+            <TouchableOpacity
+              style={{ 
+                backgroundColor: "#E7E8EE", 
+                width: "70%", 
+                height: 60, 
+                justifyContent: "center", 
+                alignItems: "center", 
+                marginTop: 20, 
+                borderRadius: 10 
+              }}
+              onPress={handleLogin}
+            >
+              <Text style={{ color: "#000000", fontSize: 18, textAlign: "center", fontWeight: "bold" }}>Login</Text>
+            </TouchableOpacity>
+
+            <View style={{ flexDirection: "row", alignItems: "center", marginVertical: 20, width: "75%" }}>
+              <View style={{ flex: 1, height: 1, backgroundColor: "#EDEEF2" }} />
+              <Text style={{ color: "#ADB0BB", fontSize: 14, fontWeight: "bold", textAlign: "center" }}>Or Login with</Text>
+              <View style={{ flex: 1, height: 1, backgroundColor: "#EDEEF2" }} />
+            </View>
+
+            <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", marginBottom: 70 }}>
+              <Image source={images.google} style={{ width: 50, height: 50, resizeMode: "contain", marginHorizontal: 10, marginTop: 10 }} />
+              <Image source={images.apple} style={{ width: 50, height: 50, resizeMode: "contain", marginHorizontal: 10, marginTop: 10 }} />
+              <Image source={images.facebook} style={{ width: 50, height: 50, resizeMode: "contain", marginHorizontal: 10, marginTop: 10 }} />
+              <Image source={images.twitter} style={{ width: 50, height: 50, resizeMode: "contain", marginHorizontal: 10, marginTop: 10 }} />
+            </View>
+
+            <View style={{ marginTop: 5 }}>
+              <Text style={{ fontSize: 18, textAlign: "center" }}>
+                Don't have an account?{" "}
+                <Text style={{ color: "#2B4763", fontWeight: "bold" }} onPress={() => router.push("./register")}>
+                  Register
+                </Text>
+              </Text>
+            </View>
+          </>
+        )}
       </View>
     </View>
   );
