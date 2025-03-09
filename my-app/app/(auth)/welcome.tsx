@@ -1,11 +1,15 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { View, Text, StyleSheet, Image, TouchableOpacity } from "react-native";
 import { useRouter } from "expo-router";
 
 import images from "../../constants/images";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const Welcome = () => {
   const router = useRouter(); // Menggunakan router dari Expo Router
+  const setIsGuest = async() => {
+    await AsyncStorage.setItem("isGuest", "true"); // Menyimpan data bahwa user adalah guest
+  }
 
   return (
     <View style={styles.container}>
@@ -36,7 +40,10 @@ const Welcome = () => {
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity onPress={() => router.push("../(tabs)/profile")}>
+      <TouchableOpacity onPress={async () => {
+        await setIsGuest();
+        router.push("../(tabs)/profile");
+      }}>
         <Text style={styles.guestText}>Continue as a guest</Text>
       </TouchableOpacity>
     </View>
