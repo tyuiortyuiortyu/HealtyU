@@ -925,7 +925,7 @@ const Profile = () => {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#f5f5f5', marginTop: 25 }}>
+    <View style={{ flex: 1, backgroundColor: 'white', marginTop: 25 }}>
         <View style={{ alignItems: 'center', padding: 20 }}>
         <TouchableOpacity onPress={pickImage}>
             <View
@@ -957,7 +957,7 @@ const Profile = () => {
         )} */}
         {profileData.name === 'Guest' ? (
             <View style={{ alignItems: 'center' }}>
-            <Text style={{ fontSize: 25, color: '#666', marginBottom: 10 }}>Guest Account</Text>
+            <Text style={{ fontSize: 25, color: '#666', marginBottom: 8 }}>Guest Account</Text>
             <TouchableOpacity
                 onPress={() => router.push('/welcome')} // Arahkan ke halaman Welcome
                 style={{
@@ -1016,7 +1016,7 @@ const Profile = () => {
             marginBottom: 15,
           }}
         >
-          <View style={{ flexDirection: 'row', alignItems: 'center', padding: 15, marginTop: -10, marginBottom: -10 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', padding: 15, marginTop: -8, marginBottom: -10 }}>
             <MaterialIcons name="notifications" size={20} color="#000" style={{ marginRight: 10 }} />
             <Text style={{ fontSize: 16, flex: 1, fontWeight: '600' }}>Notifikasi</Text>
             <Switch value={isNotificationOn} onValueChange={toggleNotification} />
