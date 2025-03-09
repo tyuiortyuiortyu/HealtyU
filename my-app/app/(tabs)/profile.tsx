@@ -30,7 +30,26 @@ const Profile = () => {
   const [showHalloPage, setShowHalloPage] = useState(false);
   const [isLeaveModalVisible, setLeaveModalVisible] = useState(false);
 
-  const [profileData, setProfileData] = useState({});
+  interface ProfileData {
+    username: string;
+    name: string;
+    email: string;
+    dob: string;
+    gender: string;
+    height: string;
+    weight: string;
+    profile_picture?: string | null;
+  }
+
+  const [profileData, setProfileData] = useState<ProfileData>({
+    username: '',
+    name: '',
+    email: '',
+    dob: '',
+    gender: '',
+    height: '',
+    weight: '',
+  });
 
   const [inputUsername, setInputUsername] = useState('');
   const [inputName, setInputName] = useState('');
@@ -49,36 +68,50 @@ const Profile = () => {
 
 
   // Memuat data profil dari AsyncStorage saat komponen pertama kali di-render
-  useEffect(() => {
-    const checkGuestStatus = async () => {
-      const isGuest = await AsyncStorage.getItem('isGuest');
-      if (isGuest === 'true') {
-        // Jika guest, set profil sebagai guest
-        setProfileData({
-          username: 'Guest',
-          name: 'Guest',
-          email: '',
-          dob: '',
-          gender: '',
-          height: '',
-          weight: '',
-        });
-        setProfileImage(null); // Tidak ada gambar profil untuk guest
-        setIsLoading(false);
-      } else {
-        // Jika bukan guest, ambil data profil dari AsyncStorage atau API
-        fetchProfileDataFromStorage();
-      }
-    };
+  const checkGuestStatus = async () => {
+    const isGuest = await AsyncStorage.getItem('isGuest');
+    console.log('Is Guest:', isGuest);
   
-    checkGuestStatus();
+    if (isGuest === 'true') {
+      setProfileData({
+        username: 'Guest',
+        name: 'Guest',
+        email: '',
+        dob: '',
+        gender: '',
+        height: '',
+        weight: '',
+      });
+      setProfileImage(null);
+      setIsLoading(false);
+    } else {
+      fetchProfileDataFromStorage();
+    }
+  };
+
+  const checkAsyncStorage = async () => {
+    try {
+      const userData = await AsyncStorage.getItem('userData');
+      const profileData = await AsyncStorage.getItem('profile_data');
+      const isGuest = await AsyncStorage.getItem('isGuest');
+      console.log('User Data:', userData);
+      console.log('Profile Data:', profileData);
+      console.log('Is Guest:', isGuest);
+    } catch (error) {
+      console.error('Error checking AsyncStorage:', error);
+    }
+  };
+  
+  // Panggil fungsi ini di useEffect atau di tempat yang sesuai
+  useEffect(() => {
+    checkAsyncStorage();
   }, []);
 
-  // Fungsi untuk mengambil data profil dari AsyncStorage
   const fetchProfileDataFromStorage = async () => {
     try {
       setIsLoading(true);
       const storedProfileData = await AsyncStorage.getItem('profile_data');
+      console.log('Stored Profile Data:', storedProfileData);
   
       if (storedProfileData) {
         const parsedProfileData = JSON.parse(storedProfileData);
@@ -105,33 +138,22 @@ const Profile = () => {
       setIsLoading(false);
     }
   };
-
-
-  const [userData, setUserData] = useState<any>(null);
-
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const data = await AsyncStorage.getItem("userData");
-        if (data) {
-          const parsedData = JSON.parse(data);
-          setProfileData({
-            username: parsedData.username || '',
-            name: parsedData.name || '',
-            email: parsedData.email || '',
-            dob: parsedData.dob || '',
-            gender: parsedData.gender || '',
-            height: parsedData.height || '',
-            weight: parsedData.weight || '',
-          });
-        }
-      } catch (error) {
-        console.error('Failed to fetch user data:', error);
-      }
-    };
   
-    fetchUserData();
-  }, []);
+  const fetchUserData = async () => {
+    try {
+      const data = await AsyncStorage.getItem('userData');
+      console.log('Fetched User Data:', data);
+  
+      if (data) {
+        const parsedData = JSON.parse(data);
+        setProfileData(parsedData);
+      }
+    } catch (error) {
+      console.error('Failed to fetch user data:', error);
+    }
+  };
+
+
 
   // Fungsi untuk menyimpan perubahan profil ke API
   const saveProfileData = async () => {
@@ -288,18 +310,18 @@ const Profile = () => {
   const handleLogout = async () => {
     try {
       const accessToken = await AsyncStorage.getItem('access_token');
-
+      console.log('Access Token:', accessToken);
+  
       if (accessToken) {
-        // Panggil API logout untuk menonaktifkan token
-        await ApiHelper.logout(accessToken);
+        await ApiHelper.logout();
       }
   
-      // Hapus data dari AsyncStorage
       await AsyncStorage.removeItem('isGuest');
       await AsyncStorage.removeItem('profile_data');
       await AsyncStorage.removeItem('access_token');
+      await AsyncStorage.removeItem('userData');
   
-      // Navigasi ke halaman login
+      console.log('Logged out successfully');
       router.push('/login');
     } catch (error) {
       console.error('Error during logout:', error);
@@ -365,16 +387,12 @@ const Profile = () => {
             </TouchableOpacity>
             {/* Nama di bawah foto profil */}
             <Text style={{ fontSize: 25, fontWeight: 'bold', marginTop: 10 }}>{profileData.name}</Text>
-            {profileData.name === 'Guest' ? (
-                <Text style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>Guest Account</Text>
-            ) : (
-                <Text style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>{profileData.email}</Text>
-            )}
 
-            {/* Tombol edit
-            <TouchableOpacity onPress={() => setEditing(true)}>
-                <Text style={{ color: '#2B4763', fontSize: 16, marginTop: 10 }}>Edit Profile</Text>
-            </TouchableOpacity> */}
+            {profileData.name === 'Guest' ? (
+            <Text style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>Guest Account</Text>
+            ) : (
+            <Text style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>{profileData.email}</Text>
+            )}
 
         </View>
 
