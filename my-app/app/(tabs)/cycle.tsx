@@ -101,7 +101,7 @@ const Cycle = () => {
         if (!accessToken) throw new Error('No access token found');
 
         const response = await ApiHelper.request(`${API_CYCLE_URL}`, 'GET', null, accessToken);
-        const data = response.data;
+        const data = (response as { data: any }).data;
 
         setPeriodStartDate(data.period_start ? new Date(data.period_start) : null);
         setCycleLength(data.cycle_length || 28);
@@ -114,7 +114,11 @@ const Cycle = () => {
         setIsLoading(false);
       } catch (error) {
         console.error('Failed to load cycle data:', error);
-        setError(error.message);
+        if (error instanceof Error) {
+          setError(error.message);
+        } else {
+          setError('An unknown error occurred');
+        }
         setIsLoading(false);
       }
     };
@@ -229,8 +233,13 @@ const Cycle = () => {
     );
   }
 
-  const getPeriodDates = (startDate) => {
-    const dates = [];
+  interface PeriodDatesProps {
+    startDate: Date | null;
+    periodDays: number;
+  }
+
+  const getPeriodDates = ({ startDate, periodDays }: PeriodDatesProps): Date[] => {
+    const dates: Date[] = [];
     if (startDate) {
       for (let i = 0; i < periodDays; i++) {
         dates.push(addDays(startDate, i));
@@ -239,7 +248,11 @@ const Cycle = () => {
     return dates;
   };
 
-  const getFertileDates = (startDate) => {
+  interface FertileDatesProps {
+    startDate: Date | null;
+  }
+
+  const getFertileDates = ({ startDate }: FertileDatesProps): Date[] => {
     if (!startDate) return [];
     const ovulationDate = addDays(startDate, cycleLength - 14);
     return [
@@ -250,29 +263,41 @@ const Cycle = () => {
     ];
   };
 
-  const getPredictedPeriodDates = (startDate) => {
+  interface PredictedPeriodDatesProps {
+    startDate: Date | null;
+  }
+
+  const getPredictedPeriodDates = ({ startDate }: PredictedPeriodDatesProps): Date[] => {
     if (!startDate) return [];
     const nextPeriodStart = addDays(startDate, cycleLength);
-    const predictedDates = getPeriodDates(nextPeriodStart);
+    const predictedDates = getPeriodDates({ startDate: nextPeriodStart, periodDays });
     return predictedDates;
   };
 
-  const periodDates = periodStartDate ? getPeriodDates(periodStartDate) : [];
-  const fertileDates = periodStartDate ? getFertileDates(periodStartDate) : [];
-  const predictedPeriodDates = periodStartDate ? getPredictedPeriodDates(periodStartDate) : [];
+  const periodDates = periodStartDate ? getPeriodDates({ startDate: periodStartDate, periodDays }) : [];
+  const fertileDates = periodStartDate ? getFertileDates({ startDate: periodStartDate }) : [];
+  const predictedPeriodDates = periodStartDate ? getPredictedPeriodDates({ startDate: periodStartDate }) : [];
 
-  const generateWeekDates = (date) => {
+  interface GenerateWeekDatesProps {
+    date: Date;
+  }
+
+  const generateWeekDates = ({ date }: GenerateWeekDatesProps): Date[] => {
     const startDate = startOfWeek(date, { weekStartsOn: 1 });
     return Array.from({ length: 7 }, (_, index) => addDays(startDate, index));
   };
 
-  const generateMonthDates = (date) => {
+  interface GenerateMonthDatesProps {
+    date: Date;
+  }
+
+  const generateMonthDates = ({ date }: GenerateMonthDatesProps): Date[] => {
     const startDate = startOfWeek(new Date(date.getFullYear(), date.getMonth(), 1), { weekStartsOn: 1 });
     return Array.from({ length: 42 }, (_, index) => addDays(startDate, index));
   };
 
-  const weekDates = generateWeekDates(today);
-  const monthDates = generateMonthDates(currentMonth);
+  const weekDates = generateWeekDates({ date: today });
+  const monthDates = generateMonthDates({ date: currentMonth });
 
   const getCyclePhase = () => {
     if (!periodStartDate) return { phase: 'Not set', day: null };
@@ -295,7 +320,7 @@ const Cycle = () => {
     }
 
     // Check if current date is within the fertile window
-    if (fertileDates.length > 0 && isWithinInterval(currentDate, { start: fertileDates[0], end: lastFertileDay })) {
+    if (fertileDates.length > 0 && lastFertileDay && isWithinInterval(currentDate, { start: fertileDates[0], end: lastFertileDay })) {
         const fertileDifference = differenceInDays(currentDate, fertileDates[0]);
         return { phase: 'Fertile Window', day: fertileDifference + 1 };
     }
@@ -307,7 +332,7 @@ const Cycle = () => {
     }
 
     // Check if current date is within the predicted period
-    if (predictedPeriodDates.length > 0 && isWithinInterval(currentDate, { start: predictedPeriodDates[0], end: lastPredictedDay })) {
+    if (predictedPeriodDates.length > 0 && lastPredictedDay && isWithinInterval(currentDate, { start: predictedPeriodDates[0], end: lastPredictedDay })) {
         const predictedDifference = differenceInDays(currentDate, predictedPeriodDates[0]);
         return { phase: 'Predicted Period', day: predictedDifference + 1 };
     }
@@ -344,7 +369,11 @@ const Cycle = () => {
 
   const { phase, day } = getCyclePhase();
 
-  const getRecommendation = (phase) => {
+  interface RecommendationProps {
+    phase: string;
+  }
+
+  const getRecommendation = ({ phase }: RecommendationProps): string => {
     switch (phase) {
       case 'Period':
         return 'Drink Herbal Tea For Cramps';
@@ -389,15 +418,23 @@ const Cycle = () => {
   const cycleOptions = Array.from({ length: 60 }, (_, i) => 1 + i);
   const periodOptions = Array.from({ length: 60 }, (_, i) => 1 + i);
 
-  const handleSelectCycleLengthOption = (newLength) => {
+  interface CycleLengthOptionProps {
+    newLength: number;
+  }
+
+  const handleSelectCycleLengthOption = ({ newLength }: CycleLengthOptionProps) => {
     setSelectedCycleLength(newLength);
   };
 
-  const handleSelectPeriodDaysOption = (newDays) => {
+  interface PeriodDaysOptionProps {
+    newDays: number;
+  }
+
+  const handleSelectPeriodDaysOption = ({ newDays }: PeriodDaysOptionProps) => {
     setSelectedPeriodDays(newDays);
   };
 
-  const renderCycleOption = ({ item }) => (
+  const renderCycleOption = ({ item }: { item: number }) => (
     <TouchableOpacity
       style={[
         {
@@ -410,13 +447,13 @@ const Cycle = () => {
           backgroundColor: '#FFC0CB',
         },
       ]}
-      onPress={() => handleSelectCycleLengthOption(item)}
+      onPress={() => handleSelectCycleLengthOption({ newLength: item })}
     >
       <Text style={{ textAlign: 'center' }}>{item}</Text>
     </TouchableOpacity>
   );
 
-  const renderPeriodOption = ({ item }) => (
+  const renderPeriodOption = ({ item }: { item: number }) => (
     <TouchableOpacity
       style={[
         {
@@ -429,13 +466,13 @@ const Cycle = () => {
           backgroundColor: '#FFC0CB',
         },
       ]}
-      onPress={() => handleSelectPeriodDaysOption(item)}
+      onPress={() => handleSelectPeriodDaysOption({ newDays: item })}
     >
       <Text style={{ textAlign: 'center' }}>{item}</Text>
     </TouchableOpacity>
   );
 
-  const renderCalendarItem = ({ item }) => {
+  const renderCalendarItem = ({ item }: { item: Date }) => {
     const isToday = today.toDateString() === item.toDateString();
     const isPeriod = periodDates.some((date) => date.toDateString() === item.toDateString());
     const isFertile = fertileDates.some((date) => date.toDateString() === item.toDateString());
@@ -499,7 +536,7 @@ const Cycle = () => {
     );
   };
 
-  const renderModalCalendarItem = ({ item }) => {
+  const renderModalCalendarItem = ({ item }: { item: Date }) => {
     const isToday = today.toDateString() === item.toDateString();
     const isPeriod = periodDates.some((date) => date.toDateString() === item.toDateString());
     const isFertile = fertileDates.some((date) => date.toDateString() === item.toDateString());
@@ -558,7 +595,7 @@ const Cycle = () => {
     );
   };
 
-  const keyExtractor = (item) => item.toISOString();
+  const keyExtractor = (item: Date): string => item.toISOString();
 
   return (
     <ScrollView style={{ flex: 1}}>
@@ -608,7 +645,7 @@ const Cycle = () => {
               <Text style={{ fontSize: 36, fontWeight: 'semibold', textAlign: 'center', marginBottom: 5 }}>{phase}:</Text>
               {day !== null && <Text style={{ fontSize: 18, textAlign: 'center', color: '#666' }}>{`Day ${day}`}</Text>}
               <View style={{ marginTop: 15, backgroundColor: '#ffe6e6', padding: 10, borderRadius: 20, maxWidth: 200, alignItems: 'center' }}>
-                <Text style={{ fontSize: 16, textAlign: 'center' }}>{getRecommendation(phase)}</Text>
+                <Text style={{ fontSize: 16, textAlign: 'center' }}>{getRecommendation({ phase })}</Text>
               </View>
             </View>
             <View style={{ padding: 10, backgroundColor: '#ffe6e6', borderRadius: 20, maxWidth: 350, marginTop: 10 }}>

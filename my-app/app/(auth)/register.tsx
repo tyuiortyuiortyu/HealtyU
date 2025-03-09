@@ -9,7 +9,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const RegisterScreen = () => {
     // URL API backend
-    const API_BASE_URL = 'https://your-api-url.com'; // taruh di sini bang
+    const API_BASE_URL = 'http://10.0.2.2:8000/api/auth'; // taruh di sini bang
 
     const [name, setName] = useState('');
     const [username, setUsername] = useState('');

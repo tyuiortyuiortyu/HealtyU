@@ -54,7 +54,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export class ApiHelper {
     static async request<T>(
         url: string,
-        method: "GET" | "POST",
+        method: "GET" | "POST" | "PUT",
         model?: any,
         accessToken?: string,
         isMultipart: boolean = false
