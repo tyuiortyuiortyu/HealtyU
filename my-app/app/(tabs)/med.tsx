@@ -16,7 +16,6 @@ import {
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
 import CalendarPicker from "react-native-calendar-picker"; // Import CalendarPicker
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import images from "../../constants/images";
 import icons from "../../constants/icons";
