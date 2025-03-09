@@ -16,6 +16,11 @@ class Cycle extends Model
         'user_id',
         'start',
         'end',
+        'cycle_len',
+        'period_len',
+        'pain_lv',
+        'bleeding_lv',
+        'mood_lv',
     ];
 
     protected $casts = [

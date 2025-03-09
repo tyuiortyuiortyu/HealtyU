@@ -45,6 +45,11 @@ class CycleController extends Controller
         $validated = $request->validate([
             'start' => 'required|date',
             'end' => 'required|date|after_or_equal:start',
+            'cycle_len' => 'required|integer',
+            'period_len' => 'required|integer',
+            'pain_lv' => 'required|integer',
+            'bleeding_lv' => 'required|integer',
+            'mood_lv' => 'required|integer'
         ]);
     
         $userId = Auth::id();
@@ -64,6 +69,11 @@ class CycleController extends Controller
             'user_id' => $userId,
             'start' => $validated['start'],
             'end' => $validated['end'],
+            'cycle_len' => $validated['cycle_len'],
+            'period_len' => $validated['period_len'],
+            'pain_lv' => $validated['pain_lv'],
+            'bleeding_lv' => $validated['bleeding_lv'],
+            'mood_lv' => $validated['mood_lv']
         ]);
     
         return response()->json([
@@ -109,13 +119,6 @@ class CycleController extends Controller
      */
     public function update(Request $request)
     {
-        // Debugging: Cek apakah request memiliki data
-        if ($request->isJson()) {
-            \Log::info('Received JSON:', $request->all());
-        } else {
-            \Log::info('Received FORM DATA:', $request->all());
-        }
-
         // Cek user yang sedang login
         $userId = Auth::id();
 
@@ -133,6 +136,11 @@ class CycleController extends Controller
         $validated = $request->validate([
             'start' => 'required|date',
             'end' => 'required|date|after_or_equal:start',
+            'cycle_len' => 'required|integer',
+            'period_len' => 'required|integer',
+            'pain_lv' => 'required|integer',
+            'bleeding_lv' => 'required|integer',
+            'mood_lv' => 'required|integer'
         ]);
 
         // Update data cycle
