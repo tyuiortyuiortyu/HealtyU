@@ -81,6 +81,16 @@ const Cycle = () => {
       try {
         const isGuest = await AsyncStorage.getItem('isGuest');
         if (isGuest === 'true') {
+          // Set default guest data if no stored data exists
+          setPeriodStartDate(null); 
+          setCycleLength(28);
+          setPeriodDays(4);
+          setSelectedCycleLength(28);
+          setSelectedPeriodDays(4);
+          setPainLevel(Array(5).fill(false));
+          setBleedingLevel(Array(5).fill(false));
+          setMoodLevel(Array(5).fill(false));
+          
           const guestData = await AsyncStorage.getItem('guest_cycle_data');
           if (guestData) {
             const data = JSON.parse(guestData);
@@ -101,7 +111,7 @@ const Cycle = () => {
         if (!accessToken) throw new Error('No access token found');
 
         const response = await ApiHelper.request(`${API_CYCLE_URL}`, 'GET', null, accessToken);
-        const data = response.data;
+        const data = (response as { data: any }).data;
 
         setPeriodStartDate(data.period_start ? new Date(data.period_start) : null);
         setCycleLength(data.cycle_length || 28);
@@ -114,7 +124,11 @@ const Cycle = () => {
         setIsLoading(false);
       } catch (error) {
         console.error('Failed to load cycle data:', error);
-        setError(error.message);
+        if (error instanceof Error) {
+          setError(error.message);
+        } else {
+          setError('An unknown error occurred');
+        }
         setIsLoading(false);
       }
     };
@@ -229,7 +243,7 @@ const Cycle = () => {
     );
   }
 
-  const getPeriodDates = (startDate) => {
+  const getPeriodDates = (startDate: Date | null) => {
     const dates = [];
     if (startDate) {
       for (let i = 0; i < periodDays; i++) {
@@ -239,7 +253,7 @@ const Cycle = () => {
     return dates;
   };
 
-  const getFertileDates = (startDate) => {
+  const getFertileDates = (startDate: Date | null) => {
     if (!startDate) return [];
     const ovulationDate = addDays(startDate, cycleLength - 14);
     return [
@@ -250,7 +264,7 @@ const Cycle = () => {
     ];
   };
 
-  const getPredictedPeriodDates = (startDate) => {
+  const getPredictedPeriodDates = (startDate: Date | null) => {
     if (!startDate) return [];
     const nextPeriodStart = addDays(startDate, cycleLength);
     const predictedDates = getPeriodDates(nextPeriodStart);
@@ -261,12 +275,12 @@ const Cycle = () => {
   const fertileDates = periodStartDate ? getFertileDates(periodStartDate) : [];
   const predictedPeriodDates = periodStartDate ? getPredictedPeriodDates(periodStartDate) : [];
 
-  const generateWeekDates = (date) => {
+  const generateWeekDates = (date: Date) => {
     const startDate = startOfWeek(date, { weekStartsOn: 1 });
     return Array.from({ length: 7 }, (_, index) => addDays(startDate, index));
   };
 
-  const generateMonthDates = (date) => {
+  const generateMonthDates = (date: Date) => {
     const startDate = startOfWeek(new Date(date.getFullYear(), date.getMonth(), 1), { weekStartsOn: 1 });
     return Array.from({ length: 42 }, (_, index) => addDays(startDate, index));
   };
@@ -295,7 +309,7 @@ const Cycle = () => {
     }
 
     // Check if current date is within the fertile window
-    if (fertileDates.length > 0 && isWithinInterval(currentDate, { start: fertileDates[0], end: lastFertileDay })) {
+    if (fertileDates.length > 0 && lastFertileDay && isWithinInterval(currentDate, { start: fertileDates[0], end: lastFertileDay })) {
         const fertileDifference = differenceInDays(currentDate, fertileDates[0]);
         return { phase: 'Fertile Window', day: fertileDifference + 1 };
     }
@@ -344,7 +358,7 @@ const Cycle = () => {
 
   const { phase, day } = getCyclePhase();
 
-  const getRecommendation = (phase) => {
+  const getRecommendation = (phase: string) => {
     switch (phase) {
       case 'Period':
         return 'Drink Herbal Tea For Cramps';
@@ -384,20 +398,44 @@ const Cycle = () => {
     return 'Good Evening';
   };
 
-  const userName = 'Nikita';
+  const [userName, setUserName] = useState('');
+
+  // Tambahkan useEffect untuk load username
+  useEffect(() => {
+    const loadUserName = async () => {
+      try {
+        const isGuest = await AsyncStorage.getItem('isGuest');
+        if (isGuest === 'true') {
+          setUserName('Guest');
+          return;
+        }
+
+        const profileData = await AsyncStorage.getItem('profile_data');
+        if (profileData) {
+          const parsedData = JSON.parse(profileData);
+          setUserName(parsedData.name || 'User');
+        }
+      } catch (error) {
+        console.error('Failed to load user name:', error);
+        setUserName('User');
+      }
+    };
+
+    loadUserName();
+  }, []);
 
   const cycleOptions = Array.from({ length: 60 }, (_, i) => 1 + i);
   const periodOptions = Array.from({ length: 60 }, (_, i) => 1 + i);
 
-  const handleSelectCycleLengthOption = (newLength) => {
+  const handleSelectCycleLengthOption = (newLength: number) => {
     setSelectedCycleLength(newLength);
   };
 
-  const handleSelectPeriodDaysOption = (newDays) => {
+  const handleSelectPeriodDaysOption = (newDays: number) => {
     setSelectedPeriodDays(newDays);
   };
 
-  const renderCycleOption = ({ item }) => (
+  const renderCycleOption = ({ item }: { item: number }) => (
     <TouchableOpacity
       style={[
         {
@@ -416,7 +454,7 @@ const Cycle = () => {
     </TouchableOpacity>
   );
 
-  const renderPeriodOption = ({ item }) => (
+  const renderPeriodOption = ({ item }: { item: number }) => (
     <TouchableOpacity
       style={[
         {
@@ -435,7 +473,7 @@ const Cycle = () => {
     </TouchableOpacity>
   );
 
-  const renderCalendarItem = ({ item }) => {
+  const renderCalendarItem = ({ item }: { item: Date }) => {
     const isToday = today.toDateString() === item.toDateString();
     const isPeriod = periodDates.some((date) => date.toDateString() === item.toDateString());
     const isFertile = fertileDates.some((date) => date.toDateString() === item.toDateString());
@@ -499,7 +537,7 @@ const Cycle = () => {
     );
   };
 
-  const renderModalCalendarItem = ({ item }) => {
+  const renderModalCalendarItem = ({ item }: { item: Date }) => {
     const isToday = today.toDateString() === item.toDateString();
     const isPeriod = periodDates.some((date) => date.toDateString() === item.toDateString());
     const isFertile = fertileDates.some((date) => date.toDateString() === item.toDateString());
@@ -558,7 +596,7 @@ const Cycle = () => {
     );
   };
 
-  const keyExtractor = (item) => item.toISOString();
+  const keyExtractor = (item: Date) => item.toISOString();
 
   return (
     <ScrollView style={{ flex: 1}}>
