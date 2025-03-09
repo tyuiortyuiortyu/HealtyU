@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   StyleSheet,
   Dimensions,
@@ -16,6 +16,8 @@ import {
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
 import CalendarPicker from "react-native-calendar-picker"; // Import CalendarPicker
+import { getMedications, addMedication, updateMedication, deleteMedication } from '../helpers/medApiHelper';
+import { MedResponse } from '../response/medResponse';
 
 import images from "../../constants/images";
 import icons from "../../constants/icons";
@@ -45,8 +47,22 @@ const MedReminder = () => {
   const [taken, setTaken] = useState([]);
   const [selectedIndex, setSelectedIndex] = useState(null);
 
-  const handleEditItem = (index) => {
-    const med = medList[index];
+  const handleEditItem = () => {
+    const [medList, setMedList] = useState([]);
+    const [selectedIndex, setSelectedIndex] = useState(null);
+
+    useEffect(() => {
+      const fetchMedications = async () => {
+        try {
+          const medications = await getMedications();
+          setMedList(medications);
+        } catch (error) {
+          console.error("Error fetching medications:", error);
+        }
+      };
+
+      fetchMedications();
+    }, []);
 
     // Set the values of the selected medication to edit
     setMedName(med.name);
@@ -75,18 +91,26 @@ const MedReminder = () => {
     setSelectedIndex(index === selectedIndex ? null : index);
   };
 
-  const handleSkipItem = (index) => {
+  const handleSkipItem = async (index) => {
     const skippedMed = medList[index];
-    setSkipped([...skipped, skippedMed]);
-    setMedList(medList.filter((_, i) => i !== index));
-    setSelectedIndex(null);
+    try {
+      await deleteMedication(skippedMed.id);
+      setMedList(medList.filter((_, i) => i !== index));
+      setSelectedIndex(null);
+    } catch (error) {
+      console.error('Error skipping medication:', error);
+    }
   };
 
-  const handleTakenItem = (index) => {
+  const handleTakenItem = async (index) => {
     const takenMed = medList[index];
-    setTaken([...taken, takenMed]);
-    setMedList(medList.filter((_, i) => i !== index));
-    setSelectedIndex(null);
+    try {
+      await deleteMedication(takenMed.id);
+      setMedList(medList.filter((_, i) => i !== index));
+      setSelectedIndex(null);
+    } catch (error) {
+      console.error('Error marking medication as taken:', error);
+    }
   };
 
   const handleAddMedPress = () => {
@@ -142,42 +166,49 @@ const MedReminder = () => {
       return;
     }
 
-    if (selectedIndex !== null) {
-      // Update existing medication in the list
-      const updatedMedList = [...medList];
-      updatedMedList[selectedIndex] = {
-        ...updatedMedList[selectedIndex],
-        name: medName,
-        dose: medDose,
-        type: selectedMedType,
-        date: selectedStartDate.toDateString(), // Simpan tanggal
-        time: selectedTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit",second: "2-digit",}), 
-        image: medImage,
-      };
-      setMedList(updatedMedList); // Update the list with the new values
-    } else {
-      // Add new medication if it's a new entry
-      const newMed = {
-        name: medName,
-        dose: medDose,
-        type: selectedMedType,
-        date: selectedStartDate.toDateString(), 
-        time: selectedTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit",second: "2-digit",}), 
-        image: medImage,
-      };
-      setMedList([...medList, newMed]); // Add the new item to the list
+    const newMed = {
+      name: medName,
+      dose: medDose,
+      type: selectedMedType,
+      date: selectedStartDate.toDateString(),
+      time: selectedTime.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      }),
+      image: medImage,
+    };
+
+    try {
+      if (selectedIndex !== null) {
+        // Update existing medication
+        const updatedMed = await updateMedication(
+          medList[selectedIndex].id,
+          newMed
+        );
+        const updatedMedList = medList.map((med, index) =>
+          index === selectedIndex ? updatedMed : med
+        );
+        setMedList(updatedMedList);
+      } else {
+        // Add new medication
+        const addedMed = await addMedication(newMed);
+        setMedList([...medList, addedMed]);
+      }
+
+      // Reset form fields
+      setMedName("");
+      setMedDose("");
+      setSelectedMedType(null);
+      setMedImage(null);
+      setSelectedStartDate(null);
+      setSelectedTime(new Date());
+      setSelectedIndex(null);
+
+      setShowReminderModal(false);
+    } catch (error) {
+      console.error("Error saving medication:", error);
     }
-
-    // Reset form fields
-    setMedName("");
-    setMedDose("");
-    setSelectedMedType(null);
-    setMedImage(null);
-    setSelectedStartDate(null);
-    setSelectedTime(new Date());
-    setSelectedIndex(null);
-
-    setShowReminderModal(false);
   };
 
   const toggleCalendar = () => {
