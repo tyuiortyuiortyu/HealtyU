@@ -139,7 +139,7 @@ class AuthController extends Controller
             'email' => $user->email,
             'exp' => time() + (60 * 5) // Token berlaku 5 menit
         ];
-        $token = JWT::encode($payload, env('JWT_SECRET'), 'HS256');
+        $token = JWT::encode($payload, (string) env('JWT_SECRET'), 'HS256');
 
         DB::table('password_resets')->updateOrInsert(
             ['email' => $user->email],
