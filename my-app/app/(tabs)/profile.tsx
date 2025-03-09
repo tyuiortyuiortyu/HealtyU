@@ -939,7 +939,7 @@ const Profile = () => {
         )} */}
         {profileData.name === 'Guest' ? (
             <View style={{ alignItems: 'center' }}>
-            <Text style={{ fontSize: 25, color: '#666', marginBottom: 10 }}>Guest Account</Text>
+            <Text style={{ fontSize: 25, color: '#666', marginTop: 10 }}>Guest Account</Text>
             <TouchableOpacity
                 onPress={() => router.push('/welcome')} // Arahkan ke halaman Welcome
                 style={{
@@ -954,7 +954,7 @@ const Profile = () => {
             </TouchableOpacity>
             </View>
         ) : (
-            <Text style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>{profileData.email}</Text>
+            <Text style={{ fontSize: 25, fontWeight: 'bold', color: '#666', marginTop: 10 }}>{profileData.name}</Text>
         )}
         </View>
 
