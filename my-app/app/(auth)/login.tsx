@@ -17,7 +17,7 @@ import { LoginResponse } from "../response/LoginResponse";
 
 const Login = () => {
   // URL API backend
-  const API_BASE_URL = 'https://your-api-endpoint.com'; // Ganti dengan URL API Anda
+  const API_BASE_URL = 'http://192.168.100.45:8000'; // Ganti dengan URL API Anda
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -29,7 +29,7 @@ const Login = () => {
   const fetchUserData = async (token: string) => {
     try {
       const response = await ApiHelper.request<LoginResponse>(
-        `${API_BASE_URL}/getUserData`, // URL API`,
+        `${API_BASE_URL}/api/auth/getUserData`, // URL API`,
         "GET", // Method
         null, // Body (tidak diperlukan untuk GET)
         token // Token untuk authorization
@@ -56,7 +56,7 @@ const Login = () => {
       console.log('Data yang dikirim:', loginData); // Log data yang dikirim
   
       const response = await ApiHelper.request<LoginResponse>(
-        `${API_BASE_URL}/login`, // URL API,
+        `${API_BASE_URL}/api/auth/login`, // URL API,
         "POST", // Method
         loginData // Body
       );
