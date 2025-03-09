@@ -8,105 +8,223 @@ import {
   TouchableOpacity,
   Alert,
 } from "react-native";
-import Ionicons from "react-native-vector-icons/Ionicons";
-import images from "../../constants/images";
-import icons from "../../constants/icons";
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router"; // Import useRouter hook
+import AsyncStorage from "@react-native-async-storage/async-storage"; // Import AsyncStorage
+import images from "../../constants/images";
+import { ApiHelper } from '../helpers/ApiHelper';
+import { LoginResponse } from "../response/LoginResponse";
 
-const login = () => {
-  // State untuk email dan password
+const Login = () => {
+  // URL API backend
+  const API_BASE_URL = 'https://your-api-endpoint.com'; // Ganti dengan URL API Anda
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false); // State untuk toggle password
-  const router = useRouter(); // Initialize router hook
+  const [showPassword, setShowPassword] = useState(false);
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Fungsi untuk mengambil data pengguna setelah login berhasil
+  const fetchUserData = async (token: string) => {
+    try {
+      const response = await ApiHelper.request<LoginResponse>(
+        `${API_BASE_URL}/getUserData`, // URL API`,
+        "GET", // Method
+        null, // Body (tidak diperlukan untuk GET)
+        token // Token untuk authorization
+      );
+  
+      // Simpan data pengguna ke AsyncStorage
+      await AsyncStorage.setItem("userData", JSON.stringify(response.output_schema));
+      console.log('User data saved:', response.output_schema);
+    } catch (error) {
+      console.error('Failed to fetch user data:', error);
+      throw new Error('Failed to fetch user data');
+    }
+  };
 
   // Fungsi untuk menangani login
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!email || !password) {
-      // Menampilkan pesan jika email atau password belum diisi
       Alert.alert("Validation", "Please fill in both email and password");
       return;
     }
+  
+    try {
+      const loginData = { email, password };
+      console.log('Data yang dikirim:', loginData); // Log data yang dikirim
+  
+      const response = await ApiHelper.request<LoginResponse>(
+        `${API_BASE_URL}/login`, // URL API,
+        "POST", // Method
+        loginData // Body
+      );
+      console.log('Response dari API:', response); // Log response dari API
+  
+      // Validasi apakah login berhasil (cek access_token)
+      if (!response.output_schema?.access_token) {
+        const errorMessage = response.error_schema?.error_message || "Login failed. Please try again.";
+        Alert.alert("Login Failed", errorMessage);
+        return;
+      }
+  
+      // Simpan token ke AsyncStorage
+      await AsyncStorage.setItem("access_token", response.output_schema.access_token);
+  
+      // Simpan status login ke AsyncStorage
+      await AsyncStorage.setItem("isLoggedIn", "true");
+  
+      // Ambil data pengguna setelah login berhasil
+      await fetchUserData(response.output_schema.access_token);
+  
+      // Tampilkan pesan sukses
+      Alert.alert("Login Success", "You are logged in!");
+      router.push("/profile"); // Arahkan ke halaman profile setelah login berhasil
+    } catch (error: any) {
+      console.error('Login error:', error); // Log error
+      if (error.response) {
+        const errorMessage = error.response.error_schema?.error_message || "An error occurred during login";
+        Alert.alert("Login Failed", errorMessage);
+      } else {
+        const errorMessage = "Network error. Please check your internet connection.";
+        Alert.alert("Login Failed", errorMessage);
+      }
+    }
+  };
 
-    // Jika email dan password sudah terisi, lakukan navigasi ke Homepage
-    router.push("../(tabs)/profile.tsx"); // Use router.push() for navigation
+  const checkAsyncStorage = async () => {
+    const token = await AsyncStorage.getItem("access_token");
+    const userData = await AsyncStorage.getItem("userData");
+    console.log('Token:', token);
+    console.log('User Data:', userData);
+  };
+  
+  checkAsyncStorage();
+
+  // Fungsi untuk mengirim permintaan reset password
+  const handleResetPassword = async () => {
+    if (!email) {
+        Alert.alert('Error', 'Please enter your email address.');
+        return;
+    }
+
+    setIsLoading(true);
+
+    try {
+        // Data yang akan dikirim ke API
+        const resetData = { email };
+
+        // Panggil API reset password
+        const response: { success?: boolean; error?: string } = await ApiHelper.request(
+            `${API_BASE_URL}/getUserData`, // URL API resetPassword
+            'POST', // Method
+            resetData // Body
+        );
+
+        // Cek jika response valid
+        if (response?.success) {
+            Alert.alert('Success', 'Password reset link has been sent to your email.');
+            router.push('/login'); // Arahkan ke halaman login setelah berhasil
+        } else {
+            const errorMessage = response?.error || 'Failed to send reset password request.';
+            Alert.alert('Error', errorMessage);
+        }
+    } catch (error) {
+        console.error('Reset password error:', error);
+        Alert.alert('Error', 'An error occurred. Please try again later.');
+    } finally {
+        setIsLoading(false);
+    }
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.topContainer}>
-        <Text style={styles.topText}>
+    <View style={{ backgroundColor: "#FFFFFF", flex: 1, justifyContent: "center", alignItems: "center", paddingBottom: 20 }}>
+      <View style={{ marginRight: 20, paddingRight: 30, marginBottom: 60 }}>
+        <Text style={{ textAlign: "left", fontSize: 30, fontWeight: "bold" }}>
           Welcome Back! Glad{"\n"}to see you. Again!
         </Text>
       </View>
 
-      {/* Input Email */}
-      <View style={styles.inputContainerEmail}>
-        <TextInput
-          style={styles.textInput}
-          placeholder="Enter your email address"
-          value={email}
-          onChangeText={setEmail} // Update state ketika ada perubahan
-        />
+      <View style={{ marginBottom: 50, alignItems: 'center', width: '100%' }}>
+        {/* Email Input Field */}
+        <View style={{
+            flexDirection: 'row', alignItems: 'center', width: '85%', borderWidth: 1, borderColor: '#ddd',
+            backgroundColor: '#fff', borderRadius: 8, marginBottom: 20, paddingHorizontal: 10, elevation: 5
+        }}>
+            <TextInput
+                style={{ flex: 1, fontSize: 16, paddingVertical: 12, color: '#000' }}
+                placeholder="Enter your email address"
+                placeholderTextColor="#8A8A8A"
+                value={email}
+                onChangeText={setEmail}
+            />
+        </View>
+
+        {/* Password Input Field */}
+        <View style={{
+            flexDirection: 'row', alignItems: 'center', width: '85%', borderWidth: 1, borderColor: '#ddd',
+            backgroundColor: '#fff', borderRadius: 8, marginBottom: 10, paddingHorizontal: 10, elevation: 5
+        }}>
+            <TextInput
+                style={{ flex: 1, fontSize: 16, paddingVertical: 12, color: '#000' }}
+                placeholder="Enter your password"
+                placeholderTextColor="#8A8A8A"
+                secureTextEntry={!showPassword}
+                value={password}
+                onChangeText={setPassword}
+            />
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                <Ionicons
+                    name={showPassword ? "eye-outline" : "eye-off-outline"}
+                    size={24}
+                    color="#aaa"
+                />
+            </TouchableOpacity>
+        </View>
+
+        {/* Forgot Password Link */}
+        <Text style={{ left: 220, width: "78%", marginTop: 5 }} onPress={() => router.push("./register")}>
+          Forgot Password
+        </Text>
       </View>
 
-      {/* Input Password */}
-      <View style={styles.inputContainerPassword}>
-        <TextInput
-          style={[styles.textInput, { paddingRight: 30 }]} // Sesuaikan padding untuk ikon
-          placeholder="Enter your password"
-          value={password}
-          secureTextEntry={!showPassword}
-          onChangeText={setPassword}
-        />
-        {/* Toggle Icon */}
-        <TouchableOpacity
-          onPress={() => setShowPassword((prev) => !prev)} // Toggle visibilitas password
-        >
-          <Ionicons
-            name={showPassword ? "eye-outline" : "eye-off-outline"} // Ikon mata terbuka/tutup
-            size={24}
-            color="#aaa"
-          />
-        </TouchableOpacity>
-      </View>
-
-      <Text
-        style={styles.forgotText}
-        onPress={() => router.push("./register.tsx")}
-      >
-        Forgot Password
-      </Text>
-
-      {/* Tombol Login */}
+      {/* Login Button */}
       <TouchableOpacity
-        style={styles.loginButtonContainer}
-        onPress={handleLogin} // Menangani login
+        style={{ 
+          backgroundColor: "#E7E8EE", 
+          width: "70%", 
+          height: 60, 
+          justifyContent: "center", 
+          alignItems: "center", 
+          marginTop: 20, 
+          borderRadius: 10 
+        }}
+        onPress={handleLogin}
       >
-        <Text style={styles.loginText}>Login</Text>
+        <Text style={{ color: "#000000", fontSize: 18, textAlign: "center", fontWeight: "bold" }}>Login</Text>
       </TouchableOpacity>
 
-      {/* Or login with */}
-      <View style={styles.orLoginWithContainer}>
-        <View style={styles.line} />
-        <Text style={styles.orText}>Or Login with</Text>
-        <View style={styles.line} />
+      {/* Divider */}
+      <View style={{ flexDirection: "row", alignItems: "center", marginVertical: 20, width: "75%" }}>
+        <View style={{ flex: 1, height: 1, backgroundColor: "#EDEEF2" }} />
+        <Text style={{ color: "#ADB0BB", fontSize: 14, fontWeight: "bold", textAlign: "center" }}>Or Login with</Text>
+        <View style={{ flex: 1, height: 1, backgroundColor: "#EDEEF2" }} />
       </View>
 
-      <View style={styles.logoContainer}>
-        <Image source={images.google} style={styles.logo} />
-        <Image source={images.apple} style={styles.logo} />
-        <Image source={images.facebook} style={styles.logo} />
-        <Image source={images.twitter} style={styles.logo} />
+      {/* Social Login Icons */}
+      <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", marginBottom: 70 }}>
+        <Image source={images.google} style={{ width: 50, height: 50, resizeMode: "contain", marginHorizontal: 10, marginTop: 10 }} />
+        <Image source={images.apple} style={{ width: 50, height: 50, resizeMode: "contain", marginHorizontal: 10, marginTop: 10 }} />
+        <Image source={images.facebook} style={{ width: 50, height: 50, resizeMode: "contain", marginHorizontal: 10, marginTop: 10 }} />
+        <Image source={images.twitter} style={{ width: 50, height: 50, resizeMode: "contain", marginHorizontal: 10, marginTop: 10 }} />
       </View>
 
-      <View style={styles.bottomContainer}>
-        <Text style={styles.bottomText}>
+      {/* Register Link */}
+      <View style={{ marginTop: 5 }}>
+        <Text style={{ fontSize: 18, textAlign: "center" }}>
           Don't have an account?{" "}
-          <Text
-            style={styles.registerText}
-            onPress={() => router.push("./register.tsx")}
-          >
+          <Text style={{ color: "#2B4763", fontWeight: "bold" }} onPress={() => router.push("./register")}>
             Register
           </Text>
         </Text>
@@ -115,121 +233,4 @@ const login = () => {
   );
 };
 
-export default login;
-
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: "#FFFFFF",
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingTop: 80,
-  },
-  topContainer: {
-    marginTop: 0,
-    marginBottom: 80,
-  },
-  topText: {
-    textAlign: "left",
-    fontSize: 30,
-    fontWeight: "bold",
-  },
-  textInput: {
-    flex: 1,
-    paddingLeft: 10, // Pastikan ada jarak di sebelah kiri
-    fontSize: 16,
-    textAlign: "left",
-    textAlignVertical: "center", // Vertikal rata tengah (khusus Android)
-  },
-  inputContainerEmail: {
-    backgroundColor: "#ffff",
-    flexDirection: "row",
-    width: "85%",
-    height: 60,
-    borderRadius: 10,
-    elevation: 15,
-    marginHorizontal: 40,
-    marginBottom: 10,
-    alignItems: "center",
-  },
-  inputContainerPassword: {
-    backgroundColor: "#ffff",
-    flexDirection: "row",
-    width: "85%",
-    height: 60,
-    borderRadius: 10,
-    elevation: 15,
-    marginHorizontal: 40,
-    marginBottom: 10,
-    alignItems: "center",
-    paddingRight: 10, // Berikan ruang untuk ikon toggle
-  },
-  forgotText: {
-    textAlign: "right",
-    width: "78%",
-    marginTop: 5,
-  },
-  loginButtonContainer: {
-    backgroundColor: "#E7E8EE",
-    width: "70%",
-    height: 60,
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: 60,
-    borderRadius: 10,
-  },
-  loginText: {
-    color: "#000000",
-    fontSize: 18,
-    textAlign: "center",
-    fontWeight: "bold",
-  },
-
-  orLoginWithContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginVertical: 10, // Mengurangi margin untuk mendekatkan dengan logo container
-    width: "75%",
-  },
-  line: {
-    flex: 1,
-    height: 1,
-    backgroundColor: "#EDEEF2",
-    marginTop: 30,
-  },
-  orText: {
-    color: "#ADB0BB",
-    fontSize: 14,
-    fontWeight: "bold",
-    textAlign: "center",
-    marginHorizontal: 10,
-    marginTop: 30,
-  },
-
-  logoContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: 25, // Mengurangi margin untuk mendekatkan dengan orLoginWithContainer
-  },
-  logo: {
-    width: 50,
-    height: 50,
-    resizeMode: "contain",
-    marginHorizontal: 10,
-    marginTop: 10,
-  },
-  bottomContainer: {
-    flex: 1,
-    marginTop: 100,
-  },
-  bottomText: {
-    fontSize: 18,
-    textAlign: "center",
-    // marginTop: 100,
-  },
-  registerText: {
-    color: "#2B4763",
-    fontWeight: "bold",
-  },
-});
+export default Login;

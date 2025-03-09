@@ -2,10 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, FlatList, TouchableOpacity, Image } from 'react-native';
 import { FontAwesome, MaterialIcons } from '@expo/vector-icons';
 import { Pedometer } from "expo-sensors"; // Pastikan ini ada
+import { Accelerometer } from 'expo-sensors'; 
 import { useRouter } from "expo-router"; // Impor useRouter dari expo-router
 import images from '../../constants/images';
 import icons from "../../constants/icons";
+import { sub } from 'date-fns';
 
+const CALORIES_PER_STEP = 0.05;
 
 const initialNotifications = [
   { id: '1', text: 'Tantangan Notification #1' },
@@ -17,9 +20,13 @@ const initialNotifications = [
 const Challenge = () => {
 
   // go
-  const [steps, setSteps] = useState(10000); // Initial steps
-  const goal = 10000;
+  const [steps, setSteps] = useState(0); // Initial steps
+  const [isCounting, setIsCounting] = useState(false);
+  const [lastY, setLastY] = useState(0);
+  const [lastTimestamp, setLastTimestamp] = useState(0);
 
+  const goal = 10000;
+ 
   // Navigasi ke halaman reward menggunakan Expo Router
   // const router = useRouter(); // Unused variable
 
@@ -47,18 +54,63 @@ const Challenge = () => {
 
   const progressStage = getProgressStage();
 
+  useEffect (() => {
+    let subscription;
+    Accelerometer.isAvailableAsync().then((result) => {
+      if (result) {
+        subscription = Accelerometer.addListener((accelerometerData) => {
+          const {y} = accelerometerData;
+          const treshold = 0.1;
+          const timeStamp = new Date().getTime();
+          
+          if (
+            Math.abs(y - lastY) > treshold &&
+            !isCounting &&
+            (timeStamp - lastTimestamp > 800)
+          ){
+            setIsCounting(true);
+            setLastY(y);
+            setLastTimestamp(timeStamp);
+
+            setSteps((prevSteps) => prevSteps + 1);
+
+            setTimeout(() => {
+              setIsCounting(false);
+            }, 1200)
+          }
+        });
+      }else {
+        console.log('Accelerometer is not available on this device');
+      }
+    });
+
+    return () => {
+      if(subscription) {
+        subscription.remove();
+      }
+    };
+  }, [isCounting, lastY, lastTimestamp]);
+
+  const resetSteps = () => {
+    setSteps(0);
+  };
+
+  const estimatedCaloriesBurned = steps * CALORIES_PER_STEP;
+
+
+
   // Memulai penghitungan langkah
-  useEffect(() => {
-    Pedometer.isAvailableAsync()
-      .then((result) => {
-        if (result) {
-          Pedometer.watchStepCount((result: { steps: number }) => {
-            setSteps(result.steps);
-          });
-        }
-      })
-      .catch((error) => console.log("Pedometer is not available", error));
-  }, []);
+  // useEffect(() => {
+  //   Pedometer.isAvailableAsync()
+  //     .then((result) => {
+  //       if (result) {
+  //         Pedometer.watchStepCount((result: { steps: number }) => {
+  //           setSteps(result.steps);
+  //         });
+  //       }
+  //     })
+  //     .catch((error) => console.log("Pedometer is not available", error));
+  // }, []);
 
   // Menentukan gambar dan kata-kata yang akan ditampilkan berdasarkan tahap
   let monsterImage;
@@ -136,9 +188,8 @@ const Challenge = () => {
 
   const userName = "Nikita";
 
-
   const RewardPage = () => (
-    <View style={{ flex: 1, padding: 10, backgroundColor: "#f5f5f5" }}>
+    <View style={{ flex: 1, padding: 10, backgroundColor: "#ffff" }}> 
       {/* Tanggal dan Notifikasi */}
       <View
         style={{
@@ -336,7 +387,9 @@ const Challenge = () => {
               Calories
             </Text>
           </View>
-          <Text style={{ fontSize: 18, fontWeight: "bold", color: "#000" }}>6</Text>
+          <Text style={{ fontSize: 18, fontWeight: "bold", color: "#000" }}>
+            {estimatedCaloriesBurned.toFixed(2)}
+          </Text>
           <Text style={{ fontSize: 12, color: "#666" }}>/200Kcal</Text>
         </View>
         <View style={{ alignItems: "center" }}>

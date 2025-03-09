@@ -24,15 +24,17 @@ class SessionController extends Controller{
         ];
 
         if(Auth::attempt($login_info) && Auth::user()->role === 'admin'){
-            $user = Auth::user(); 
-            session(['user_name' => $user->name]);
-            return redirect('/admin/challenges')->with('success', 'Login success');
-        }return redirect('/session')->withErrors('Invalid email or password');
+            $user = user::where('id', Auth::user()->id)->first();;
+            $user->last_login = date('Y-m-d H:i:s');
+            $user->save();
+
+            return redirect()->route('challenges.index')->with('success', 'Login success');
+        }return redirect()->route('session.index')->withErrors('Invalid email or password');
     }
 
     function logout(){
         Session::forget('user_name');
         Auth::logout();
-        return redirect('/session')->with('success', 'Logout success');
+        return redirect()->route('session.index')->with('success', 'Logout success');
     }
 }
