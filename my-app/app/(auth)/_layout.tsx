@@ -6,15 +6,15 @@ const AuthLayout = () => {
     <Stack>
     <Stack.Screen
       name="index" // Halaman Welcome akan menjadi halaman pertama yang ditampilkan
-      options={{ title: "Welcome", headerShown: true  }} // Sembunyikan header jadiin false aja
+      options={{ title: "Welcome", headerShown: false  }} // Sembunyikan header jadiin false aja
     />
     <Stack.Screen
       name="login" // Halaman Login
-      options={{ title: "Login", headerShown: true  }} // Sembunyikan header jadiin false aja
+      options={{ title: "Login", headerShown: false  }} // Sembunyikan header jadiin false aja
     />
       <Stack.Screen
         name="register"
-        options={{ title: "Register", headerShown: true }} // Sembunyikan header jadiin false aja
+        options={{ title: "Register", headerShown: false }} // Sembunyikan header jadiin false aja
       />
     </Stack>
   );
