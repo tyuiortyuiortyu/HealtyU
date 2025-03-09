@@ -21,7 +21,7 @@ import {
   differenceInDays,
   isValid,
   isAfter,
-  isSameDay,
+  isSameDay
 } from 'date-fns';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiHelper } from '../helpers/ApiHelper';
@@ -48,7 +48,6 @@ const Cycle = () => {
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isLoggedIn, setIsLoggedIn] = useState(false); // Track login status
 
   const painAnims = useState(Array(5).fill(null).map(() => new Animated.Value(0)))[0];
   const bleedingAnims = useState(Array(5).fill(null).map(() => new Animated.Value(0)))[0];
@@ -79,23 +78,9 @@ const Cycle = () => {
 
   useEffect(() => {
     const loadCycleData = async () => {
-      if (!isLoggedIn) { 
-        setIsLoading(false);
-        return; 
-      }
       try {
         const isGuest = await AsyncStorage.getItem('isGuest');
         if (isGuest === 'true') {
-          // Set default guest data if no stored data exists
-          setPeriodStartDate(null); 
-          setCycleLength(28);
-          setPeriodDays(4);
-          setSelectedCycleLength(28);
-          setSelectedPeriodDays(4);
-          setPainLevel(Array(5).fill(false));
-          setBleedingLevel(Array(5).fill(false));
-          setMoodLevel(Array(5).fill(false));
-
           const guestData = await AsyncStorage.getItem('guest_cycle_data');
           if (guestData) {
             const data = JSON.parse(guestData);
@@ -129,22 +114,16 @@ const Cycle = () => {
         setIsLoading(false);
       } catch (error) {
         console.error('Failed to load cycle data:', error);
-        setError(error instanceof Error ? error.message : 'Failed to load data.');
-        Alert.alert('Error', error instanceof Error ? error.message : 'Failed to load data.'); // Show error
-      } finally {
+        if (error instanceof Error) {
+          setError(error.message);
+        } else {
+          setError('An unknown error occurred');
+        }
         setIsLoading(false);
       }
     };
 
     loadCycleData();
-  }, []);
-
-  useEffect(() => {  // Initial login status check
-    const checkLoginStatus = async () => {
-      const accessToken = await AsyncStorage.getItem('access_token');
-      setIsLoggedIn(!!accessToken);
-    };
-    checkLoginStatus();
   }, []);
 
   const saveCycleData = async (data: any) => {
@@ -178,22 +157,10 @@ const Cycle = () => {
       };
 
       const endpoint = periodStartDate ? `${API_CYCLE_URL}/update` : API_CYCLE_URL;
-      const response = await ApiHelper.request(endpoint, periodStartDate ? 'GET' : 'POST', payload, accessToken) as Response;
-
-      // Example error handling from API response
-      if (!response.ok) {
-        const errorData = await response.json();  // Get error details
-        console.error("API Error:", errorData);
-        throw new Error(errorData?.message || response.statusText || "API request failed");
-      }
-      
-      // Data saved successfully
-      // Update local state or show success message, etc.
-      console.log("Data saved successfully");
-
+      await ApiHelper.request(endpoint, periodStartDate ? 'GET' : 'POST', payload, accessToken);
     } catch (error) {
-      console.error("Save cycle data error:", error);
-      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to save data.'); // Show specific error
+      console.error('Failed to save cycle data:', error);
+      Alert.alert('Error', 'Failed to save cycle data');
     }
   };
 
