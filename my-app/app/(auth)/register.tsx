@@ -117,7 +117,7 @@ const RegisterScreen = () => {
     };
 
     // Validasi email
-    const validateEmail = (email) => {
+    const validateEmail = (email: string) => {
         const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         return regex.test(email);
     };
@@ -136,7 +136,7 @@ const RegisterScreen = () => {
     }, [password]);
 
     // Render item validasi password
-    const renderValidationItem = (condition, text) => (
+    const renderValidationItem = (condition: boolean, text: string) => (
         <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 2, width: '50%' }}>
             <Ionicons
                 name={condition ? "checkmark-circle" : "ellipse-outline"}
