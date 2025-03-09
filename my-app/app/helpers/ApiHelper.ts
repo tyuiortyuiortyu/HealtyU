@@ -51,7 +51,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export class ApiHelper {
+class ApiHelper {
     static async request<T>(
         url: string,
         method: "GET" | "POST" | "PUT",
@@ -142,3 +142,4 @@ export class ApiHelper {
         }
     }
 }
+export default ApiHelper;

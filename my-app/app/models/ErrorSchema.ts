@@ -14,7 +14,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export class OutputSchema {
+class OutputSchema {
     output_code: string;
     output_message: string;
     additional_message: string;
@@ -88,3 +88,4 @@ ErrorSchema.getFromStorage().then((storedError) => {
         console.log("Retrieved error from AsyncStorage:", storedError.toJSON());
     }
 });
+export default OutputSchema;

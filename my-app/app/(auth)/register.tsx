@@ -2,8 +2,8 @@ import { Text, View, Alert, TextInput, TouchableOpacity, Image, ActivityIndicato
 import React, { useState, useEffect } from 'react';
 import images from '../../constants/images';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { ApiHelper } from '../helpers/ApiHelper';
-import { RegisterResponse } from '../response/RegisterResponse';
+import ApiHelper from '../helpers/ApiHelper';
+import RegisterResponse from '../response/RegisterResponse';
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 

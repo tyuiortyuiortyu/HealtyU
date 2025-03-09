@@ -22,7 +22,7 @@
 
 import { ErrorSchema } from '../models/ErrorSchema';
 
-export class RegisterResponse {
+class RegisterResponse {
     error_schema: ErrorSchema;
     output_schema: {
         access_token: string;
@@ -48,4 +48,4 @@ export class RegisterResponse {
         this.output_schema = output_schema;
     }
 }
-
+export default RegisterResponse;

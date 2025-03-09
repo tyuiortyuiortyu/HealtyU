@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export class AuthUtil {
+class AuthUtil {
     // Cek apakah user sudah login
     static async checkIsLoggedIn(): Promise<boolean> {
         const token = await AsyncStorage.getItem("access_token");
@@ -119,3 +119,4 @@ export class AuthUtil {
         // Redirect ke halaman login atau lakukan tindakan lain
     }
 }
+export default AuthUtil;

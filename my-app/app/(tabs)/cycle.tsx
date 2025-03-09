@@ -24,9 +24,9 @@ import {
   isSameDay
 } from 'date-fns';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ApiHelper } from '../helpers/ApiHelper';
+import ApiHelper from '../helpers/ApiHelper';
 
-const API_CYCLE_URL = 'http://127.0.0.1:8000/api/cycles';
+const API_CYCLE_URL = 'http://10.0.2.2:8000/api/cycles';
 
 const Cycle = () => {
   const today = new Date();
@@ -267,13 +267,13 @@ const Cycle = () => {
   const getPredictedPeriodDates = (startDate: Date | null) => {
     if (!startDate) return [];
     const nextPeriodStart = addDays(startDate, cycleLength);
-    const predictedDates = getPeriodDates({ startDate: nextPeriodStart, periodDays });
+    const predictedDates = getPeriodDates(nextPeriodStart);
     return predictedDates;
   };
 
-  const periodDates = periodStartDate ? getPeriodDates({ startDate: periodStartDate, periodDays }) : [];
-  const fertileDates = periodStartDate ? getFertileDates({ startDate: periodStartDate }) : [];
-  const predictedPeriodDates = periodStartDate ? getPredictedPeriodDates({ startDate: periodStartDate }) : [];
+  const periodDates = periodStartDate ? getPeriodDates(periodStartDate) : [];
+  const fertileDates = periodStartDate ? getFertileDates(periodStartDate) : [];
+  const predictedPeriodDates = periodStartDate ? getPredictedPeriodDates(periodStartDate) : [];
 
   const generateWeekDates = (date: Date) => {
     const startDate = startOfWeek(date, { weekStartsOn: 1 });
@@ -285,8 +285,8 @@ const Cycle = () => {
     return Array.from({ length: 42 }, (_, index) => addDays(startDate, index));
   };
 
-  const weekDates = generateWeekDates({ date: today });
-  const monthDates = generateMonthDates({ date: currentMonth });
+  const weekDates = generateWeekDates(today);
+  const monthDates = generateMonthDates(currentMonth);
 
   const getCyclePhase = () => {
     if (!periodStartDate) return { phase: 'Not set', day: null };
@@ -448,7 +448,7 @@ const Cycle = () => {
           backgroundColor: '#FFC0CB',
         },
       ]}
-      onPress={() => handleSelectCycleLengthOption({ newLength: item })}
+      onPress={() => handleSelectCycleLengthOption(item)}
     >
       <Text style={{ textAlign: 'center' }}>{item}</Text>
     </TouchableOpacity>
@@ -467,7 +467,7 @@ const Cycle = () => {
           backgroundColor: '#FFC0CB',
         },
       ]}
-      onPress={() => handleSelectPeriodDaysOption({ newDays: item })}
+      onPress={() => handleSelectPeriodDaysOption(item)}
     >
       <Text style={{ textAlign: 'center' }}>{item}</Text>
     </TouchableOpacity>
@@ -646,7 +646,7 @@ const Cycle = () => {
               <Text style={{ fontSize: 36, fontWeight: 'semibold', textAlign: 'center', marginBottom: 5 }}>{phase}:</Text>
               {day !== null && <Text style={{ fontSize: 18, textAlign: 'center', color: '#666' }}>{`Day ${day}`}</Text>}
               <View style={{ marginTop: 15, backgroundColor: '#ffe6e6', padding: 10, borderRadius: 20, maxWidth: 200, alignItems: 'center' }}>
-                <Text style={{ fontSize: 16, textAlign: 'center' }}>{getRecommendation({ phase })}</Text>
+                <Text style={{ fontSize: 16, textAlign: 'center' }}>{getRecommendation(phase)}</Text>
               </View>
             </View>
             <View style={{ padding: 10, backgroundColor: '#ffe6e6', borderRadius: 20, maxWidth: 350, marginTop: 10 }}>
