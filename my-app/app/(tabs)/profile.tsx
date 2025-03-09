@@ -202,7 +202,7 @@ const Profile = () => {
       
       await AsyncStorage.setItem('profile_data', JSON.stringify(updatedProfileData));
 
-      setProfileData(updatedProfileData);
+      setProfileData(updatedProfileData); // Perbarui state profileData
       setEditing(false);
       setShowHalloPage(false);
       setIsLoading(false);
@@ -248,28 +248,32 @@ const Profile = () => {
     inputHeight &&
     inputWeight;
 
-  const handleSave = () => {
-    if (isFormValid) {
-      setProfileData({
-        username: inputUsername,
-        name: inputName,
-        email: inputEmail,
-        dob: inputDob.toISOString().split('T')[0],
-        gender: inputGender,
-        height: `${inputHeight} cm`,
-        weight: `${inputWeight} kg`,
-      });
 
-      if (profileImage) {
-        setProfileImage(profileImage);
-      }
 
-      setEditing(false);
-      setShowHalloPage(false);
-    } else {
-      Alert.alert('Error', 'Please fill out all fields before continuing');
-    }
-  };
+    const handleSave = () => {
+        if (hasChanges()) {
+          setProfileData({
+            username: inputUsername,
+            name: inputName,
+            email: inputEmail,
+            dob: inputDob ? inputDob.toISOString().split('T')[0] : '',
+            gender: inputGender,
+            height: parseFloat(inputHeight),
+            weight: parseFloat(inputWeight),
+            profile_picture: profileImage,
+          });
+      
+          if (profileImage) {
+            setProfileImage(profileImage);
+          }
+      
+          saveProfileData(); // Panggil fungsi untuk menyimpan data ke API
+          setEditing(false);
+          setShowHalloPage(false);
+        } else {
+          Alert.alert('Info', 'No changes detected.');
+        }
+      };
 
   const onChangeDate = (event: any, selectedDate: Date | undefined) => {
     const currentDate = selectedDate || inputDob;
@@ -299,6 +303,19 @@ const Profile = () => {
 
   const handleCancel = () => {
     setLeaveModalVisible(true);
+  };
+
+  const hasChanges = () => {
+    return (
+      inputUsername !== profileData.username ||
+      inputName !== profileData.name ||
+      inputEmail !== profileData.email ||
+      (inputDob ? inputDob.toISOString().split('T')[0] : '') !== profileData.dob ||
+      inputGender !== profileData.gender ||
+      inputHeight !== profileData.height.toString() ||
+      inputWeight !== profileData.weight.toString() ||
+      profileImage !== profileData.profile_picture
+    );
   };
 
   // Fungsi untuk logout
@@ -600,6 +617,7 @@ const Profile = () => {
             marginBottom: 30,
           }}
           onPress={handleSave}
+          disabled={!hasChanges()} // Nonaktifkan tombol jika tidak ada perubahan
         >
           <Text style={{ fontSize: 18, color: isFormValid ? 'white' : '#666', fontWeight: 'bold' }}>
             Save
