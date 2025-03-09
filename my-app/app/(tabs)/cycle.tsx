@@ -81,6 +81,16 @@ const Cycle = () => {
       try {
         const isGuest = await AsyncStorage.getItem('isGuest');
         if (isGuest === 'true') {
+          // Set default guest data if no stored data exists
+          setPeriodStartDate(null); 
+          setCycleLength(28);
+          setPeriodDays(4);
+          setSelectedCycleLength(28);
+          setSelectedPeriodDays(4);
+          setPainLevel(Array(5).fill(false));
+          setBleedingLevel(Array(5).fill(false));
+          setMoodLevel(Array(5).fill(false));
+          
           const guestData = await AsyncStorage.getItem('guest_cycle_data');
           if (guestData) {
             const data = JSON.parse(guestData);
@@ -233,13 +243,8 @@ const Cycle = () => {
     );
   }
 
-  interface PeriodDatesProps {
-    startDate: Date | null;
-    periodDays: number;
-  }
-
-  const getPeriodDates = ({ startDate, periodDays }: PeriodDatesProps): Date[] => {
-    const dates: Date[] = [];
+  const getPeriodDates = (startDate: Date | null) => {
+    const dates = [];
     if (startDate) {
       for (let i = 0; i < periodDays; i++) {
         dates.push(addDays(startDate, i));
@@ -248,11 +253,7 @@ const Cycle = () => {
     return dates;
   };
 
-  interface FertileDatesProps {
-    startDate: Date | null;
-  }
-
-  const getFertileDates = ({ startDate }: FertileDatesProps): Date[] => {
+  const getFertileDates = (startDate: Date | null) => {
     if (!startDate) return [];
     const ovulationDate = addDays(startDate, cycleLength - 14);
     return [
@@ -263,11 +264,7 @@ const Cycle = () => {
     ];
   };
 
-  interface PredictedPeriodDatesProps {
-    startDate: Date | null;
-  }
-
-  const getPredictedPeriodDates = ({ startDate }: PredictedPeriodDatesProps): Date[] => {
+  const getPredictedPeriodDates = (startDate: Date | null) => {
     if (!startDate) return [];
     const nextPeriodStart = addDays(startDate, cycleLength);
     const predictedDates = getPeriodDates({ startDate: nextPeriodStart, periodDays });
@@ -278,20 +275,12 @@ const Cycle = () => {
   const fertileDates = periodStartDate ? getFertileDates({ startDate: periodStartDate }) : [];
   const predictedPeriodDates = periodStartDate ? getPredictedPeriodDates({ startDate: periodStartDate }) : [];
 
-  interface GenerateWeekDatesProps {
-    date: Date;
-  }
-
-  const generateWeekDates = ({ date }: GenerateWeekDatesProps): Date[] => {
+  const generateWeekDates = (date: Date) => {
     const startDate = startOfWeek(date, { weekStartsOn: 1 });
     return Array.from({ length: 7 }, (_, index) => addDays(startDate, index));
   };
 
-  interface GenerateMonthDatesProps {
-    date: Date;
-  }
-
-  const generateMonthDates = ({ date }: GenerateMonthDatesProps): Date[] => {
+  const generateMonthDates = (date: Date) => {
     const startDate = startOfWeek(new Date(date.getFullYear(), date.getMonth(), 1), { weekStartsOn: 1 });
     return Array.from({ length: 42 }, (_, index) => addDays(startDate, index));
   };
@@ -369,11 +358,7 @@ const Cycle = () => {
 
   const { phase, day } = getCyclePhase();
 
-  interface RecommendationProps {
-    phase: string;
-  }
-
-  const getRecommendation = ({ phase }: RecommendationProps): string => {
+  const getRecommendation = (phase: string) => {
     switch (phase) {
       case 'Period':
         return 'Drink Herbal Tea For Cramps';
@@ -413,24 +398,40 @@ const Cycle = () => {
     return 'Good Evening';
   };
 
-  const userName = 'Nikita';
+  const [userName, setUserName] = useState('');
+
+  // Tambahkan useEffect untuk load username
+  useEffect(() => {
+    const loadUserName = async () => {
+      try {
+        const isGuest = await AsyncStorage.getItem('isGuest');
+        if (isGuest === 'true') {
+          setUserName('Guest');
+          return;
+        }
+
+        const profileData = await AsyncStorage.getItem('profile_data');
+        if (profileData) {
+          const parsedData = JSON.parse(profileData);
+          setUserName(parsedData.name || 'User');
+        }
+      } catch (error) {
+        console.error('Failed to load user name:', error);
+        setUserName('User');
+      }
+    };
+
+    loadUserName();
+  }, []);
 
   const cycleOptions = Array.from({ length: 60 }, (_, i) => 1 + i);
   const periodOptions = Array.from({ length: 60 }, (_, i) => 1 + i);
 
-  interface CycleLengthOptionProps {
-    newLength: number;
-  }
-
-  const handleSelectCycleLengthOption = ({ newLength }: CycleLengthOptionProps) => {
+  const handleSelectCycleLengthOption = (newLength: number) => {
     setSelectedCycleLength(newLength);
   };
 
-  interface PeriodDaysOptionProps {
-    newDays: number;
-  }
-
-  const handleSelectPeriodDaysOption = ({ newDays }: PeriodDaysOptionProps) => {
+  const handleSelectPeriodDaysOption = (newDays: number) => {
     setSelectedPeriodDays(newDays);
   };
 
@@ -595,7 +596,7 @@ const Cycle = () => {
     );
   };
 
-  const keyExtractor = (item: Date): string => item.toISOString();
+  const keyExtractor = (item: Date) => item.toISOString();
 
   return (
     <ScrollView style={{ flex: 1}}>
