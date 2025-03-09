@@ -287,14 +287,27 @@ const Profile = () => {
   // Fungsi untuk logout
   const handleLogout = async () => {
     try {
-      await AsyncStorage.removeItem('isGuest'); // Hapus status guest
-      await AsyncStorage.removeItem('profile_data'); // Hapus data profil
-      router.push('/login'); // Navigasi ke halaman login
+      const accessToken = await AsyncStorage.getItem('access_token');
+
+      if (accessToken) {
+        // Panggil API logout untuk menonaktifkan token
+        await ApiHelper.logout(accessToken);
+      }
+  
+      // Hapus data dari AsyncStorage
+      await AsyncStorage.removeItem('isGuest');
+      await AsyncStorage.removeItem('profile_data');
+      await AsyncStorage.removeItem('access_token');
+  
+      // Navigasi ke halaman login
+      router.push('/login');
     } catch (error) {
       console.error('Error during logout:', error);
       Alert.alert('Error', 'Failed to logout. Please try again.');
     }
   };
+
+
 
   const pickImage = async () => {
     try {
@@ -357,6 +370,12 @@ const Profile = () => {
             ) : (
                 <Text style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>{profileData.email}</Text>
             )}
+
+            {/* Tombol edit
+            <TouchableOpacity onPress={() => setEditing(true)}>
+                <Text style={{ color: '#2B4763', fontSize: 16, marginTop: 10 }}>Edit Profile</Text>
+            </TouchableOpacity> */}
+
         </View>
 
         <View style={{ alignItems: 'flex-start' }}>

@@ -86,9 +86,9 @@ const Login = () => {
       Alert.alert('Error', 'Please enter your email address.');
       return;
     }
-
+  
     setIsLoading(true);
-
+  
     try {
       const resetData = { email };
       const response: { success?: boolean; error?: string } = await ApiHelper.request(
@@ -96,10 +96,21 @@ const Login = () => {
         'POST',
         resetData
       );
-
+  
       if (response?.success) {
-        Alert.alert('Success', 'Password reset link has been sent to your email.');
-        setShowForgotPassword(false);
+        Alert.alert(
+          'Success',
+          'Password reset link has been sent to your email.',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                setShowForgotPassword(false); // Sembunyikan form forgot password
+                router.push("/login"); // Arahkan kembali ke halaman login
+              },
+            },
+          ]
+        );
       } else {
         const errorMessage = response?.error || 'Failed to send reset password request.';
         Alert.alert('Error', errorMessage);
