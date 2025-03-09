@@ -46,7 +46,7 @@ const Login = () => {
       Alert.alert("Validation", "Please fill in both email and password");
       return;
     }
-
+  
     try {
       const loginData = { email, password };
       const response = await ApiHelper.request<LoginResponse>(
@@ -54,17 +54,19 @@ const Login = () => {
         "POST",
         loginData
       );
-
+  
       if (!response.output_schema?.access_token) {
         const errorMessage = response.error_schema?.error_message || "Login failed. Please try again.";
         Alert.alert("Login Failed", errorMessage);
         return;
       }
-
+  
+      // Simpan token dan data pengguna ke AsyncStorage
       await AsyncStorage.setItem("access_token", response.output_schema.access_token);
       await AsyncStorage.setItem("isLoggedIn", "true");
-      await fetchUserData(response.output_schema.access_token);
-
+      await AsyncStorage.setItem("userData", JSON.stringify(response.output_schema));
+  
+      // Tampilkan pesan sukses dan arahkan ke halaman profile
       Alert.alert("Login Success", "You are logged in!");
       router.push("/profile");
     } catch (error: any) {
@@ -84,9 +86,9 @@ const Login = () => {
       Alert.alert('Error', 'Please enter your email address.');
       return;
     }
-
+  
     setIsLoading(true);
-
+  
     try {
       const resetData = { email };
       const response: { success?: boolean; error?: string } = await ApiHelper.request(
@@ -94,10 +96,21 @@ const Login = () => {
         'POST',
         resetData
       );
-
+  
       if (response?.success) {
-        Alert.alert('Success', 'Password reset link has been sent to your email.');
-        setShowForgotPassword(false);
+        Alert.alert(
+          'Success',
+          'Password reset link has been sent to your email.',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                setShowForgotPassword(false); // Sembunyikan form forgot password
+                router.push("/login"); // Arahkan kembali ke halaman login
+              },
+            },
+          ]
+        );
       } else {
         const errorMessage = response?.error || 'Failed to send reset password request.';
         Alert.alert('Error', errorMessage);

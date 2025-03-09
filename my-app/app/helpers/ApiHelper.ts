@@ -57,7 +57,7 @@ export class ApiHelper {
         method: "GET" | "POST",
         model?: any,
         accessToken?: string,
-        isMultipart: boolean = false // Tambahkan parameter untuk multipart/form-data
+        isMultipart: boolean = false
     ): Promise<T> {
         try {
             const headers: Record<string, string> = {};
@@ -108,6 +108,36 @@ export class ApiHelper {
                 throw new Error(error.message || "API request failed");
             } else {
                 throw new Error("API request failed");
+            }
+        }
+    }
+
+    // Tambahkan fungsi logout
+    static async logout(): Promise<void> {
+        try {
+            const accessToken = await AsyncStorage.getItem("access_token");
+
+            if (!accessToken) {
+                throw new Error("No access token found");
+            }
+
+            // Kirim permintaan logout ke backend
+            await this.request<void>(
+                "http://192.168.100.45:800/api/auth/logout", // http://192.168.100.45:800/api/auth/logout
+                "POST",
+                undefined, // Tidak perlu body untuk logout
+                accessToken
+            );
+
+            // Hapus token dari AsyncStorage setelah logout berhasil
+            await AsyncStorage.removeItem("access_token");
+            await AsyncStorage.removeItem("isGuest");
+            await AsyncStorage.removeItem("profile_data");
+        } catch (error) {
+            if (error instanceof Error) {
+                throw new Error(error.message || "Logout failed");
+            } else {
+                throw new Error("Logout failed");
             }
         }
     }
