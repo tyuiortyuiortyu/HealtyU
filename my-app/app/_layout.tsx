@@ -27,6 +27,7 @@ const RootLayout = () => {
       ExpoSplashScreen.hideAsync();
     }, 4000); // Durasi SplashScreen, sesuaikan dengan kebutuhan
   }, []);
+  
 
   if (isSplashVisible) {
     return <Splash />;

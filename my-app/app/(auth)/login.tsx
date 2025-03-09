@@ -8,143 +8,269 @@ import {
   TouchableOpacity,
   Alert,
 } from "react-native";
-import Ionicons from "react-native-vector-icons/Ionicons";
-import images from "../../constants/images";
-import axios from "axios";
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import images from "../../constants/images";
+import { ApiHelper } from '../helpers/ApiHelper';
+import { LoginResponse } from "../response/LoginResponse";
 
-const login = () => {
+const Login = () => {
+  const API_BASE_URL = 'https://your-api-endpoint.com';
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+
+  const fetchUserData = async (token: string) => {
+    try {
+      const response = await ApiHelper.request<LoginResponse>(
+        `${API_BASE_URL}/getUserData`,
+        "GET",
+        null,
+        token
+      );
+      await AsyncStorage.setItem("userData", JSON.stringify(response.output_schema));
+      console.log('User data saved:', response.output_schema);
+    } catch (error) {
+      console.error('Failed to fetch user data:', error);
+      throw new Error('Failed to fetch user data');
+    }
+  };
 
   const handleLogin = async () => {
     if (!email || !password) {
       Alert.alert("Validation", "Please fill in both email and password");
       return;
     }
-
+  
     try {
-      const response = await axios.post("http://10.68.99.124:8000/api/auth/login", {
-        email,
-        password,
-      },
-      
-      {headers: {
-          "Content-Type": "application/json",
-        },
+      const loginData = { email, password };
+      const response = await ApiHelper.request<LoginResponse>(
+        `${API_BASE_URL}/login`,
+        "POST",
+        loginData
+      );
+  
+      if (!response.output_schema?.access_token) {
+        const errorMessage = response.error_schema?.error_message || "Login failed. Please try again.";
+        Alert.alert("Login Failed", errorMessage);
+        return;
       }
-    );
-
-      console.log("Response:", response.data); // Cek response dari server
-
-      const token = response.data.token;
-      console.log("JWT Token:", token);
+  
+      // Simpan token dan data pengguna ke AsyncStorage
+      await AsyncStorage.setItem("access_token", response.output_schema.access_token);
+      await AsyncStorage.setItem("isLoggedIn", "true");
+      await AsyncStorage.setItem("userData", JSON.stringify(response.output_schema));
+  
+      // Tampilkan pesan sukses dan arahkan ke halaman profile
       Alert.alert("Login Success", "You are logged in!");
+      router.push("/profile");
+    } catch (error: any) {
+      console.error('Login error:', error);
+      if (error.response) {
+        const errorMessage = error.response.error_schema?.error_message || "An error occurred during login";
+        Alert.alert("Login Failed", errorMessage);
+      } else {
+        const errorMessage = "Network error. Please check your internet connection.";
+        Alert.alert("Login Failed", errorMessage);
+      }
+    }
+  };
 
-      // Simpan token ke AsyncStorage jika ingin session tetap aktif
-      // await AsyncStorage.setItem("jwt_token", token);
-
-      router.push("../(tabs)/profile.tsx");
+  const handleResetPassword = async () => {
+    if (!email) {
+      Alert.alert('Error', 'Please enter your email address.');
+      return;
+    }
+  
+    setIsLoading(true);
+  
+    try {
+      const resetData = { email };
+      const response: { success?: boolean; error?: string } = await ApiHelper.request(
+        `${API_BASE_URL}/resetPassword`,
+        'POST',
+        resetData
+      );
+  
+      if (response?.success) {
+        Alert.alert(
+          'Success',
+          'Password reset link has been sent to your email.',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                setShowForgotPassword(false); // Sembunyikan form forgot password
+                router.push("/login"); // Arahkan kembali ke halaman login
+              },
+            },
+          ]
+        );
+      } else {
+        const errorMessage = response?.error || 'Failed to send reset password request.';
+        Alert.alert('Error', errorMessage);
+      }
     } catch (error) {
-      Alert.alert("Login Failed", error.response?.data?.message || "An error occurred");
+      console.error('Reset password error:', error);
+      Alert.alert('Error', 'An error occurred. Please try again later.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.topContainer}>
-        <Text style={styles.topText}>Welcome Back! Glad{"\n"}to see you. Again!</Text>
-      </View>
-      
-      <View style={styles.inputContainerEmail}>
-        <TextInput
-          style={styles.textInput}
-          placeholder="Enter your email address"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-      </View>
+    <View style={{ backgroundColor: "#FFFFFF", flex: 1, justifyContent: "center", alignItems: "center", paddingBottom: 20 }}>
+      {/* Welcome Back Text */}
+      {!showForgotPassword && (
+        <View style={{ marginRight: 20, paddingRight: 30, marginBottom: 60 }}>
+          <Text style={{ textAlign: "left", fontSize: 30, fontWeight: "bold" }}>
+            Welcome Back! Glad{"\n"}to see you. Again!
+          </Text>
+        </View>
+      )}
 
-      <View style={styles.inputContainerPassword}>
-        <TextInput
-          style={[styles.textInput, { paddingRight: 30 }]}
-          placeholder="Enter your password"
-          value={password}
-          secureTextEntry={!showPassword}
-          onChangeText={setPassword}
-        />
-        <TouchableOpacity onPress={() => setShowPassword((prev) => !prev)}>
-          <Ionicons name={showPassword ? "eye-outline" : "eye-off-outline"} size={24} color="#aaa" />
-        </TouchableOpacity>
-      </View>
+      <View style={{ marginBottom: 50, alignItems: 'center', width: '100%' }}>
+        {/* Email and Password Input Fields */}
+        {!showForgotPassword && (
+          <>
+            <View style={{
+                flexDirection: 'row', alignItems: 'center', width: '85%', borderWidth: 1, borderColor: '#ddd',
+                backgroundColor: '#fff', borderRadius: 8, marginBottom: 20, paddingHorizontal: 10, elevation: 5
+            }}>
+                <TextInput
+                    style={{ flex: 1, fontSize: 16, paddingVertical: 12, color: '#000' }}
+                    placeholder="Enter your email address"
+                    placeholderTextColor="#8A8A8A"
+                    value={email}
+                    onChangeText={setEmail}
+                />
+            </View>
 
-      <TouchableOpacity style={styles.loginButtonContainer} onPress={handleLogin}>
-        <Text style={styles.loginText}>Login</Text>
-      </TouchableOpacity>
+            <View style={{
+                flexDirection: 'row', alignItems: 'center', width: '85%', borderWidth: 1, borderColor: '#ddd',
+                backgroundColor: '#fff', borderRadius: 8, marginBottom: 10, paddingHorizontal: 10, elevation: 5
+            }}>
+                <TextInput
+                    style={{ flex: 1, fontSize: 16, paddingVertical: 12, color: '#000' }}
+                    placeholder="Enter your password"
+                    placeholderTextColor="#8A8A8A"
+                    secureTextEntry={!showPassword}
+                    value={password}
+                    onChangeText={setPassword}
+                />
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                    <Ionicons
+                        name={showPassword ? "eye-outline" : "eye-off-outline"}
+                        size={24}
+                        color="#aaa"
+                    />
+                </TouchableOpacity>
+            </View>
+          </>
+        )}
+
+        {/* Forgot Password Link */}
+        {!showForgotPassword && (
+          <Text
+            style={{ left: 220, width: "78%", marginTop: 5 }}
+            onPress={() => setShowForgotPassword(!showForgotPassword)}
+          >
+            Forgot Password
+          </Text>
+        )}
+
+        {/* Forgot Password Form */}
+        {showForgotPassword && (
+          <View style={{ width: "85%", marginTop: 20 }}>
+            <Text style={{ fontSize: 16, marginBottom: 10, textAlign: "center" }}>
+              Enter your email to reset your password
+            </Text>
+            <TextInput
+              style={{
+                width: "100%",
+                height: 50,
+                borderWidth: 1,
+                borderColor: "#ddd",
+                borderRadius: 8,
+                paddingHorizontal: 10,
+                marginBottom: 20,
+                fontSize: 16,
+              }}
+              placeholder="Enter your email address"
+              placeholderTextColor="#8A8A8A"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+            <TouchableOpacity
+              style={{
+                width: "100%",
+                height: 50,
+                backgroundColor: "#2B4763",
+                justifyContent: "center",
+                alignItems: "center",
+                borderRadius: 8,
+              }}
+              onPress={handleResetPassword}
+              disabled={isLoading}
+            >
+              <Text style={{ color: "#FFFFFF", fontSize: 18, fontWeight: "bold" }}>
+                {isLoading ? "Sending..." : "Send Reset Link"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Login Button, Divider, Social Icons, and Register Link */}
+        {!showForgotPassword && (
+          <>
+            <TouchableOpacity
+              style={{ 
+                backgroundColor: "#E7E8EE", 
+                width: "70%", 
+                height: 60, 
+                justifyContent: "center", 
+                alignItems: "center", 
+                marginTop: 20, 
+                borderRadius: 10 
+              }}
+              onPress={handleLogin}
+            >
+              <Text style={{ color: "#000000", fontSize: 18, textAlign: "center", fontWeight: "bold" }}>Login</Text>
+            </TouchableOpacity>
+
+            <View style={{ flexDirection: "row", alignItems: "center", marginVertical: 20, width: "75%" }}>
+              <View style={{ flex: 1, height: 1, backgroundColor: "#EDEEF2" }} />
+              <Text style={{ color: "#ADB0BB", fontSize: 14, fontWeight: "bold", textAlign: "center" }}>Or Login with</Text>
+              <View style={{ flex: 1, height: 1, backgroundColor: "#EDEEF2" }} />
+            </View>
+
+            <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", marginBottom: 70 }}>
+              <Image source={images.google} style={{ width: 50, height: 50, resizeMode: "contain", marginHorizontal: 10, marginTop: 10 }} />
+              <Image source={images.apple} style={{ width: 50, height: 50, resizeMode: "contain", marginHorizontal: 10, marginTop: 10 }} />
+              <Image source={images.facebook} style={{ width: 50, height: 50, resizeMode: "contain", marginHorizontal: 10, marginTop: 10 }} />
+              <Image source={images.twitter} style={{ width: 50, height: 50, resizeMode: "contain", marginHorizontal: 10, marginTop: 10 }} />
+            </View>
+
+            <View style={{ marginTop: 5 }}>
+              <Text style={{ fontSize: 18, textAlign: "center" }}>
+                Don't have an account?{" "}
+                <Text style={{ color: "#2B4763", fontWeight: "bold" }} onPress={() => router.push("./register")}>
+                  Register
+                </Text>
+              </Text>
+            </View>
+          </>
+        )}
+      </View>
     </View>
   );
 };
 
-export default login;
-
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: "#FFFFFF",
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingTop: 80,
-  },
-  topContainer: {
-    marginBottom: 80,
-  },
-  topText: {
-    textAlign: "left",
-    fontSize: 30,
-    fontWeight: "bold",
-  },
-  textInput: {
-    flex: 1,
-    paddingLeft: 10,
-    fontSize: 16,
-  },
-  inputContainerEmail: {
-    backgroundColor: "#ffff",
-    flexDirection: "row",
-    width: "85%",
-    height: 60,
-    borderRadius: 10,
-    elevation: 15,
-    marginBottom: 10,
-    alignItems: "center",
-  },
-  inputContainerPassword: {
-    backgroundColor: "#ffff",
-    flexDirection: "row",
-    width: "85%",
-    height: 60,
-    borderRadius: 10,
-    elevation: 15,
-    marginBottom: 10,
-    alignItems: "center",
-    paddingRight: 10,
-  },
-  loginButtonContainer: {
-    backgroundColor: "#E7E8EE",
-    width: "70%",
-    height: 60,
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: 60,
-    borderRadius: 10,
-  },
-  loginText: {
-    color: "#000000",
-    fontSize: 18,
-    fontWeight: "bold",
-  },
-});
+export default Login;
