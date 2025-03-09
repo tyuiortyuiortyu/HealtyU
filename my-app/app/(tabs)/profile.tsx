@@ -20,7 +20,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiHelper } from '../helpers/ApiHelper';
 import { ProfileResponse } from '../response/ProfileResponse';
 
-const API_BASE_URL = 'https://your-api-endpoint.com'; // disini bang
+const API_BASE_URL = 'http://192.168.100.45:8000/api/auth'; // ini kann?
 
 const Profile = () => {
   const [profileImage, setProfileImage] = useState<string | null>(null);
@@ -53,124 +53,139 @@ const Profile = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fungsi untuk mengambil data profil dari API
-  const handleProfile = async () => {
+//   // Fungsi untuk mengambil data profil dari API
+//   const fetchProfileData = async () => {
+//     try {
+//       setIsLoading(true);
+//       const accessToken = await AsyncStorage.getItem('access_token');
+
+//       if (!accessToken) {
+//         Alert.alert('Error', 'No access token found. Please log in again.');
+//         return;
+//       }
+
+//       const response = await ApiHelper.request<ProfileResponse>(
+//         `${API_BASE_URL}/profile`,
+//         'GET',
+//         null,
+//         accessToken
+//       );
+
+//       if (!response.output_schema) {
+//         const errorMessage = response.error_schema?.error_message || 'Failed to fetch profile data.';
+//         Alert.alert('Error', errorMessage);
+//         return;
+//       }
+
+//       setProfileData({
+//         username: response.output_schema.username || '',
+//         name: response.output_schema.name || '',
+//         email: response.output_schema.email || '',
+//         dob: response.output_schema.dob || '',
+//         gender: response.output_schema.gender || '',
+//         height: String(response.output_schema.height) || '',
+//         weight: String(response.output_schema.weight) || '',
+//       });
+
+//       if (response.output_schema.profile_picture) {
+//         setProfileImage(response.output_schema.profile_picture);
+//       }
+
+//       await AsyncStorage.setItem('profile_data', JSON.stringify(response.output_schema));
+//     } catch (error) {
+//       console.error('Profile error:', error);
+//       setError((error as Error).message || 'Failed to fetch profile data.');
+//     } finally {
+//       setIsLoading(false);
+//     }
+//   };
+
+  // Fungsi untuk mengambil data profil dari AsyncStorage
+  const fetchProfileDataFromStorage = async () => {
     try {
+      setIsLoading(true);
+      const storedProfileData = await AsyncStorage.getItem('profile_data');
+
+      if (storedProfileData) {
+        const parsedProfileData = JSON.parse(storedProfileData);
+        setProfileData({
+          username: parsedProfileData.username || '',
+          name: parsedProfileData.name || '',
+          email: parsedProfileData.email || '',
+          dob: parsedProfileData.dob || '',
+          gender: parsedProfileData.gender || '',
+          height: String(parsedProfileData.height) || '',
+          weight: String(parsedProfileData.weight) || '',
+        });
+
+        if (parsedProfileData.profile_picture) {
+          setProfileImage(parsedProfileData.profile_picture);
+        }
+      } else {
+        Alert.alert('Error', 'No profile data found in storage.');
+      }
+    } catch (error) {
+      console.error('Error fetching profile data from storage:', error);
+      setError('Failed to fetch profile data from storage.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+    // Memuat data profil dari AsyncStorage saat komponen pertama kali di-render
+    useEffect(() => {
+        fetchProfileDataFromStorage();
+        }, []);
+
+        // Tampilkan loading indicator jika data sedang dimuat
+        if (isLoading) {
+        return (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <ActivityIndicator size="large" color="#0000ff" />
+            </View>
+        );
+    }
+
+   // Fungsi untuk menyimpan perubahan profil ke API
+   const saveProfileData = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
       const accessToken = await AsyncStorage.getItem('access_token');
-  
+
       if (!accessToken) {
         Alert.alert('Error', 'No access token found. Please log in again.');
         return;
       }
-  
-      const response = await ApiHelper.request<ProfileResponse>(
-        `${API_BASE_URL}/profile`,
-        'GET',
-        null,
-        accessToken
-      );
-  
-      console.log('Response dari API Profil:', response);
-  
-      if (!response.output_schema) {
-        const errorMessage = response.error_schema?.error_message || 'Failed to fetch profile data.';
-        Alert.alert('Error', errorMessage);
-        return;
-      }
-  
-      // Simpan data profil ke state
-      setProfileData({
-        username: response.output_schema.username || '',
-        name: response.output_schema.name || '',
-        email: response.output_schema.email || '',
-        dob: response.output_schema.dob || '',
-        gender: response.output_schema.gender || '',
-        height: String(response.output_schema.height) || '',
-        weight: String(response.output_schema.weight) || '',
-      });
-  
-      // Simpan gambar profil ke state
-      if (response.output_schema.profile_picture) {
-        setProfileImage(response.output_schema.profile_picture);
-      }
-  
-      await AsyncStorage.setItem('profile_data', JSON.stringify(response.output_schema));
-    } catch (error) {
-      console.error('Profile error:', error);
-      setError((error as Error).message || 'Failed to fetch profile data.');
-    }
-  };
 
-  // Fungsi untuk mengambil gambar dari galeri
-  const pickImage = async () => {
-    try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'We need gallery access to set profile picture.');
-        return;
-      }
-  
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 1,
-      });
-  
-      if (!result.canceled && result.assets.length > 0) {
-        setProfileImage(result.assets[0].uri); // Simpan URI gambar ke state
-      }
-    } catch (error) {
-      console.error('Image picker error:', error);
-      Alert.alert('Error', 'Failed to pick an image. Please try again.');
-    }
-  };
+      const formData = new FormData();
+      formData.append('username', inputUsername);
+      formData.append('name', inputName);
+      formData.append('email', inputEmail);
+      formData.append('dob', inputDob ? inputDob.toISOString().split('T')[0] : '');
+      formData.append('gender', inputGender);
+      formData.append('height', `${inputHeight} cm`);
+      formData.append('weight', `${inputWeight} kg`);
 
-  // Fungsi untuk menyimpan perubahan profil ke API
-    const saveProfileData = async () => {
-    try {
-        setIsLoading(true);
-        setError(null);
-
-        const accessToken = await AsyncStorage.getItem('access_token');
-
-        if (!accessToken) {
-        Alert.alert('Error', 'No access token found. Please log in again.');
-        return;
-        }
-
-        // Buat FormData untuk mengirim gambar dan data lainnya
-        const formData = new FormData();
-
-        // Tambahkan data profil ke FormData
-        formData.append('username', inputUsername);
-        formData.append('name', inputName);
-        formData.append('email', inputEmail);
-        formData.append('dob', inputDob ? inputDob.toISOString().split('T')[0] : '');
-        formData.append('gender', inputGender);
-        formData.append('height', `${inputHeight} cm`);
-        formData.append('weight', `${inputWeight} kg`);
-
-        // Jika ada gambar profil, tambahkan ke FormData
-        if (profileImage) {
+      if (profileImage) {
         formData.append('profile_picture', {
-            uri: profileImage,
-            name: 'profile.jpg', // Nama file
-            type: 'image/jpeg', // Tipe file
+          uri: profileImage,
+          name: 'profile.jpg',
+          type: 'image/jpeg',
         } as any);
-        }
+      }
 
-        // Kirim data ke API menggunakan ApiHelper
-        const response = await ApiHelper.request(
-        `${API_BASE_URL}/profile`,
+      const response = await ApiHelper.request(
+        `${API_BASE_URL}/updateProfile`,
         'POST',
         formData,
         accessToken,
-        true // Set header multipart/form-data
-        );
+        true
+      );
 
-        // Perbarui state dengan data yang baru
-        setProfileData({
+      // Simpan data yang baru ke AsyncStorage
+      const updatedProfileData = {
         username: inputUsername,
         name: inputName,
         email: inputEmail,
@@ -178,41 +193,45 @@ const Profile = () => {
         gender: inputGender,
         height: `${inputHeight} cm`,
         weight: `${inputWeight} kg`,
-        });
+        profile_picture: profileImage,
+      };
 
-        setEditing(false);
-        setShowHalloPage(false);
-        setIsLoading(false);
+      await AsyncStorage.setItem('profile_data', JSON.stringify(updatedProfileData));
 
-        Alert.alert('Success', 'Profile updated successfully!');
+      setProfileData(updatedProfileData);
+      setEditing(false);
+      setShowHalloPage(false);
+      setIsLoading(false);
+
+      Alert.alert('Success', 'Profile updated successfully!');
     } catch (error) {
-        console.error('Save profile error:', error);
-        if (error instanceof Error) {
-        setError(error.message || 'Failed to save profile data.');
-        } else {
-        setError('Failed to save profile data.');
-        }
-        setIsLoading(false);
-        Alert.alert('Error', 'Failed to save profile data. Please try again.');
+      console.error('Save profile error:', error);
+      setError(error instanceof Error ? error.message : 'Failed to save profile data.');
+      setIsLoading(false);
+      Alert.alert('Error', 'Failed to save profile data. Please try again.');
     }
-    };
+  };
 
-  // Memuat data profil saat komponen pertama kali di-render
-  useEffect(() => {
-    const fetchProfileData = async () => {
-      try {
-        setIsLoading(true);
-        await handleProfile();
-      } catch (error) {
-        console.error('Failed to fetch profile data:', error);
-        setError('Failed to fetch profile data. Please try again.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  // Tampilkan loading indicator jika data sedang dimuat
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#0000ff" />
+      </View>
+    );
+  }
 
-    fetchProfileData();
-  }, []);
+  // Tampilkan pesan error jika terjadi kesalahan
+  if (error) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text style={{ color: 'red', fontSize: 18 }}>{error}</Text>
+        <TouchableOpacity onPress={fetchProfileDataFromStorage} style={{ marginTop: 10 }}>
+          <Text style={{ color: 'blue', fontSize: 16 }}>Try Again</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   const toggleNotification = () => setNotification((prev) => !prev);
 
@@ -277,27 +296,6 @@ const Profile = () => {
   const handleCancel = () => {
     setLeaveModalVisible(true);
   };
-
-  // Tampilkan loading indicator jika data sedang dimuat
-  if (isLoading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#0000ff" />
-      </View>
-    );
-  }
-
-  // Tampilkan pesan error jika terjadi kesalahan
-  if (error) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Text style={{ color: 'red', fontSize: 18 }}>{error}</Text>
-        <TouchableOpacity onPress={handleProfile} style={{ marginTop: 10 }}>
-          <Text style={{ color: 'blue', fontSize: 16 }}>Try Again</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
 
   if (showHalloPage) {
     return (
