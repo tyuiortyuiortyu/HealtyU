@@ -23,12 +23,18 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
 
   // Fungsi untuk mengambil data pengguna setelah login berhasil
   const fetchUserData = async (token: string) => {
     try {
-      const response = await ApiHelper.request<LoginResponse>(`${API_BASE_URL}/getUserData`, "GET", null, token);
-
+      const response = await ApiHelper.request<LoginResponse>(
+        `${API_BASE_URL}/getUserData`, // URL API`,
+        "GET", // Method
+        null, // Body (tidak diperlukan untuk GET)
+        token // Token untuk authorization
+      );
+  
       // Simpan data pengguna ke AsyncStorage
       await AsyncStorage.setItem("userData", JSON.stringify(response.output_schema));
       console.log('User data saved:', response.output_schema);
@@ -49,7 +55,11 @@ const Login = () => {
       const loginData = { email, password };
       console.log('Data yang dikirim:', loginData); // Log data yang dikirim
   
-      const response = await ApiHelper.request<LoginResponse>(`${API_BASE_URL}/login`, "POST", loginData);
+      const response = await ApiHelper.request<LoginResponse>(
+        `${API_BASE_URL}/login`, // URL API,
+        "POST", // Method
+        loginData // Body
+      );
       console.log('Response dari API:', response); // Log response dari API
   
       // Validasi apakah login berhasil (cek access_token)
@@ -91,7 +101,43 @@ const Login = () => {
   };
   
   checkAsyncStorage();
-  
+
+  // Fungsi untuk mengirim permintaan reset password
+  const handleResetPassword = async () => {
+    if (!email) {
+        Alert.alert('Error', 'Please enter your email address.');
+        return;
+    }
+
+    setIsLoading(true);
+
+    try {
+        // Data yang akan dikirim ke API
+        const resetData = { email };
+
+        // Panggil API reset password
+        const response: { success?: boolean; error?: string } = await ApiHelper.request(
+            `${API_BASE_URL}/getUserData`, // URL API resetPassword
+            'POST', // Method
+            resetData // Body
+        );
+
+        // Cek jika response valid
+        if (response?.success) {
+            Alert.alert('Success', 'Password reset link has been sent to your email.');
+            router.push('/login'); // Arahkan ke halaman login setelah berhasil
+        } else {
+            const errorMessage = response?.error || 'Failed to send reset password request.';
+            Alert.alert('Error', errorMessage);
+        }
+    } catch (error) {
+        console.error('Reset password error:', error);
+        Alert.alert('Error', 'An error occurred. Please try again later.');
+    } finally {
+        setIsLoading(false);
+    }
+  };
+
   return (
     <View style={{ backgroundColor: "#FFFFFF", flex: 1, justifyContent: "center", alignItems: "center", paddingBottom: 20 }}>
       <View style={{ marginRight: 20, paddingRight: 30, marginBottom: 60 }}>
