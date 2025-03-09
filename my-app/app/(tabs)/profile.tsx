@@ -111,6 +111,30 @@ const Profile = () => {
     checkGuestStatus();
   }, []);
 
+  useEffect(() => {
+  const fetchProfileData = async () => {
+    try {
+      const storedProfileData = await AsyncStorage.getItem('userData');
+      if (storedProfileData) {
+        const parsedProfileData = JSON.parse(storedProfileData);
+        setProfileData(parsedProfileData);
+        // Set state input dengan data dari profileData
+        setInputUsername(parsedProfileData.username);
+        setInputName(parsedProfileData.name);
+        setInputEmail(parsedProfileData.email);
+        setInputDob(parsedProfileData.dob ? new Date(parsedProfileData.dob) : null);
+        setInputGender(parsedProfileData.gender);
+        setInputHeight(parsedProfileData.height);
+        setInputWeight(parsedProfileData.weight);
+      }
+    } catch (error) {
+      console.error('Failed to fetch profile data:', error);
+    }
+  };
+
+  fetchProfileData();
+}, []);
+
   const [inputUsername, setInputUsername] = useState('');
   const [inputName, setInputName] = useState('');
   const [inputEmail, setInputEmail] = useState('');
@@ -359,10 +383,30 @@ const Profile = () => {
             {/* Nama di bawah foto profil */}
             <Text style={{ fontSize: 25, fontWeight: 'bold', marginTop: 10 }}>{profileData.name}</Text>
 
-            {profileData.name === 'Guest' ? (
+            {/* {profileData.name === 'Guest' ? (
             <Text style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>Guest Account</Text>
             ) : (
             <Text style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>{profileData.email}</Text>
+            )} */}
+
+            {profileData.name === 'Guest' ? (
+                <View style={{ alignItems: 'center' }}>
+                <Text style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>Guest Account</Text>
+                <TouchableOpacity
+                    onPress={() => router.push('/welcome')} // Arahkan ke halaman Welcome
+                    style={{
+                    backgroundColor: '#2B4763', // Warna background tombol
+                    paddingVertical: 10,
+                    paddingHorizontal: 20,
+                    borderRadius: 20,
+                    marginTop: 10,
+                    }}
+                >
+                    <Text style={{ color: 'white', fontSize: 16, fontWeight: 'bold' }}>Sign In</Text>
+                </TouchableOpacity>
+                </View>
+            ) : (
+                <Text style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>{profileData.email}</Text>
             )}
 
         </View>
@@ -888,10 +932,29 @@ const Profile = () => {
             </View>
         </TouchableOpacity>
         {/* Nama di bawah foto profil */}
-        {profileData.name === 'Guest' ? (
+        {/* {profileData.name === 'Guest' ? (
             <Text style={{ fontSize: 25, fontWeight: 'bold', marginTop: 10 }}>Guest Account</Text>
         ) : (
             <Text style={{ fontSize: 25, fontWeight: 'bold', marginTop: 10 }}>{profileData.name}</Text>
+        )} */}
+        {profileData.name === 'Guest' ? (
+            <View style={{ alignItems: 'center' }}>
+            <Text style={{ fontSize: 25, color: '#666', marginBottom: 10 }}>Guest Account</Text>
+            <TouchableOpacity
+                onPress={() => router.push('/welcome')} // Arahkan ke halaman Welcome
+                style={{
+                backgroundColor: '#2B4763', // Warna background tombol
+                paddingVertical: 10,
+                paddingHorizontal: 20,
+                borderRadius: 20,
+                marginTop: 10,
+                }}
+            >
+                <Text style={{ color: 'white', fontSize: 16, fontWeight: 'bold' }}>Sign In</Text>
+            </TouchableOpacity>
+            </View>
+        ) : (
+            <Text style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>{profileData.email}</Text>
         )}
         </View>
 
