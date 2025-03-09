@@ -3,7 +3,6 @@ import { View, Text, StyleSheet, Image, TouchableOpacity } from "react-native";
 import { useRouter } from "expo-router";
 
 import images from "../../constants/images";
-import icons from "../../constants/icons";
 
 const Welcome = () => {
   const router = useRouter(); // Menggunakan router dari Expo Router

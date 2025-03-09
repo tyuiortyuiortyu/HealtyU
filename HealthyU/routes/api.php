@@ -21,4 +21,5 @@ route::prefix('auth')->group(function(){
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/getUserData', [AuthController::class, 'getUserData'])->middleware(JwtMiddleware::class);
     Route::post('/resetPassword', [AuthController::class, 'resetPassword']);
+    Route::post('/updateProfile', [AuthController::class, 'updateProfile'])->middleware(JwtMiddleware::class);
 });

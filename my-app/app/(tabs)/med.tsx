@@ -19,6 +19,7 @@ import CalendarPicker from "react-native-calendar-picker"; // Import CalendarPic
 
 import images from "../../constants/images";
 import icons from "../../constants/icons";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const { width, height } = Dimensions.get("window");
 
@@ -33,10 +34,60 @@ const MedReminder = () => {
   const [selectedTime, setSelectedTime] = useState("");
   const [isCalendarVisible, setCalendarVisible] = useState(false);
   const [isTimePickerVisible, setIsTimePickerVisible] = useState(false); // Untuk menampilkan/menyembunyikan TimePicker
-  const [medList, setMedList] = useState([]);
+  // const [medList, setMedList] = useState([]);
   const [medImage, setMedImage] = useState(null);
   const [isDropdownVisible, setDropdownVisible] = useState(false);
   const [selectedUnit, setSelectedUnit] = useState("mg");
+  const [status, setStatus] = useState({}); // Status untuk setiap item
+  const [medList, setMedList] = useState([]);
+
+  const [skipped, setSkipped] = useState([]);
+  const [taken, setTaken] = useState([]);
+  const [selectedIndex, setSelectedIndex] = useState(null);
+
+  const handleEditItem = (index) => {
+    const med = medList[index];
+
+    // Set the values of the selected medication to edit
+    setMedName(med.name);
+    setMedDose(med.dose);
+    setSelectedMedType(med.type);
+    setMedImage(med.image);
+
+    // Waktu: Pastikan formatnya valid
+    if (med.time) {
+      const timeParts = med.time.split(":");
+      const timeDate = new Date();
+      timeDate.setHours(parseInt(timeParts[0], 10));
+      timeDate.setMinutes(parseInt(timeParts[1], 10));
+      setSelectedTime(timeDate);
+    } else {
+      setSelectedTime(new Date()); // Default ke waktu sekarang
+    }
+
+    setSelectedIndex(index); // Set the selected index for editing
+
+    // Open the details modal
+    setShowDetailsModal(true);
+  };
+
+  const handlePressItem = (index) => {
+    setSelectedIndex(index === selectedIndex ? null : index);
+  };
+
+  const handleSkipItem = (index) => {
+    const skippedMed = medList[index];
+    setSkipped([...skipped, skippedMed]);
+    setMedList(medList.filter((_, i) => i !== index));
+    setSelectedIndex(null);
+  };
+
+  const handleTakenItem = (index) => {
+    const takenMed = medList[index];
+    setTaken([...taken, takenMed]);
+    setMedList(medList.filter((_, i) => i !== index));
+    setSelectedIndex(null);
+  };
 
   const handleAddMedPress = () => {
     setShowImages(!showImages);
@@ -80,6 +131,7 @@ const MedReminder = () => {
       alert("Please fill in all the medication details before proceeding!");
       return;
     }
+
     setShowDetailsModal(false);
     setShowReminderModal(true);
   };
@@ -90,21 +142,41 @@ const MedReminder = () => {
       return;
     }
 
-    const newMed = {
-      name: medName,
-      dose: medDose,
-      type: selectedMedType,
-      date: selectedStartDate.toDateString(),
-      time: selectedTime.toLocaleTimeString(),
-      image: medImage,
-    };
+    if (selectedIndex !== null) {
+      // Update existing medication in the list
+      const updatedMedList = [...medList];
+      updatedMedList[selectedIndex] = {
+        ...updatedMedList[selectedIndex],
+        name: medName,
+        dose: medDose,
+        type: selectedMedType,
+        date: selectedStartDate.toDateString(), // Simpan tanggal
+        time: selectedTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit",second: "2-digit",}), 
+        image: medImage,
+      };
+      setMedList(updatedMedList); // Update the list with the new values
+    } else {
+      // Add new medication if it's a new entry
+      const newMed = {
+        name: medName,
+        dose: medDose,
+        type: selectedMedType,
+        date: selectedStartDate.toDateString(), 
+        time: selectedTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit",second: "2-digit",}), 
+        image: medImage,
+      };
+      setMedList([...medList, newMed]); // Add the new item to the list
+    }
 
-    setMedList([...medList, newMed]); // Tambahkan data baru ke daftar
+    // Reset form fields
     setMedName("");
     setMedDose("");
-    setSelectedStartDate(null);
-    setSelectedTime("");
+    setSelectedMedType(null);
     setMedImage(null);
+    setSelectedStartDate(null);
+    setSelectedTime(new Date());
+    setSelectedIndex(null);
+
     setShowReminderModal(false);
   };
 
@@ -117,7 +189,8 @@ const MedReminder = () => {
   };
 
   const handleTimeChange = (event, selectedTime) => {
-    const currentTime = selectedTime || selectedTime;
+    const currentTime = selectedTime || new Date();
+    currentTime.setSeconds(0);
     setSelectedTime(currentTime);
     setIsTimePickerVisible(false);
   };
@@ -138,6 +211,7 @@ const MedReminder = () => {
   const availableUnits = ["mg", "mL"].filter((unit) => unit !== selectedUnit); // Menyaring opsi
 
   return (
+    // <SafeAreaView>
     <View style={styles.container}>
       <View style={styles.topContainer}>
         <Text style={styles.title}>Halo, </Text>
@@ -164,14 +238,18 @@ const MedReminder = () => {
         style={styles.medListContainer}
         contentContainerStyle={{
           alignItems: "center",
-          justifyContent: "flex-start", // Menambahkan agar konten ada di tengah vertikal
+          justifyContent: "flex-start",
         }}
       >
         {medList.length === 0 ? (
           <Text style={styles.noMedText}>Belum ada obat ditambahkan</Text>
         ) : (
           medList.map((med, index) => (
-            <View key={index} style={styles.medItem}>
+            <TouchableOpacity
+              key={index}
+              style={[styles.medItem, { backgroundColor: "#FFF9C4" }]}
+              onPress={() => handlePressItem(index)}
+            >
               {med.image && <Image source={med.image} style={styles.medIcon} />}
               <View style={styles.medDetails}>
                 <Text style={styles.medName}>{med.name}</Text>
@@ -181,7 +259,31 @@ const MedReminder = () => {
                 <Text style={styles.medDate}>{med.date}</Text>
                 <Text style={styles.medTime}>{med.time}</Text>
               </View>
-            </View>
+
+              <TouchableOpacity
+                style={styles.editIconWrapper}
+                onPress={() => handleEditItem(index)} // Edit action logic
+              >
+                <Image source={icons.edit} style={styles.icon} />
+              </TouchableOpacity>
+
+              {selectedIndex === index && (
+                <View style={styles.statusContainer}>
+                  <TouchableOpacity onPress={() => handleSkipItem(index)}>
+                    <View style={styles.statusItemLeft}>
+                      <Image source={icons.skipped} style={styles.statusIcon} />
+                      <Text style={styles.statusText}>Skipped</Text>
+                    </View>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => handleTakenItem(index)}>
+                    <View style={styles.statusItemRight}>
+                      <Image source={icons.taken} style={styles.statusIcon} />
+                      <Text style={styles.statusText}>Taken</Text>
+                    </View>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </TouchableOpacity>
           ))
         )}
       </ScrollView>
@@ -326,20 +428,17 @@ const MedReminder = () => {
         <View style={styles.dimmedBackground}>
           <View style={styles.reminderModalContainer}>
             <Text style={styles.reminderTitle}>Atur Pengingat</Text>
-            <View style={styles.dateBox}>
-              {/* Tampilkan Placeholder atau Tanggal yang Dipilih */}
+
+            <TouchableOpacity onPress={toggleCalendar} style={styles.dateBox}>
               <Text style={styles.placeholderText}>
                 {selectedStartDate
                   ? selectedStartDate.toDateString()
-                  : "Pilih Tanggal"}
+                  : "Select Date"}
               </Text>
-              <TouchableOpacity
-                onPress={toggleCalendar} // Fungsi untuk menampilkan/menyembunyikan kalender
-                style={styles.iconWrapper}
-              >
+              <View style={styles.iconWrapper}>
                 <Image source={icons.arrowDown} style={styles.icon} />
-              </TouchableOpacity>
-            </View>
+              </View>
+            </TouchableOpacity>
 
             {/* Modal untuk Calendar */}
             <Modal
@@ -365,19 +464,16 @@ const MedReminder = () => {
             </Modal>
 
             {/* Picker untuk Memilih Waktu */}
-            <View style={styles.timeBox}>
+            <TouchableOpacity onPress={toggleTimePicker} style={styles.timeBox}>
               <Text style={styles.placeholderText}>
                 {selectedTime
                   ? selectedTime.toLocaleTimeString()
-                  : "Pilih Waktu"}
+                  : "Select Time"}
               </Text>
-              <TouchableOpacity
-                onPress={toggleTimePicker}
-                style={styles.iconWrapper}
-              >
+              <View style={styles.iconWrapper}>
                 <Image source={icons.arrowDown} style={styles.icon} />
-              </TouchableOpacity>
-            </View>
+              </View>
+            </TouchableOpacity>
 
             {isTimePickerVisible && (
               <Modal transparent={true} visible={isTimePickerVisible}>
@@ -404,6 +500,7 @@ const MedReminder = () => {
         </View>
       </Modal>
     </View>
+    // {/* </SafeAreaView> */}
   );
 };
 
@@ -478,7 +575,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#EAEAEA",
     // borderWidth: 1, // Debugging border
     // borderColor: "blue",
-    
   },
   inputWithIcon: {
     // flexDirection: "row",
@@ -760,7 +856,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 10,
     elevation: 5,
-    marginBottom: 5
+    marginBottom: 5,
     // borderWidth: 1, // Debugging border
     // borderColor: "green",
   },
@@ -780,7 +876,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     width: 50,
     bottom: 50,
-    left: 280
+    left: 280,
     // borderWidth: 1, // Debugging border
     // borderColor: "red",
   },
@@ -793,6 +889,47 @@ const styles = StyleSheet.create({
     // borderColor: "green",
   },
   // tes
+  statusButton: {
+    backgroundColor: "#4CAF50",
+    padding: 5,
+    borderRadius: 5,
+    marginLeft: 10,
+  },
+  statusButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+  },
+  statusContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
+    marginTop: 10,
+  },
+  statusItemLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginLeft: 10,
+  },
+  statusItemRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginRight: 10,
+  },
+  statusIcon: {
+    width: 25,
+    height: 25,
+    marginRight: 5,
+  },
+  statusText: {
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+  editIconWrapper: {
+    position: "absolute", // Positioning it absolutely within the modal container
+    top: 10,
+    right: 10,
+    zIndex: 2,
+  },
 });
 
 export default MedReminder;
