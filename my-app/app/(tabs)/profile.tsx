@@ -30,15 +30,7 @@ const Profile = () => {
   const [showHalloPage, setShowHalloPage] = useState(false);
   const [isLeaveModalVisible, setLeaveModalVisible] = useState(false);
 
-  const [profileData, setProfileData] = useState({
-    username: '',
-    name: '',
-    email: '',
-    dob: '',
-    gender: '',
-    height: '',
-    weight: '',
-  });
+  const [profileData, setProfileData] = useState({});
 
   const [inputUsername, setInputUsername] = useState('');
   const [inputName, setInputName] = useState('');
@@ -55,7 +47,7 @@ const Profile = () => {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  // Memuat data profil dari AsyncStorage saat komponen pertama kali di-render
+
   // Memuat data profil dari AsyncStorage saat komponen pertama kali di-render
   useEffect(() => {
     const checkGuestStatus = async () => {
@@ -114,6 +106,33 @@ const Profile = () => {
     }
   };
 
+
+  const [userData, setUserData] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const data = await AsyncStorage.getItem("userData");
+        if (data) {
+          const parsedData = JSON.parse(data);
+          setProfileData({
+            username: parsedData.username || '',
+            name: parsedData.name || '',
+            email: parsedData.email || '',
+            dob: parsedData.dob || '',
+            gender: parsedData.gender || '',
+            height: parsedData.height || '',
+            weight: parsedData.weight || '',
+          });
+        }
+      } catch (error) {
+        console.error('Failed to fetch user data:', error);
+      }
+    };
+  
+    fetchUserData();
+  }, []);
+
   // Fungsi untuk menyimpan perubahan profil ke API
   const saveProfileData = async () => {
     try {
@@ -163,7 +182,7 @@ const Profile = () => {
         weight: `${inputWeight} kg`,
         profile_picture: profileImage,
       };
-
+      
       await AsyncStorage.setItem('profile_data', JSON.stringify(updatedProfileData));
 
       setProfileData(updatedProfileData);
