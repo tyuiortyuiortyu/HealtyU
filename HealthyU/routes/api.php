@@ -28,4 +28,9 @@ route::prefix('auth')->group(function(){
 route::prefix('community')->group(function(){
     Route::post('/likePost', [CommunityController::class, 'likePost'])->middleware(JwtMiddleware::class);
     Route::get('/getPosts', [CommunityController::class, 'getPosts'])->middleware(JwtMiddleware::class);
+    Route::post('/createPost', [CommunityController::class, 'createPost'])->middleware(JwtMiddleware::class);
+    Route::delete('/deletePost/{id}', [CommunityController::class, 'deletePost'])->middleware(JwtMiddleware::class);
+    Route::post('/posts/{post_id}/comments', [CommunityController::class, 'addComment'])->middleware(JwtMiddleware::class);
+    Route::get('/posts/{post_id}/comments', [CommunityController::class, 'getComments'])->middleware(JwtMiddleware::class);
+    Route::delete('/posts/{post_id}/comments/{comment_id}', [CommunityController::class, 'deleteComment'])->middleware(JwtMiddleware::class);
 });
