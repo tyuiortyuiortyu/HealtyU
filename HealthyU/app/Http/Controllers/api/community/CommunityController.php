@@ -2,14 +2,16 @@
 
 namespace App\Http\Controllers\api\community;
 
+use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\PostLike;
 use App\Models\Post;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use App\Helpers\ValidateJwt;
 use App\Helpers\ApiResponse;
+use Illuminate\Support\Facades\Validator;
 
-class PostLikeController extends Controller
+class CommunityController extends Controller
 {
     public function likePost(Request $request) {
         $user = ValidateJwt::validateAndGetUser();
@@ -49,7 +51,7 @@ class PostLikeController extends Controller
             return ApiResponse::mapResponse(null, "E002", "Unauthorized User");
         }
 
-        $posts = Post::with('user')->get()->map(function ($post) use ($user) {
+        $posts = Post::with('user')->inRandomOrder()->take(10)->get()->map(function ($post) use ($user) {
             $post->liked = PostLike::where('user_id', $user->id)->where('post_id', $post->id)->exists();
             return $post;
         });

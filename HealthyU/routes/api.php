@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\api\auth\AuthController;
 use App\Http\Middleware\JwtMiddleware;
+use App\Http\Controllers\api\community\CommunityController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -25,6 +26,6 @@ route::prefix('auth')->group(function(){
 });
 
 route::prefix('community')->group(function(){
-    Route::post('/likePost', [PostLikeController::class, 'likePost'])->middleware(JwtMiddleware::class);
-    Route::get('/getPosts', [PostLikeController::class, 'getPosts'])->middleware(JwtMiddleware::class);
+    Route::post('/likePost', [CommunityController::class, 'likePost'])->middleware(JwtMiddleware::class);
+    Route::get('/getPosts', [CommunityController::class, 'getPosts'])->middleware(JwtMiddleware::class);
 });
