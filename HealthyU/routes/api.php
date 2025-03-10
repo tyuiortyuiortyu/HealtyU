@@ -35,8 +35,9 @@ Route::middleware('jwt')->group(function () {
     Route::get('/MedReminder', [MedReminderController::class, 'index']); // Ambil semua data siklus user
     Route::post('/MedReminder', [MedReminderController::class, 'store']); // Simpan data siklus baru
     Route::get('/MedReminder/{id}', [MedReminderController::class, 'show']); // Ambil detail siklus berdasarkan ID
-    Route::post('/MedReminder/update', [MedReminderController::class, 'update']); // Perbarui siklus berdasarkan ID
+    Route::post('/MedReminder/update/{id}', [MedReminderController::class, 'update']); // Perbarui siklus berdasarkan ID
     Route::delete('/MedReminder', [MedReminderController::class, 'destroy']); // Hapus siklus berdasarkan ID
+
     Route::post('/resetPassword', [AuthController::class, 'resetPassword']);
     Route::post('/updateProfile', [AuthController::class, 'updateProfile'])->middleware(JwtMiddleware::class);
 });

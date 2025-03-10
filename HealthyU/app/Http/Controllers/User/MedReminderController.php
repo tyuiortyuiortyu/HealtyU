@@ -4,6 +4,8 @@ namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\Models\Medicine;
+use App\Models\MedSchedule;
 
 class MedReminderController extends Controller
 {
@@ -14,8 +16,16 @@ class MedReminderController extends Controller
      */
     public function index()
     {
-        $medReminders = MedSchedule::with('medicines')->get();
-        return response()->json($medReminders, 200);
+        // Ambil user_id dari user yang sedang login
+        $userId = auth()->id();
+
+        // Ambil semua medicines yang dimiliki user beserta jadwalnya
+        $medReminders = Medicine::with('schedules')->where('user_id', $userId)->get();
+
+        return response()->json([
+            'message' => 'Data retrieved successfully',
+            'data' => $medReminders 
+        ], 200);
     }
 
     /**

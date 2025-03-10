@@ -26,7 +26,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ApiHelper from '../helpers/ApiHelper';
 
-const API_CYCLE_URL = 'http://10.0.2.2:8000/api/cycles';
+const API_CYCLE_URL = 'http://http://10.68.110.255:8081/api/cycles';
 
 const Cycle = () => {
   const today = new Date();

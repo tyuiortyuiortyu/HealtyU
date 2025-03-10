@@ -19,8 +19,8 @@ return new class extends Migration
             $table->unsignedBigInteger('unit_id');
             $table->string('med_name');
             $table->float('med_dose', 5,2);
-            $table->enum('food_relation', ['before','after','with']);
             $table->integer('duration');
+            $table->string('type');
             $table->timestamps();
 
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
