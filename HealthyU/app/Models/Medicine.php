@@ -14,8 +14,7 @@ class Medicine extends Model
         'unit_id',
         'med_name',
         'med_dose',
-        'food_relation',
-        'duration'
+        'type'
     ];
 
     public function user()

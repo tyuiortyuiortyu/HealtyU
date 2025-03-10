@@ -20,13 +20,7 @@ class MedScheduleSeeder extends Seeder{
             MedSchedule::create([
             'med_id' => $i,
             'time_to_take' => $faker->time($format = 'H:i:s'),
-            'monday' => $faker->boolean,
-            'tuesday' => $faker->boolean,
-            'wednesday' => $faker->boolean,
-            'thursday' => $faker->boolean,
-            'friday' => $faker->boolean,
-            'saturday' => $faker->boolean,
-            'sunday' => $faker->boolean,
+            'date_to_take' => $faker->date($format = 'Y-m-d', $max = 'now'),
             ]);
         }
     }

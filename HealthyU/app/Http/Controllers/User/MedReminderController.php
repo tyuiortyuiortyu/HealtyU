@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Medicine;
 use App\Models\MedSchedule;
+use Illuminate\Support\Facades\DB;
 
 class MedReminderController extends Controller
 {
@@ -50,17 +51,10 @@ class MedReminderController extends Controller
         $validatedData = $request->validate([
             'med_name' => 'required|string|max:255',
             'unit' => 'required|string|in:ml,mg',
-            'med_dose' => 'required|string|max:50',
-            'food_relation' => 'required|string|max:50',
-            'duration' => 'required|integer',
-            'monday' => 'boolean',
-            'tuesday' => 'boolean',
-            'wednesday' => 'boolean',
-            'thursday' => 'boolean',
-            'friday' => 'boolean',
-            'saturday' => 'boolean',
-            'sunday' => 'boolean',
-            'time_to_take' => 'required|date_format:H:i:s'
+            'med_dose' => 'required|numeric|min:0.1',
+            'type' => 'required|string|in:Pil,Sirup,Tetes,Krim,Tablet',
+            'time_to_take' => 'required|date_format:H:i:s',
+            'date_to_take' => 'required|date_format:Y-m-d'
         ]);
 
         // Dapatkan ID user yang sedang login
@@ -75,21 +69,14 @@ class MedReminderController extends Controller
             'med_name' => $validatedData['med_name'],
             'unit_id' => $unitId,
             'med_dose' => $validatedData['med_dose'],
-            'food_relation' => $validatedData['food_relation'],
-            'duration' => $validatedData['duration']
+            'type' => $validatedData['type'],
         ]);
 
         // Simpan ke tabel med_schedules dengan foreign key dari medicines
         $schedule = MedSchedule::create([
             'med_id' => $medicine->id,
-            'monday' => $validatedData['monday'] ?? false,
-            'tuesday' => $validatedData['tuesday'] ?? false,
-            'wednesday' => $validatedData['wednesday'] ?? false,
-            'thursday' => $validatedData['thursday'] ?? false,
-            'friday' => $validatedData['friday'] ?? false,
-            'saturday' => $validatedData['saturday'] ?? false,
-            'sunday' => $validatedData['sunday'] ?? false,
-            'time_to_take' => $validatedData['time_to_take']
+            'time_to_take' => $validatedData['time_to_take'],
+            'date_to_take' => $validatedData['date_to_take']
         ]);
 
         return response()->json([
@@ -151,16 +138,9 @@ class MedReminderController extends Controller
             'med_name' => 'required|string|max:255',
             'unit' => 'required|string|in:ml,mg',
             'med_dose' => 'required|string|max:50',
-            'food_relation' => 'required|string|max:50',
-            'duration' => 'required|integer',
-            'monday' => 'boolean',
-            'tuesday' => 'boolean',
-            'wednesday' => 'boolean',
-            'thursday' => 'boolean',
-            'friday' => 'boolean',
-            'saturday' => 'boolean',
-            'sunday' => 'boolean',
-            'time_to_take' => 'required|date_format:H:i:s'
+            'type' => 'required|string|in:Pil,Sirup,Tetes,Krim,Tablet',
+            'time_to_take' => 'required|date_format:H:i:s',
+            'date_to_take' => 'required|date_format:Y-m-d'
         ]);
 
         // Konversi nama unit menjadi unit_id
@@ -171,20 +151,13 @@ class MedReminderController extends Controller
             'med_name' => $validatedData['med_name'],
             'unit_id' => $unitId,
             'med_dose' => $validatedData['med_dose'],
-            'food_relation' => $validatedData['food_relation'],
-            'duration' => $validatedData['duration']
+            'type' => $validatedData['type'],
         ]);
 
         // Update data schedule
         $schedule->update([
-            'monday' => $validatedData['monday'] ?? false,
-            'tuesday' => $validatedData['tuesday'] ?? false,
-            'wednesday' => $validatedData['wednesday'] ?? false,
-            'thursday' => $validatedData['thursday'] ?? false,
-            'friday' => $validatedData['friday'] ?? false,
-            'saturday' => $validatedData['saturday'] ?? false,
-            'sunday' => $validatedData['sunday'] ?? false,
-            'time_to_take' => $validatedData['time_to_take']
+            'time_to_take' => $validatedData['time_to_take'],
+            'date_to_take' => $validatedData['date_to_take']
         ]);
 
         return response()->json([
