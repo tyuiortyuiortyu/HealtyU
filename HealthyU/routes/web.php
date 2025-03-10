@@ -7,6 +7,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\UnitController;
 use App\Http\Controllers\SessionController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\PassResetController;
 
 /*
 |--------------------------------------------------------------------------
@@ -39,3 +40,6 @@ Route::prefix('session')->group(function () {
     Route::middleware('alreadyLogin')->post('/login', [SessionController::class, 'login'])->name('session.login');
     Route::middleware('notYetLogin')->get('/logout', [SessionController::class, 'logout'])->name('session.logout');
 });
+
+Route::get('/reset-password', [PassResetController::class, 'showResetForm'])->name('password.reset');
+Route::post('/reset-password', [PassResetController::class, 'resetPassword'])->name('password.update');

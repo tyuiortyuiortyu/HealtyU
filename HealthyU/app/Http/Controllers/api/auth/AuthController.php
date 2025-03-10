@@ -3,9 +3,7 @@
 namespace App\Http\Controllers\api\auth;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Support\Str;
 use App\Models\User;
-use Illuminate\Auth\Events\Login;
 use Illuminate\Support\Facades\Auth;
 use App\Helpers\ApiResponse;
 use Tymon\JWTAuth\Facades\JWTAuth;
@@ -14,13 +12,18 @@ use Illuminate\Http\Request;
 use Exception;
 use Tymon\JWTAuth\Exceptions\TokenInvalidException;
 use App\Helpers\ValidateJwt;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\ResetPasswordMail;
+use Firebase\JWT\JWT;
+use Firebase\JWT\Key;
+use Illuminate\Support\Facades\DB;
 
 class AuthController extends Controller
 {
 
     public function login(Request $request) {
         $credentials = $request->only('email', 'password');
-        $user = \App\Models\User::where('email', $credentials['email'])->where('role', 'user')->first();
+        $user = User::where('email', $credentials['email'])->where('role', 'user')->first();
     
         if (!$user || $user->role != 'user') {
             return ApiResponse::mapResponse(null, "E002", "Unauthorized User");
@@ -41,7 +44,7 @@ class AuthController extends Controller
         return ApiResponse::mapResponse($data, "S001");
     }
 
-    public function register(Request $request){
+    public function register(Request $request) {
         $validator = Validator::make($request->all(), [
             'name' => 'required|string',
             'email' => 'required|email|unique:users,email',
@@ -66,8 +69,89 @@ class AuthController extends Controller
 
         return ApiResponse::mapResponse($data, "S001");
     }
+    
+    public function getUserData() {
+        $user = ValidateJwt::validateAndGetUser();
 
-    public function logout(){
+        $data = [
+            'name' => $user->name,
+            'email' => $user->email,
+            'username' => $user->username,
+            'dob' => $user->dob,
+            'sex' => $user->sex,
+            'weight' => $user->weight,
+            'height' => $user->height,
+            // 'posts' => $posts
+        ];
+
+        return ApiResponse::mapResponse($data, "S001");
+    }
+
+    public function updateProfile(Request $request) {
+        $user = ValidateJwt::validateAndGetUser();
+
+        if (!$user) {
+            return ApiResponse::mapResponse(null, "E002", "Unauthorized User");
+        }
+
+        $validator = Validator::make($request->all(), [
+            'name' => 'sometimes|required|string',
+            'email' => 'sometimes|required|email|unique:users,email,'.$user->id,
+            'username' => 'sometimes|required|string|unique:users,username,'.$user->id,
+            'dob' => 'nullable|date',
+            'sex' => 'nullable|in:male,female',
+            'height' => 'nullable|numeric|min:50|max:300',
+            'weight' => 'nullable|numeric|min:10|max:500',
+        ]);
+
+        if ($validator->fails()) {
+            return ApiResponse::mapResponse(null, "E002", $validator->errors());
+        }
+
+        $user->update($request->only([
+            'name', 'email', 'username', 'dob', 'sex', 'height', 'weight'
+        ]));
+
+        $data = [
+            'name' => $user->name,
+            'email' => $user->email,
+            'username' => $user->username,
+            'dob' => $user->dob,
+            'sex' => $user->sex,
+            'weight' => $user->weight,
+            'height' => $user->height,
+        ];
+
+        return ApiResponse::mapResponse($data, "S001", "Profile updated");
+    }
+
+    public function resetPassword(Request $request) {
+        $request->validate(['email' => 'required|email']);
+
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user) {
+            return ApiResponse::mapResponse(null, "E002", "Unauthorized User");
+        }
+
+        $payload = [
+            'sub' => $user->id,
+            'email' => $user->email,
+            'exp' => time() + (60 * 5) // Token berlaku 5 menit
+        ];
+        $token = JWT::encode($payload, (string) env('JWT_SECRET'), 'HS256');
+
+        DB::table('password_resets')->updateOrInsert(
+            ['email' => $user->email],
+            ['token' => $token, 'created_at' => now()]
+        );
+
+        Mail::to($user->email)->send(new ResetPasswordMail($token));
+
+        return ApiResponse::mapResponse(null, "S001", "Email sent");
+    }
+
+    public function logout() {
         try {
             // Ambil token dari request
             $token = JWTAuth::getToken();
@@ -85,22 +169,5 @@ class AuthController extends Controller
         } catch (Exception $e) {
             return ApiResponse::mapResponse(null,"E002", "Failed to logout");
         }
-    }
-    
-    public function getUserData(){
-        $user = ValidateJwt::validateAndGetUser();
-
-        $data = [
-            'name' => $user->name,
-            'email' => $user->email,
-            'username' => $user->username,
-            'dob' => $user->dob,
-            'sex' => $user->sex,
-            'weight' => $user->weight,
-            'height' => $user->height,
-            // 'posts' => $posts
-        ];
-
-        return ApiResponse::mapResponse($data, "S001");
     }
 }

@@ -16,7 +16,8 @@ import ApiHelper from '../helpers/ApiHelper';
 import { LoginResponse } from "../response/LoginResponse";
 
 const Login = () => {
-  const API_BASE_URL = 'http://10.68.110.255:8081/api/auth';
+  // URL API backend
+  const API_BASE_URL = 'http://192.168.100.45:8000'; // Ganti dengan URL API Anda
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -28,10 +29,10 @@ const Login = () => {
   const fetchUserData = async (token: string) => {
     try {
       const response = await ApiHelper.request<LoginResponse>(
-        `${API_BASE_URL}/getUserData`,
-        "GET",
-        null,
-        token
+        `${API_BASE_URL}/api/auth/getUserData`, // URL API`,
+        "GET", // Method
+        null, // Body (tidak diperlukan untuk GET)
+        token // Token untuk authorization
       );
       await AsyncStorage.setItem("userData", JSON.stringify(response.output_schema));
       console.log('User data saved:', response.output_schema);
@@ -50,9 +51,9 @@ const Login = () => {
     try {
       const loginData = { email, password };
       const response = await ApiHelper.request<LoginResponse>(
-        `${API_BASE_URL}/login`,
-        "POST",
-        loginData
+        `${API_BASE_URL}/api/auth/login`, // URL API,
+        "POST", // Method
+        loginData // Body
       );
   
       if (!response.output_schema?.access_token) {
