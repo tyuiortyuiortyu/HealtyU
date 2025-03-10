@@ -81,7 +81,7 @@ class AuthController extends Controller
             'sex' => $user->sex,
             'weight' => $user->weight,
             'height' => $user->height,
-            // 'posts' => $posts
+            'profile_picture' => $user->profile_picture ? url($user->profile_picture) : null,
         ];
 
         return ApiResponse::mapResponse($data, "S001");
@@ -102,15 +102,31 @@ class AuthController extends Controller
             'sex' => 'nullable|in:male,female',
             'height' => 'nullable|numeric|min:50|max:300',
             'weight' => 'nullable|numeric|min:10|max:500',
+            'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ]);
 
         if ($validator->fails()) {
             return ApiResponse::mapResponse(null, "E002", $validator->errors());
         }
 
+        // Jika ada file gambar yang diupload
+        if ($request->hasFile('profile_picture')) {
+            // Hapus foto lama jika ada
+            if ($user->profile_picture) {
+                $oldImagePath = storage_path('app/public/' . str_replace('storage/', '', $user->profile_picture));
+                if (file_exists($oldImagePath)) {
+                    unlink($oldImagePath);
+                }
+            }
+    
+            // Simpan foto profil baru di folder profile_pic
+            $imagePath = $request->file('profile_picture')->store('profile_pic', 'public');
+            $user->profile_picture = 'storage/' . $imagePath;
+        }
+
         $user->update($request->only([
             'name', 'email', 'username', 'dob', 'sex', 'height', 'weight'
-        ]));
+        ]) + ['profile_picture' => $user->profile_picture]);
 
         $data = [
             'name' => $user->name,
@@ -120,6 +136,7 @@ class AuthController extends Controller
             'sex' => $user->sex,
             'weight' => $user->weight,
             'height' => $user->height,
+            'profile_picture' => asset($user->profile_picture),
         ];
 
         return ApiResponse::mapResponse($data, "S001", "Profile updated");

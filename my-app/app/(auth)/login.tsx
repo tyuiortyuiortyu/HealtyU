@@ -69,7 +69,7 @@ const Login = () => {
   
       // Simpan token dan data pengguna ke AsyncStorage
       await AsyncStorage.setItem("access_token", response.output_schema.access_token);
-
+      
       await AsyncStorage.setItem("isLoggedIn", "true");
       await fetchUserData(response.output_schema.access_token);
       
