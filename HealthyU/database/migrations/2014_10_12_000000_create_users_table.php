@@ -25,6 +25,7 @@ return new class extends Migration
             $table->decimal('weight', 5,2)->nullable();
             $table->decimal('height', 5,2)->nullable();
             $table->enum('role', ['user', 'admin'])->default('user');
+            $table->string('profile_picture')->nullable();
             $table->timestamps();
         });
     }

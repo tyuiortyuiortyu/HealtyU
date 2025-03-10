@@ -57,7 +57,8 @@ class UserSeeder extends Seeder
                 'weight' => $faker->randomFloat(2, 40, 100),
                 'height' => $faker->randomFloat(2, 150, 200),
                 'last_login' => null,
-                'role' => $faker->randomElement(['user', 'admin'])
+                'role' => $faker->randomElement(['user', 'admin']),
+                'profile_picture' => 'This field is profile pic'
             ]);
         }
     }
