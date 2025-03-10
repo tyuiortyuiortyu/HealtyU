@@ -94,7 +94,9 @@ const RegisterScreen = () => {
                 }
 
                 // Simpan status register ke AsyncStorage
-                await AsyncStorage.setItem("isRegisterIn", "true");
+                // await AsyncStorage.setItem("isRegisterIn", "true");
+                const userData = { name, email, username, password, password_confirmation };
+                await AsyncStorage.setItem('userData', JSON.stringify(userData));
 
                 // Tampilkan pesan sukses
                 Alert.alert('Success', 'Registration successful!');

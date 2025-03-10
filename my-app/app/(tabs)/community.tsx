@@ -33,7 +33,14 @@ interface Post {
   isCaptionExpanded: boolean;
   isLiked: boolean;
   likes: number;
-  comments: number;
+  comments: Comment[]; // Daftar komentar untuk postingan ini
+  time: string;
+}
+
+interface Comment {
+  id: number;
+  text: string;
+  username: string;
   time: string;
 }
 
@@ -50,6 +57,8 @@ const Community = () => {
   const [newPostImage, setNewPostImage] = useState<string | null>(null);
   const [isLeaveModalVisible, setIsLeaveModalVisible] = useState(false);
   const [commentText, setCommentText] = useState("");
+
+  const [comments, setComments] = useState<Comment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -65,7 +74,7 @@ const Community = () => {
         `${API_BASE_URL}/community/posts`,
         "GET"
       );
-
+  
       if (response.output_schema) {
         setPosts(response.output_schema.posts);
       }
@@ -87,9 +96,10 @@ const Community = () => {
           postImage: newPostImage || "https://via.placeholder.com/300",
           caption: postText,
           fullCaption: postText,
+          comments: [], // Tambahkan properti comments
         }
       );
-
+  
       if (response.output_schema) {
         setPosts([response.output_schema.post, ...posts]);
         setPostText("");
@@ -176,8 +186,11 @@ const Community = () => {
     );
   };
 
-  const handleComment = () => {
-    setCommentModalVisible(true);
+  const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
+  
+  const handleComment = (postId: number) => {
+    setSelectedPostId(postId); // Simpan ID postingan yang sedang dikomentari
+    setCommentModalVisible(true); // Buka modal komentar
   };
 
   const handleShare = () => {
@@ -217,10 +230,36 @@ const Community = () => {
     setPopupVisible(false);
   };
 
+  const handleSendComment = () => {
+    if (commentText.trim() && selectedPostId !== null) {
+      const newComment = {
+        id: new Date().getTime(), // Gunakan timestamp sebagai ID unik
+        text: commentText,
+        username: currentUser.name,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+  
+      // Perbarui daftar komentar di postingan yang sesuai
+      setPosts((prevPosts) =>
+        prevPosts.map((post) =>
+          post.id === selectedPostId
+            ? { ...post, comments: [...post.comments, newComment] } // Tambahkan komentar baru
+            : post
+        )
+      );
+  
+      // Reset input komentar
+      setCommentText('');
+    }
+  };
+
+  const onClose = () => {
+    setCommentModalVisible(false); // Jika menggunakan state untuk mengontrol visibility modal
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
       >
         <View style={{ flex: 1, padding: 20 }}>
@@ -366,10 +405,10 @@ const Community = () => {
                           alignItems: "center",
                           marginRight: 15,
                         }}
-                        onPress={handleComment}
+                        onPress={() => handleComment(item.id)}
                       >
                         <MaterialIcons name="comment" size={24} color="gray" />
-                        <Text>{item.comments}</Text>
+                        <Text>{item.comments.length}</Text>
                       </TouchableOpacity>
 
                       <TouchableOpacity
@@ -402,131 +441,163 @@ const Community = () => {
                 transparent={true}
                 animationType="slide"
                 onRequestClose={() => setShareModalVisible(false)}
-              >
+            >
                 <View
-                  style={{
-                    backgroundColor: "#fff",
-                    padding: 20,
-                    borderTopLeftRadius: 20,
-                    borderTopRightRadius: 20,
-                    position: "absolute",
-                    bottom: 0,
-                    width: "100%",
-                    shadowColor: "#000",
-                    shadowOffset: { width: 0, height: -2 },
-                    shadowOpacity: 0.1,
-                    shadowRadius: 5,
-                    elevation: 5,
-                  }}
+                    style={{
+                        backgroundColor: "#fff",
+                        padding: 20,
+                        borderTopLeftRadius: 20,
+                        borderTopRightRadius: 20,
+                        position: "absolute",
+                        bottom: 0,
+                        width: "100%",
+                        shadowColor: "#000",
+                        shadowOffset: { width: 0, height: -2 },
+                        shadowOpacity: 0.1,
+                        shadowRadius: 5,
+                        elevation: 5,
+                    }}
                 >
-                  <Text style={{ fontSize: 18, fontWeight: "bold" }}>
-                    Share this post
-                  </Text>
-                  <TouchableOpacity
-                    onPress={() => {
-                      setShareModalVisible(false);
-                    }}
-                    style={{
-                      backgroundColor: "#1877F2",
-                      paddingVertical: 10,
-                      paddingHorizontal: 20,
-                      borderRadius: 5,
-                      marginBottom: 10,
-                    }}
-                  >
-                    <Text style={{ color: "#fff" }}>Share on Facebook</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => {
-                      setShareModalVisible(false);
-                    }}
-                    style={{
-                      backgroundColor: "#25D366",
-                      paddingVertical: 10,
-                      paddingHorizontal: 20,
-                      borderRadius: 5,
-                      marginBottom: 10,
-                    }}
-                  >
-                    <Text style={{ color: "#fff" }}>Share on WhatsApp</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => {
-                      setShareModalVisible(false);
-                    }}
-                    style={{
-                      backgroundColor: "#007BFF",
-                      paddingVertical: 10,
-                      paddingHorizontal: 20,
-                      borderRadius: 5,
-                      marginBottom: 10,
-                    }}
-                  >
-                    <Text style={{ color: "#fff" }}>Copy Link</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => setShareModalVisible(false)}
-                    style={{
-                      backgroundColor: "#ccc",
-                      paddingVertical: 10,
-                      paddingHorizontal: 20,
-                      borderRadius: 5,
-                    }}
-                  >
-                    <Text style={{ color: "#007BFF" }}>Close</Text>
-                  </TouchableOpacity>
+                    <Text style={{ fontSize: 18, fontWeight: "bold" }}>
+                        Share this post
+                    </Text>
+                    <TouchableOpacity
+                        onPress={() => {
+                            // Fungsi untuk share di Facebook
+                            setShareModalVisible(false);
+                        }}
+                        style={{
+                            backgroundColor: "#1877F2",
+                            paddingVertical: 10,
+                            paddingHorizontal: 20,
+                            borderRadius: 5,
+                            marginBottom: 10,
+                        }}
+                    >
+                        <Text style={{ color: "#fff" }}>Share on Facebook</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={() => {
+                            // Fungsi untuk share di Instagram
+                            setShareModalVisible(false);
+                        }}
+                        style={{
+                            backgroundColor: "#E4405F",
+                            paddingVertical: 10,
+                            paddingHorizontal: 20,
+                            borderRadius: 5,
+                            marginBottom: 10,
+                        }}
+                    >
+                        <Text style={{ color: "#fff" }}>Share on Instagram</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={() => {
+                            // Fungsi untuk share di WhatsApp
+                            setShareModalVisible(false);
+                        }}
+                        style={{
+                            backgroundColor: "#25D366",
+                            paddingVertical: 10,
+                            paddingHorizontal: 20,
+                            borderRadius: 5,
+                            marginBottom: 10,
+                        }}
+                    >
+                        <Text style={{ color: "#fff" }}>Share on WhatsApp</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={() => {
+                            // Fungsi untuk copy link
+                            setShareModalVisible(false);
+                        }}
+                        style={{
+                            backgroundColor: "#007BFF",
+                            paddingVertical: 10,
+                            paddingHorizontal: 20,
+                            borderRadius: 5,
+                            marginBottom: 10,
+                        }}
+                    >
+                        <Text style={{ color: "#fff" }}>Copy Link</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={() => setShareModalVisible(false)}
+                        style={{
+                            backgroundColor: "#ccc",
+                            paddingVertical: 10,
+                            paddingHorizontal: 20,
+                            borderRadius: 5,
+                        }}
+                    >
+                        <Text style={{ color: "#007BFF" }}>Close</Text>
+                    </TouchableOpacity>
                 </View>
-              </Modal>
+            </Modal>
 
               {/* Comment Modal */}
               <Modal
                 visible={commentModalVisible}
                 transparent={true}
                 animationType="slide"
-                onRequestClose={() => setCommentModalVisible(false)}
+                onRequestClose={onClose}
               >
-                <View
-                  style={{
-                    backgroundColor: "#fff",
-                    padding: 20,
-                    borderTopLeftRadius: 20,
-                    borderTopRightRadius: 20,
-                    position: "absolute",
-                    bottom: 0,
-                    width: "100%",
-                    shadowColor: "#000",
-                    shadowOffset: { width: 0, height: -2 },
-                    shadowOpacity: 0.1,
-                    shadowRadius: 5,
-                    elevation: 5,
-                  }}
-                >
-                  <Text style={{ fontSize: 18, fontWeight: "bold" }}>
-                    Add a comment
-                  </Text>
-                  <TextInput
-                    style={{
-                      height: 40,
-                      borderColor: "#ccc",
-                      borderWidth: 1,
-                      borderRadius: 5,
-                      marginTop: 10,
-                      paddingLeft: 10,
-                    }}
-                    placeholder="Write a comment..."
-                    value={commentText}
-                    onChangeText={setCommentText}
-                  />
-                  <TouchableOpacity
-                    onPress={() => setCommentModalVisible(false)}
-                    style={{
-                      marginTop: 20,
-                      padding: 10,
-                      alignItems: "center",
-                    }}
-                  >
-                    <Text style={{ color: "#007BFF" }}>Close</Text>
-                  </TouchableOpacity>
+                <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+                  <View style={{ backgroundColor: '#fff', padding: 20, borderTopLeftRadius: 20, borderTopRightRadius: 20 }}>
+                    {/* Header */}
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                      <Text style={{ fontSize: 18, fontWeight: 'bold' }}>Comments</Text>
+                      <TouchableOpacity onPress={onClose}>
+                        <MaterialIcons name="close" size={24} color="black" />
+                      </TouchableOpacity>
+                    </View>
+
+                    {/* Daftar komentar */}
+                    <FlatList
+                      data={posts.find((post) => post.id === selectedPostId)?.comments || []} // Ambil komentar untuk postingan yang dipilih
+                      keyExtractor={(item) => item.id.toString()}
+                      renderItem={({ item }) => (
+                        <View style={{ padding: 10, borderBottomWidth: 1, borderBottomColor: '#ccc' }}>
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Text style={{ fontWeight: 'bold' }}>{item.username}</Text>
+                            <Text style={{ fontSize: 12, color: '#888' }}>{item.time}</Text>
+                          </View>
+                          <Text>{item.text}</Text>
+                        </View>
+                      )}
+                      style={{ maxHeight: 300 }} // Atur tinggi maksimal untuk daftar komentar
+                    />
+
+                    {/* Input untuk menulis komentar */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10 }}>
+                      <TextInput
+                        style={{ 
+                          flex: 1, 
+                          height: 40, 
+                          borderColor: '#ccc', 
+                          borderWidth: 1, 
+                          borderRadius: 20, 
+                          paddingLeft: 10, 
+                          marginRight: 10 
+                        }}
+                        placeholder="Write a comment..."
+                        value={commentText}
+                        onChangeText={setCommentText}
+                      />
+                      <TouchableOpacity
+                        style={{ 
+                          backgroundColor: '#007BFF', 
+                          padding: 10, 
+                          borderRadius: 20, 
+                          alignItems: 'center', 
+                          justifyContent: 'center' 
+                        }}
+                        onPress={handleSendComment} // Kirim komentar untuk postingan yang dipilih
+                      >
+                        <MaterialIcons name="send" size={20} color="#fff" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
                 </View>
               </Modal>
 

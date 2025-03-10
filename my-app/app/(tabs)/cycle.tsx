@@ -50,9 +50,15 @@ const Cycle = () => {
   const [error, setError] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false); // Track login status
 
-  const painAnims = useState(Array(5).fill(null).map(() => new Animated.Value(0)))[0];
-  const bleedingAnims = useState(Array(5).fill(null).map(() => new Animated.Value(0)))[0];
-  const moodAnims = useState(Array(5).fill(null).map(() => new Animated.Value(0)))[0];
+  const [painAnims] = useState(() => 
+    Array(5).fill(null).map(() => new Animated.Value(0))
+  );
+  const [bleedingAnims] = useState(() => 
+    Array(5).fill(null).map(() => new Animated.Value(0))
+  );
+  const [moodAnims] = useState(() => 
+    Array(5).fill(null).map(() => new Animated.Value(0))
+  );
 
   const screenWidth = Dimensions.get('window').width;
 

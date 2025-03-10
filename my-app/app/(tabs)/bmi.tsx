@@ -73,7 +73,7 @@ const BMI = () => {
   };
 
   return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'flex-start', padding: 25 }}>
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'flex-start', padding: 25, backgroundColor: 'white' }}>
       {/* Jika tombol Continue belum ditekan, tampilkan konten utama */}
       {!continuePressed ? (
         <>
