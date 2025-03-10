@@ -21,7 +21,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiHelper } from '../helpers/ApiHelper';
 import { ProfileResponse } from '../response/ProfileResponse';
 
-const API_BASE_URL = 'http://192.168.100.45:8000';
+const API_BASE_URL = 'http://10.68.107.46:8000';
 
 const Profile = () => {
   const [profileImage, setProfileImage] = useState<string | null>(null);
@@ -135,6 +135,18 @@ const Profile = () => {
   fetchProfileData();
 }, []);
 
+  useEffect(() => {
+    if (isEditing) {
+      setInputUsername(profileData.username);
+      setInputName(profileData.name);
+      setInputEmail(profileData.email);
+      setInputDob(profileData.dob ? new Date(profileData.dob) : null);
+      setInputGender(profileData.gender);
+      setInputHeight(profileData.height.toString());
+      setInputWeight(profileData.weight.toString());
+    }
+  }, [isEditing, profileData]);
+
   const [inputUsername, setInputUsername] = useState('');
   const [inputName, setInputName] = useState('');
   const [inputEmail, setInputEmail] = useState('');
@@ -155,14 +167,14 @@ const Profile = () => {
     try {
       setIsLoading(true);
       setError(null);
-
+  
       const accessToken = await AsyncStorage.getItem('access_token');
-
+  
       if (!accessToken) {
         Alert.alert('Error', 'No access token found. Please log in again.');
         return;
       }
-
+  
       const formData = new FormData();
       formData.append('username', inputUsername);
       formData.append('name', inputName);
@@ -171,7 +183,7 @@ const Profile = () => {
       formData.append('gender', inputGender);
       formData.append('height', `${inputHeight} cm`);
       formData.append('weight', `${inputWeight} kg`);
-
+  
       if (profileImage) {
         formData.append('profile_picture', {
           uri: profileImage,
@@ -179,7 +191,7 @@ const Profile = () => {
           type: 'image/jpeg',
         } as any);
       }
-
+  
       const response = await ApiHelper.request(
         `${API_BASE_URL}/api/auth/updateProfile`,
         'POST',
@@ -187,7 +199,7 @@ const Profile = () => {
         accessToken,
         true
       );
-
+  
       // Simpan data yang baru ke AsyncStorage
       const updatedProfileData = {
         username: inputUsername,
@@ -195,18 +207,18 @@ const Profile = () => {
         email: inputEmail,
         dob: inputDob ? inputDob.toISOString().split('T')[0] : '',
         gender: inputGender,
-        height: inputHeight,
-        weight: inputWeight,
+        height: parseFloat(inputHeight),
+        weight: parseFloat(inputWeight),
         profile_picture: profileImage,
       };
-      
+  
       await AsyncStorage.setItem('profile_data', JSON.stringify(updatedProfileData));
-
+  
       setProfileData(updatedProfileData); // Perbarui state profileData
       setEditing(false);
       setShowHalloPage(false);
       setIsLoading(false);
-
+  
       Alert.alert('Success', 'Profile updated successfully!');
     } catch (error) {
       console.error('Save profile error:', error);
@@ -250,30 +262,30 @@ const Profile = () => {
 
 
 
-    const handleSave = () => {
-        if (hasChanges()) {
-          setProfileData({
-            username: inputUsername,
-            name: inputName,
-            email: inputEmail,
-            dob: inputDob ? inputDob.toISOString().split('T')[0] : '',
-            gender: inputGender,
-            height: parseFloat(inputHeight),
-            weight: parseFloat(inputWeight),
-            profile_picture: profileImage,
-          });
-      
-          if (profileImage) {
-            setProfileImage(profileImage);
-          }
-      
-          saveProfileData(); // Panggil fungsi untuk menyimpan data ke API
-          setEditing(false);
-          setShowHalloPage(false);
-        } else {
-          Alert.alert('Info', 'No changes detected.');
+  const handleSave = () => {
+      if (hasChanges()) {
+        setProfileData({
+          username: inputUsername,
+          name: inputName,
+          email: inputEmail,
+          dob: inputDob ? inputDob.toISOString().split('T')[0] : '',
+          gender: inputGender,
+          height: parseFloat(inputHeight),
+          weight: parseFloat(inputWeight),
+          profile_picture: profileImage,
+        });
+    
+        if (profileImage) {
+          setProfileImage(profileImage);
         }
-      };
+    
+        saveProfileData(); // Panggil fungsi untuk menyimpan data ke API
+        setEditing(false);
+        setShowHalloPage(false);
+      } else {
+        Alert.alert('Info', 'No changes detected.');
+      }
+    };
 
   const onChangeDate = (event: any, selectedDate: Date | undefined) => {
     const currentDate = selectedDate || inputDob;
@@ -302,7 +314,14 @@ const Profile = () => {
   };
 
   const handleCancel = () => {
-    setLeaveModalVisible(true);
+    setInputUsername(profileData.username);
+    setInputName(profileData.name);
+    setInputEmail(profileData.email);
+    setInputDob(profileData.dob ? new Date(profileData.dob) : null);
+    setInputGender(profileData.gender);
+    setInputHeight(profileData.height.toString());
+    setInputWeight(profileData.weight.toString());
+    setEditing(false);
   };
 
   const hasChanges = () => {
@@ -972,7 +991,7 @@ const Profile = () => {
             </TouchableOpacity>
             </View>
         ) : (
-            <Text style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>{profileData.email}</Text>
+            <Text style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>{profileData.name}</Text>
         )}
         </View>
 
