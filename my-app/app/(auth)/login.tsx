@@ -161,6 +161,8 @@ const Login = () => {
                     placeholderTextColor="#8A8A8A"
                     value={email}
                     onChangeText={setEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
                 />
             </View>
 

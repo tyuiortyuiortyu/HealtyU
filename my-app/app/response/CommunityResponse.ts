@@ -11,6 +11,7 @@ export class CommunityResponse {
         caption: string;
         fullCaption: string;
         time: string;
+        isCaptionExpanded: boolean;
         isLiked: boolean;
         likes: number;
         comments: number;
@@ -28,6 +29,7 @@ export class CommunityResponse {
           caption: string;
           fullCaption: string;
           time: string;
+          isCaptionExpanded: boolean;
           isLiked: boolean;
           likes: number;
           comments: number;
