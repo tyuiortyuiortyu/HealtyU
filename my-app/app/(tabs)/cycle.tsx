@@ -21,17 +21,14 @@ import {
   differenceInDays,
   isValid,
   isAfter,
-  isSameDay
+  isSameDay,
 } from 'date-fns';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiHelper } from '../helpers/ApiHelper';
 
-const API_CYCLE_URL = 'http://127.0.0.1:8000/api/cycles';  // Ganti dengan URL yang benar
-const API_PROFILE_URL = 'http://127.0.0.1:8000/api/auth'; // Ganti dengan URL yang benar
-
+const API_CYCLE_URL = 'http://127.0.0.1:8000/api/cycles';
 
 const Cycle = () => {
-  // --- State dari Komponen Cycle ---
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(today);
   const [viewFullCalendar, setViewFullCalendar] = useState(false);
@@ -51,262 +48,20 @@ const Cycle = () => {
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false); // Track login status
 
-  const painAnims = useState(Array(5).fill(null).map(() => new Animated.Value(0)))[0];
-  const bleedingAnims = useState(Array(5).fill(null).map(() => new Animated.Value(0)))[0];
-  const moodAnims = useState(Array(5).fill(null).map(() => new Animated.Value(0)))[0];
+  const [painAnims] = useState(() => 
+    Array(5).fill(null).map(() => new Animated.Value(0))
+  );
+  const [bleedingAnims] = useState(() => 
+    Array(5).fill(null).map(() => new Animated.Value(0))
+  );
+  const [moodAnims] = useState(() => 
+    Array(5).fill(null).map(() => new Animated.Value(0))
+  );
 
-  // --- State dari Komponen Profile (yang relevan) ---
-  const [userName, setUserName] = useState('');
+  const screenWidth = Dimensions.get('window').width;
 
-
-    // --- Fungsi-fungsi Helper untuk Guest ---
-    const loadGuestData = async () => {
-        try {
-            const guestCycleData = await AsyncStorage.getItem('guest_cycle_data');
-            const guestProfileData = await AsyncStorage.getItem('guest_profile_data'); // Data profil untuk guest
-
-            if (guestCycleData) {
-                const cycleData = JSON.parse(guestCycleData);
-                const validPeriodStart = cycleData.periodStart ? new Date(cycleData.periodStart) : null;
-                if (validPeriodStart && isValid(validPeriodStart)) {
-                    setPeriodStartDate(validPeriodStart);
-                }
-                setCycleLength(cycleData.cycleLength || 28);
-                setPeriodDays(cycleData.periodDays || 4);
-                setSelectedCycleLength(cycleData.cycleLength || 28);
-                setSelectedPeriodDays(cycleData.periodDays || 4);
-                setPainLevel(cycleData.painLevel || Array(5).fill(false));
-                setBleedingLevel(cycleData.bleedingLevel || Array(5).fill(false));
-                setMoodLevel(cycleData.moodLevel || Array(5).fill(false));
-            } else {
-                await initializeGuestData();
-            }
-
-            if(guestProfileData){
-                const profileData = JSON.parse(guestProfileData);
-                setUserName(profileData.name || 'Guest');
-            } else {
-                // Inisialisasi data profile guest, jika belum ada.
-                const initialProfile = { name: 'Guest' };
-                await AsyncStorage.setItem('guest_profile_data', JSON.stringify(initialProfile));
-                setUserName('Guest');
-
-            }
-
-        } catch (error) {
-            console.error('Failed to load guest data:', error);
-            Alert.alert('Error', 'Failed to load guest data.  Please try again.');
-        }
-    };
-
-    const initializeGuestData = async () => {
-      const initialCycleData = {
-            periodStart: null,
-            cycleLength: 28,
-            periodDays: 4,
-            painLevel: Array(5).fill(false),
-            bleedingLevel: Array(5).fill(false),
-            moodLevel: Array(5).fill(false),
-        };
-
-        try {
-            await AsyncStorage.setItem('guest_cycle_data', JSON.stringify(initialCycleData));
-            // Set state sesuai dengan data inisialisasi
-            setPeriodStartDate(null);
-            setCycleLength(28);
-            setPeriodDays(4);
-            setSelectedCycleLength(28);
-            setSelectedPeriodDays(4);
-            setPainLevel(Array(5).fill(false));
-            setBleedingLevel(Array(5).fill(false));
-            setMoodLevel(Array(5).fill(false));
-
-        } catch (error) {
-            console.error('Failed to initialize guest data:', error);
-            Alert.alert('Error', 'Failed to initialize guest data. Please try again.');
-        }
-    }
-
-
-    const saveGuestData = async (data: any) => {
-        try {
-            const existingCycleData = await AsyncStorage.getItem('guest_cycle_data');
-            const updatedCycleData = { ...JSON.parse(existingCycleData || '{}'), ...data };
-            await AsyncStorage.setItem('guest_cycle_data', JSON.stringify(updatedCycleData));
-
-             // Update state setelah menyimpan
-            if (data.period_start) {
-                setPeriodStartDate(new Date(data.period_start));
-            }
-            if(data.cycle_length) setCycleLength(data.cycle_length);
-            if(data.period_days) setPeriodDays(data.period_days);
-            if(data.pain_level !== undefined) setPainLevel(Array(5).fill(false).map((_, i) => i < data.pain_level));
-            if(data.bleeding_level !== undefined) setBleedingLevel(Array(5).fill(false).map((_, i) => i < data.bleeding_level));
-            if(data.mood_level !== undefined) setMoodLevel(Array(5).fill(false).map((_, i) => i < data.mood_level));
-
-
-        } catch (error) {
-            console.error('Failed to save guest data:', error);
-            Alert.alert('Error', 'Failed to save guest data. Please try again.');
-        }
-    };
-
-
-  // --- Fungsi-fungsi Helper untuk User ---
-
-  const loadUserData = async (accessToken: string) => {
-    try {
-      // Load Cycle Data
-      const cycleResponse = await ApiHelper.request(`${API_CYCLE_URL}`, 'GET', null, accessToken);
-      const cycleData = cycleResponse.data;
-
-      const validPeriodStart = cycleData.period_start ? new Date(cycleData.period_start) : null;
-      if (validPeriodStart && isValid(validPeriodStart)) {
-        setPeriodStartDate(validPeriodStart);
-      }
-
-      setCycleLength(cycleData.cycle_length || 28);
-      setPeriodDays(cycleData.period_days || 4);
-      setSelectedCycleLength(cycleData.cycle_length || 28);
-      setSelectedPeriodDays(cycleData.period_days || 4);
-      setPainLevel(Array(5).fill(false).map((_, i) => i < cycleData.pain_level));
-      setBleedingLevel(Array(5).fill(false).map((_, i) => i < cycleData.bleeding_level));
-      setMoodLevel(Array(5).fill(false).map((_, i) => i < cycleData.mood_level));
-
-      // Load Profile Data
-      const profileResponse = await ApiHelper.request(`${API_PROFILE_URL}/profile`, 'GET', null, accessToken);
-      const profileData = profileResponse.data;
-      setUserName(profileData.name || 'User');
-
-
-    } catch (error) {
-      console.error('Failed to load user data:', error);
-       // Re-throw untuk ditangani di useEffect atau tempat lain yang memanggil fungsi ini
-    }
-  };
-
-  const saveUserData = async (data: any, accessToken: string) => {
-    try {
-        const payload = {
-            period_start: data.period_start || periodStartDate?.toISOString(),
-            cycle_length: data.cycle_length || cycleLength,
-            period_days: data.period_days || periodDays,
-            pain_level: data.pain_level !== undefined ? data.pain_level : (painLevel.lastIndexOf(true) + 1 || 0),
-            bleeding_level: data.bleeding_level !== undefined ? data.bleeding_level : (bleedingLevel.lastIndexOf(true) + 1 || 0),
-            mood_level: data.mood_level !== undefined ? data.mood_level : (moodLevel.lastIndexOf(true) + 1 || 0),
-        };
-
-        const endpoint = periodStartDate ? `${API_CYCLE_URL}/update` : API_CYCLE_URL;
-        await ApiHelper.request(endpoint, periodStartDate ? 'PUT' : 'POST', payload, accessToken);
-
-        // Update state setelah menyimpan
-        if (data.period_start) {
-          setPeriodStartDate(new Date(data.period_start));
-        }
-        if (data.cycle_length) setCycleLength(data.cycle_length);
-        if (data.period_days) setPeriodDays(data.period_days);
-        if (data.pain_level !== undefined) setPainLevel(Array(5).fill(false).map((_, i) => i < data.pain_level));
-        if (data.bleeding_level !== undefined) setBleedingLevel(Array(5).fill(false).map((_, i) => i < data.bleeding_level));
-        if (data.mood_level !== undefined) setMoodLevel(Array(5).fill(false).map((_, i) => i < data.mood_level));
-
-
-    } catch (error) {
-      console.error('Failed to save user data:', error);
-      Alert.alert('Error', 'Failed to save user data. Please try again.');
-      throw error; // Re-throw agar bisa ditangani di pemanggil fungsi.
-    }
-  };
-
-
-  // --- useEffect untuk Memuat Data ---
-  useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true);
-      try {
-        const isGuest = await AsyncStorage.getItem('isGuest');
-        if (isGuest === 'true') {
-          await loadGuestData();
-        } else {
-          const accessToken = await AsyncStorage.getItem('access_token');
-          if (!accessToken) {
-            setError('No access token found'); // Set error jika tidak ada token
-            return;
-          }
-          await loadUserData(accessToken);
-        }
-      } catch (err) {
-          setError('Failed to load data. Please try again.'); // Error yang lebih umum
-
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadData();
-  }, []);
-
-
-  // --- Fungsi-fungsi Handler untuk Interaksi UI ---
-  const saveCycleData = async (data: any) => {
-    try {
-      const isGuest = await AsyncStorage.getItem('isGuest');
-      if (isGuest === 'true') {
-        await saveGuestData(data);
-      } else {
-        const accessToken = await AsyncStorage.getItem('access_token');
-        if (!accessToken) {
-          Alert.alert('Error', 'No access token. Please log in.');
-          return;
-        }
-        await saveUserData(data, accessToken);
-      }
-    } catch (error) {
-        console.error('Failed to save cycle data:', error); // Log error
-    }
-  };
-
-  const handleSelectDate = async (date: Date) => {
-        if (isAfter(date, today)) {
-            Alert.alert('Error', 'Cannot select future dates');
-            return;
-        }
-        if (isValid(date)) {
-            await saveCycleData({ period_start: date.toISOString() });
-            Alert.alert('Period Started', `Period start date set to ${format(date, 'dd MMM yyyy')}`);
-            setIsStartingPeriod(false);
-        }
-    };
-
-  const handleSelectPainLevel = async (index: number) => {
-    const newPainLevel = painLevel.map((_, i) => i <= index);
-    animateIconChange(painAnims[index]);
-    await saveCycleData({ pain_level: index + 1 });
-  };
-
-  const handleSelectBleedingLevel = async (index: number) => {
-    const newBleedingLevel = bleedingLevel.map((_, i) => i <= index);
-    animateIconChange(bleedingAnims[index]);
-    await saveCycleData({ bleeding_level: index + 1 });
-  };
-
-  const handleSelectMoodLevel = async (index: number) => {
-    const newMoodLevel = moodLevel.map((_, i) => i <= index);
-    animateIconChange(moodAnims[index]);
-    await saveCycleData({ mood_level: index + 1 });
-  };
-
-  const handleCycleLengthUpdate = async (newLength: number) => {
-    setSelectedCycleLength(newLength);
-    await saveCycleData({ cycle_length: newLength });
-  };
-
-  const handlePeriodDaysUpdate = async (newDays: number) => {
-    setSelectedPeriodDays(newDays);
-    await saveCycleData({ period_days: newDays });
-  };
-
-  // --- Animasi ---
   const animateIconChange = (animationValue: Animated.Value) => {
     Animated.timing(animationValue, {
       toValue: 1,
@@ -328,7 +83,194 @@ const Cycle = () => {
     };
   };
 
-  // --- Fungsi-fungsi untuk Menghitung Siklus ---
+  useEffect(() => {
+    const loadCycleData = async () => {
+      if (!isLoggedIn) { 
+        setIsLoading(false);
+        return; 
+      }
+      try {
+        const isGuest = await AsyncStorage.getItem('isGuest');
+        if (isGuest === 'true') {
+          // Set default guest data if no stored data exists
+          setPeriodStartDate(null); 
+          setCycleLength(28);
+          setPeriodDays(4);
+          setSelectedCycleLength(28);
+          setSelectedPeriodDays(4);
+          setPainLevel(Array(5).fill(false));
+          setBleedingLevel(Array(5).fill(false));
+          setMoodLevel(Array(5).fill(false));
+
+          const guestData = await AsyncStorage.getItem('guest_cycle_data');
+          if (guestData) {
+            const data = JSON.parse(guestData);
+            setPeriodStartDate(data.periodStart ? new Date(data.periodStart) : null);
+            setCycleLength(data.cycleLength || 28);
+            setPeriodDays(data.periodDays || 4);
+            setSelectedCycleLength(data.cycleLength || 28);
+            setSelectedPeriodDays(data.periodDays || 4);
+            setPainLevel(data.painLevel || Array(5).fill(false));
+            setBleedingLevel(data.bleedingLevel || Array(5).fill(false));
+            setMoodLevel(data.moodLevel || Array(5).fill(false));
+          }
+          setIsLoading(false);
+          return;
+        }
+
+        const accessToken = await AsyncStorage.getItem('access_token');
+        if (!accessToken) throw new Error('No access token found');
+
+        const response = await ApiHelper.request(`${API_CYCLE_URL}`, 'GET', null, accessToken);
+        const data = (response as { data: any }).data;
+
+        setPeriodStartDate(data.period_start ? new Date(data.period_start) : null);
+        setCycleLength(data.cycle_length || 28);
+        setPeriodDays(data.period_days || 4);
+        setSelectedCycleLength(data.cycle_length || 28);
+        setSelectedPeriodDays(data.period_days || 4);
+        setPainLevel(Array(5).fill(false).map((_, i) => i < data.pain_level));
+        setBleedingLevel(Array(5).fill(false).map((_, i) => i < data.bleeding_level));
+        setMoodLevel(Array(5).fill(false).map((_, i) => i < data.mood_level));
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Failed to load cycle data:', error);
+        setError(error instanceof Error ? error.message : 'Failed to load data.');
+        Alert.alert('Error', error instanceof Error ? error.message : 'Failed to load data.'); // Show error
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadCycleData();
+  }, []);
+
+  useEffect(() => {  // Initial login status check
+    const checkLoginStatus = async () => {
+      const accessToken = await AsyncStorage.getItem('access_token');
+      setIsLoggedIn(!!accessToken);
+    };
+    checkLoginStatus();
+  }, []);
+
+  const saveCycleData = async (data: any) => {
+    try {
+      const isGuest = await AsyncStorage.getItem('isGuest');
+      if (isGuest === 'true') {
+        const guestData = {
+          periodStart: periodStartDate?.toISOString(),
+          cycleLength,
+          periodDays,
+          painLevel,
+          bleedingLevel,
+          moodLevel,
+          ...data
+        };
+        await AsyncStorage.setItem('guest_cycle_data', JSON.stringify(guestData));
+        return;
+      }
+
+      const accessToken = await AsyncStorage.getItem('access_token');
+      if (!accessToken) throw new Error('No access token');
+
+      const payload = {
+        period_start: periodStartDate?.toISOString(),
+        cycle_length: cycleLength,
+        period_days: periodDays,
+        pain_level: painLevel.lastIndexOf(true) + 1 || 0,
+        bleeding_level: bleedingLevel.lastIndexOf(true) + 1 || 0,
+        mood_level: moodLevel.lastIndexOf(true) + 1 || 0,
+        ...data
+      };
+
+      const endpoint = periodStartDate ? `${API_CYCLE_URL}/update` : API_CYCLE_URL;
+      const response = await ApiHelper.request(endpoint, periodStartDate ? 'GET' : 'POST', payload, accessToken) as Response;
+
+      // Example error handling from API response
+      if (!response.ok) {
+        const errorData = await response.json();  // Get error details
+        console.error("API Error:", errorData);
+        throw new Error(errorData?.message || response.statusText || "API request failed");
+      }
+      
+      // Data saved successfully
+      // Update local state or show success message, etc.
+      console.log("Data saved successfully");
+
+    } catch (error) {
+      console.error("Save cycle data error:", error);
+      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to save data.'); // Show specific error
+    }
+  };
+
+  const handleSelectDate = async (date: Date) => {
+    if (isAfter(date, today)) {
+      Alert.alert('Error', 'Cannot select future dates');
+      return;
+    }
+    
+    if (isValid(date)) {
+      setPeriodStartDate(date);
+      await saveCycleData({ period_start: date.toISOString() });
+      Alert.alert(
+        'Period Started',
+        `Period start date set to ${format(date, 'dd MMM yyyy')}`
+      );
+      setIsStartingPeriod(false);
+    }
+  };
+
+  const handleSelectPainLevel = async (index: number) => {
+    const newPainLevel = painLevel.map((_, i) => i <= index);
+    setPainLevel(newPainLevel);
+    animateIconChange(painAnims[index]);
+    await saveCycleData({ pain_level: index + 1 });
+  };
+
+  const handleSelectBleedingLevel = async (index: number) => {
+    const newBleedingLevel = bleedingLevel.map((_, i) => i <= index);
+    setBleedingLevel(newBleedingLevel);
+    animateIconChange(bleedingAnims[index]);
+    await saveCycleData({ bleeding_level: index + 1 });
+  };
+
+  const handleSelectMoodLevel = async (index: number) => {
+    const newMoodLevel = moodLevel.map((_, i) => i <= index);
+    setMoodLevel(newMoodLevel);
+    animateIconChange(moodAnims[index]);
+    await saveCycleData({ mood_level: index + 1 });
+  };
+
+  const handleCycleLengthUpdate = async (newLength: number) => {
+    setCycleLength(newLength);
+    setSelectedCycleLength(newLength);
+    await saveCycleData({ cycle_length: newLength });
+  };
+
+  const handlePeriodDaysUpdate = async (newDays: number) => {
+    setPeriodDays(newDays);
+    setSelectedPeriodDays(newDays);
+    await saveCycleData({ period_days: newDays });
+  };
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#0000ff" />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text style={{ color: 'red', fontSize: 18 }}>{error}</Text>
+        <TouchableOpacity onPress={() => window.location.reload()} style={{ marginTop: 10 }}>
+          <Text style={{ color: 'blue', fontSize: 16 }}>Try Again</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   const getPeriodDates = (startDate: Date | null) => {
     const dates = [];
@@ -358,7 +300,11 @@ const Cycle = () => {
     return predictedDates;
   };
 
-    const generateWeekDates = (date: Date) => {
+  const periodDates = periodStartDate ? getPeriodDates(periodStartDate) : [];
+  const fertileDates = periodStartDate ? getFertileDates(periodStartDate) : [];
+  const predictedPeriodDates = periodStartDate ? getPredictedPeriodDates(periodStartDate) : [];
+
+  const generateWeekDates = (date: Date) => {
     const startDate = startOfWeek(date, { weekStartsOn: 1 });
     return Array.from({ length: 7 }, (_, index) => addDays(startDate, index));
   };
@@ -368,7 +314,8 @@ const Cycle = () => {
     return Array.from({ length: 42 }, (_, index) => addDays(startDate, index));
   };
 
-
+  const weekDates = generateWeekDates(today);
+  const monthDates = generateMonthDates(currentMonth);
 
   const getCyclePhase = () => {
     if (!periodStartDate) return { phase: 'Not set', day: null };
@@ -440,7 +387,6 @@ const Cycle = () => {
 
   const { phase, day } = getCyclePhase();
 
-
   const getRecommendation = (phase: string) => {
     switch (phase) {
       case 'Period':
@@ -453,9 +399,6 @@ const Cycle = () => {
         return 'Maintain a Balanced Diet';
     }
   };
-
-
-  // --- UI Helpers ---
 
   const handleStartPeriod = () => {
     setIsStartingPeriod(true);
@@ -484,6 +427,35 @@ const Cycle = () => {
     return 'Good Evening';
   };
 
+  const [userName, setUserName] = useState('');
+
+  // Tambahkan useEffect untuk load username
+  useEffect(() => {
+    const loadUserName = async () => {
+      try {
+        const isGuest = await AsyncStorage.getItem('isGuest');
+        if (isGuest === 'true') {
+          setUserName('Guest');
+          return;
+        }
+
+        const profileData = await AsyncStorage.getItem('profile_data');
+        if (profileData) {
+          const parsedData = JSON.parse(profileData);
+          setUserName(parsedData.name || 'User');
+        }
+      } catch (error) {
+        console.error('Failed to load user name:', error);
+        setUserName('User');
+      }
+    };
+
+    loadUserName();
+  }, []);
+
+  const cycleOptions = Array.from({ length: 60 }, (_, i) => 1 + i);
+  const periodOptions = Array.from({ length: 60 }, (_, i) => 1 + i);
+
   const handleSelectCycleLengthOption = (newLength: number) => {
     setSelectedCycleLength(newLength);
   };
@@ -491,10 +463,6 @@ const Cycle = () => {
   const handleSelectPeriodDaysOption = (newDays: number) => {
     setSelectedPeriodDays(newDays);
   };
-
-
-
-  // --- Render Functions ---
 
   const renderCycleOption = ({ item }: { item: number }) => (
     <TouchableOpacity
@@ -656,46 +624,15 @@ const Cycle = () => {
       </TouchableOpacity>
     );
   };
-    const cycleOptions = Array.from({ length: 60 }, (_, i) => 1 + i);
-    const periodOptions = Array.from({ length: 60 }, (_, i) => 1 + i);
-    const keyExtractor = (item: Date) => item.toISOString();
-    const periodDates = periodStartDate ? getPeriodDates(periodStartDate) : [];
-    const fertileDates = periodStartDate ? getFertileDates(periodStartDate) : [];
-    const predictedPeriodDates = periodStartDate ? getPredictedPeriodDates(periodStartDate) : [];
-    const weekDates = generateWeekDates(today);
-    const monthDates = generateMonthDates(currentMonth);
 
-  // --- Loading dan Error UI ---
-    if (isLoading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#0000ff" />
-      </View>
-    );
-  }
-
-  if (error) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Text style={{ color: 'red', fontSize: 18 }}>{error}</Text>
-        <TouchableOpacity onPress={() => window.location.reload()} style={{ marginTop: 10 }}>
-          <Text style={{ color: 'blue', fontSize: 16 }}>Try Again</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
-
-  // --- JSX Utama ---
+  const keyExtractor = (item: Date) => item.toISOString();
 
   return (
-    <ScrollView style={{ flex: 1 }}>
+    <ScrollView style={{ flex: 1}}>
       <View style={{ flexGrow: 1, padding: 20, backgroundColor: '#fff' }}>
-        {/* Greeting */}
         <Text style={{ fontSize: 30, fontWeight: 'bold', marginBottom: 5 }}>{getGreeting()},</Text>
         <Text style={{ fontSize: 30, color: '#333', marginBottom: 20 }}>{userName}</Text>
 
-        {/* Kontrol Kalender */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 13, marginHorizontal: 8 }}>
           <TouchableOpacity disabled={!viewFullCalendar} onPress={handlePrevMonth}>
             <Text style={[{ fontSize: 20, fontWeight: 'bold', color: '#007BFF' }, !viewFullCalendar && { color: '#d3d3d3' }]}>{'<'}</Text>
@@ -709,14 +646,12 @@ const Cycle = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Hari dalam Seminggu */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 9, paddingHorizontal: 5 }}>
           {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, index) => (
             <Text key={index} style={{ fontSize: 16, fontWeight: 'bold', color: '#666', flex: 1, textAlign: 'center' }}>{day}</Text>
           ))}
         </View>
 
-        {/* Kalender */}
         <FlatList
           data={viewFullCalendar ? monthDates : weekDates}
           numColumns={7}
@@ -726,7 +661,6 @@ const Cycle = () => {
           contentContainerStyle={{ paddingHorizontal: 5 }}
         />
 
-        {/* Pesan Jika Period Start Belum Di-set */}
         {!periodStartDate && (
           <View style={{ padding: 10, borderRadius: 20, marginBottom: 10, marginTop: 10, backgroundColor: '#ffe6e6' }}>
             <Text style={{ fontSize: 16, color: '#333', textAlign: 'left', paddingVertical: 10 }}>
@@ -735,7 +669,6 @@ const Cycle = () => {
           </View>
         )}
 
-        {/* Informasi Fase Siklus */}
         {periodStartDate && (
           <View style={{ alignItems: 'center', marginBottom: 20, marginTop: 20 }}>
             <View style={{ width: 300, height: 300, borderRadius: 150, borderWidth: 10, borderColor: '#F05A76', alignItems: 'center', justifyContent: 'center' }}>
@@ -755,9 +688,8 @@ const Cycle = () => {
           </View>
         )}
 
-        {/* Informasi Periode Terakhir */}
         <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10 }}>Last Menstrual Period</Text>
-        <View style={{ padding: 15, backgroundColor: '#fff', borderRadius: 20, borderWidth: 0.1, borderColor: '#000', marginBottom: 20, shadowColor: '#000', shadowOffset: { width: 5, height: 5 }, shadowOpacity: 0.6, shadowRadius: 4, elevation: 5 }}>
+        <View style={{ padding: 15, backgroundColor: '#fff', borderRadius: 20, borderWidth: 0.1, borderColor: '#000' , marginBottom: 20, shadowColor: '#000', shadowOffset: { width: 5, height: 5 }, shadowOpacity: 0.6, shadowRadius: 4, elevation: 5 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
             <Text>Start Date:</Text>
             <Text style={{ marginLeft: 30 }}>{periodStartDate ? format(periodStartDate, 'dd MMM yyyy') : 'Not set'}</Text>
@@ -768,7 +700,7 @@ const Cycle = () => {
               <Text style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 10, padding: 5, width: 50, textAlign: 'center' }}>{cycleLength}</Text>
             </TouchableOpacity>
           </View>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
             <Text>Period Length:</Text>
             <TouchableOpacity onPress={() => setShowPeriodDaysPicker(true)}>
               <Text style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 10, padding: 5, width: 50, textAlign: 'center' }}>{periodDays}</Text>
