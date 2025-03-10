@@ -16,7 +16,7 @@ import { ApiHelper } from '../helpers/ApiHelper';
 import { LoginResponse } from "../response/LoginResponse";
 
 const Login = () => {
-  const API_BASE_URL = 'https://your-api-endpoint.com';
+  const API_BASE_URL = 'http://192.168.100.45:8000';
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -28,16 +28,23 @@ const Login = () => {
   const fetchUserData = async (token: string) => {
     try {
       const response = await ApiHelper.request<LoginResponse>(
-        `${API_BASE_URL}/getUserData`,
+        `${API_BASE_URL}/api/auth/getUserData`,
         "GET",
         null,
         token
       );
-      await AsyncStorage.setItem("userData", JSON.stringify(response.output_schema));
-      console.log('User data saved:', response.output_schema);
+  
+      if (response?.error_schema.error_code != "S001") {
+        throw new Error("Failed to fetch data");
+      }
+  
+      const userData = JSON.stringify(response.output_schema);
+      await AsyncStorage.setItem("userData", userData);
+      console.log("User data saved:", response.output_schema);
+
+      await AsyncStorage.setItem("isGuest", "false");
     } catch (error) {
-      console.error('Failed to fetch user data:', error);
-      throw new Error('Failed to fetch user data');
+      Alert.alert("Login Failed", error.response);
     }
   };
 
@@ -50,34 +57,38 @@ const Login = () => {
     try {
       const loginData = { email, password };
       const response = await ApiHelper.request<LoginResponse>(
-        `${API_BASE_URL}/login`,
+        `${API_BASE_URL}/api/auth/login`,
         "POST",
         loginData
       );
   
-      if (!response.output_schema?.access_token) {
-        const errorMessage = response.error_schema?.error_message || "Login failed. Please try again.";
-        Alert.alert("Login Failed", errorMessage);
-        return;
+      if (response?.error_schema.error_code != "S001") {
+        throw new Error(response.error_schema.error_message);
       }
   
       // Simpan token dan data pengguna ke AsyncStorage
       await AsyncStorage.setItem("access_token", response.output_schema.access_token);
+
       await AsyncStorage.setItem("isLoggedIn", "true");
-      await AsyncStorage.setItem("userData", JSON.stringify(response.output_schema));
-  
+      await fetchUserData(response.output_schema.access_token);
+      
       // Tampilkan pesan sukses dan arahkan ke halaman profile
-      Alert.alert("Login Success", "You are logged in!");
-      router.push("/profile");
-    } catch (error: any) {
+      Alert.alert(
+        'Success',
+        'You have successfully logged in.',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              router.push("/profile");
+            },
+          },
+        ]
+      );
+    } catch (error) {
       console.error('Login error:', error);
-      if (error.response) {
-        const errorMessage = error.response.error_schema?.error_message || "An error occurred during login";
+        const errorMessage = error.response || "An error occurred during login";
         Alert.alert("Login Failed", errorMessage);
-      } else {
-        const errorMessage = "Network error. Please check your internet connection.";
-        Alert.alert("Login Failed", errorMessage);
-      }
     }
   };
 
@@ -91,33 +102,35 @@ const Login = () => {
   
     try {
       const resetData = { email };
-      const response: { success?: boolean; error?: string } = await ApiHelper.request(
-        `${API_BASE_URL}/resetPassword`,
+      const response = await ApiHelper.request(
+        `${API_BASE_URL}/api/auth/resetPassword`,
         'POST',
         resetData
       );
-  
-      if (response?.success) {
-        Alert.alert(
-          'Success',
-          'Password reset link has been sent to your email.',
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                setShowForgotPassword(false); // Sembunyikan form forgot password
-                router.push("/login"); // Arahkan kembali ke halaman login
-              },
-            },
-          ]
-        );
-      } else {
-        const errorMessage = response?.error || 'Failed to send reset password request.';
-        Alert.alert('Error', errorMessage);
+      console.log('Reset password response:', response);
+    
+      // Jika API merespons dengan error, tampilkan pesan error
+      if (response?.error_schema.error_code != "S001") {
+        throw new Error(response.error_schema.additional_message);
       }
+    
+      Alert.alert(
+        'Success',
+        'Password reset link has been sent to your email.',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              setShowForgotPassword(false);
+              router.push("/login");
+            },
+          },
+        ]
+      );
     } catch (error) {
-      console.error('Reset password error:', error);
-      Alert.alert('Error', 'An error occurred. Please try again later.');
+      // console.error("API Error:", error);
+      const errorMessage = error.message || "An error occurred";
+      Alert.alert("Login Failed", errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -148,6 +161,8 @@ const Login = () => {
                     placeholderTextColor="#8A8A8A"
                     value={email}
                     onChangeText={setEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
                 />
             </View>
 

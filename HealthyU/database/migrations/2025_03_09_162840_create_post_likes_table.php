@@ -13,16 +13,12 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::create('notifications', function (Blueprint $table) {
+        Schema::create('post_likes', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('user_id');
-            $table->dateTime('start');
-            $table->boolean('recieved');
-            $table->boolean('seen');
-            $table->string('message');
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->foreignId('post_id')->constrained()->onDelete('cascade');
             $table->timestamps();
-
-            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
+            $table->unique(['user_id', 'post_id']);
         });
     }
 
@@ -33,6 +29,6 @@ return new class extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('notifications');
+        Schema::dropIfExists('post_likes');
     }
 };
