@@ -21,7 +21,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiHelper } from '../helpers/ApiHelper';
 import { ProfileResponse } from '../response/ProfileResponse';
 
-const API_BASE_URL = 'http://192.168.100.45:8000';
+const API_BASE_URL = 'http://10.68.111.137.45:8000';
 
 const Profile = () => {
   const [profileImage, setProfileImage] = useState<string | null>(null);
@@ -169,8 +169,8 @@ const Profile = () => {
       formData.append('email', inputEmail);
       formData.append('dob', inputDob ? inputDob.toISOString().split('T')[0] : '');
       formData.append('gender', inputGender);
-      formData.append('height', `${inputHeight} cm`);
-      formData.append('weight', `${inputWeight} kg`);
+      formData.append('height', inputHeight);
+      formData.append('weight', inputWeight);
 
       if (profileImage) {
         formData.append('profile_picture', {
@@ -187,6 +187,8 @@ const Profile = () => {
         accessToken,
         true
       );
+
+      console.log('Update Profile Response:', response);
 
       // Simpan data yang baru ke AsyncStorage
       const updatedProfileData = {
@@ -957,7 +959,7 @@ const Profile = () => {
         )} */}
         {profileData.name === 'Guest' ? (
             <View style={{ alignItems: 'center' }}>
-            <Text style={{ fontSize: 25, color: '#666', marginBottom: 8 }}>Guest Account</Text>
+            <Text style={{ fontSize: 25, color: '#666', marginTop: 10 }}>Guest Account</Text>
             <TouchableOpacity
                 onPress={() => router.push('/welcome')} // Arahkan ke halaman Welcome
                 style={{
@@ -972,7 +974,7 @@ const Profile = () => {
             </TouchableOpacity>
             </View>
         ) : (
-            <Text style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>{profileData.email}</Text>
+            <Text style={{ fontSize: 25, fontWeight: 'bold', color: '#666', marginTop: 10 }}>{profileData.name}</Text>
         )}
         </View>
 

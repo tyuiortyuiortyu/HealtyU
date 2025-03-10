@@ -41,3 +41,8 @@ Route::middleware('jwt')->group(function () {
     Route::post('/resetPassword', [AuthController::class, 'resetPassword']);
     Route::post('/updateProfile', [AuthController::class, 'updateProfile'])->middleware(JwtMiddleware::class);
 });
+
+route::prefix('community')->group(function(){
+    Route::post('/likePost', [PostLikeController::class, 'likePost'])->middleware(JwtMiddleware::class);
+    Route::get('/getPosts', [PostLikeController::class, 'getPosts'])->middleware(JwtMiddleware::class);
+});

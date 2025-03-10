@@ -87,8 +87,8 @@ const Login = () => {
         ]
       );
     } catch (error) {
-      console.error('Login error:', error);
-        const errorMessage = error.response || "An error occurred during login";
+        // console.error('Login error:', error);
+        const errorMessage = error.message || "An error occurred during login";
         Alert.alert("Login Failed", errorMessage);
     }
   };
