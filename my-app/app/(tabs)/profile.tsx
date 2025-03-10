@@ -198,8 +198,8 @@ useEffect(() => {
       formData.append('email', inputEmail);
       formData.append('dob', inputDob ? inputDob.toISOString().split('T')[0] : '');
       formData.append('gender', inputGender);
-      formData.append('height', `${inputHeight} cm`);
-      formData.append('weight', `${inputWeight} kg`);
+      formData.append('height', `${inputHeight}`);
+      formData.append('weight', `${inputWeight}`);
   
       if (profileImage) {
         formData.append('profile_picture', {
@@ -223,7 +223,7 @@ useEffect(() => {
         name: inputName,
         email: inputEmail,
         dob: inputDob ? inputDob.toISOString().split('T')[0] : '',
-        gender: inputGender,
+        gender: inputGender === 'Female' ? 'Female' : 'Male', // masi ?
         height: parseFloat(inputHeight),
         weight: parseFloat(inputWeight),
         profile_picture: profileImage,
@@ -278,8 +278,6 @@ useEffect(() => {
     inputHeight &&
     inputWeight;
 
-
-
   const handleSave = async () => {
     if (hasChanges()) {
       try {
@@ -289,7 +287,7 @@ useEffect(() => {
           name: inputName,
           email: inputEmail,
           dob: inputDob ? inputDob.toISOString().split('T')[0] : '', // Format tanggal ke YYYY-MM-DD
-          gender: inputGender,
+          gender: inputGender === 'Female' ? 'Female' : 'Male', // masi ?
           height: parseFloat(inputHeight),
           weight: parseFloat(inputWeight),
           profile_picture: profileImage,
