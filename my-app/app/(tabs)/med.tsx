@@ -16,8 +16,13 @@ import {
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
 import CalendarPicker from "react-native-calendar-picker"; // Import CalendarPicker
-import { getMedications, addMedication, updateMedication, deleteMedication } from '../helpers/medApiHelper';
-import { MedResponse } from '../response/medResponse';
+import {
+  getMedications,
+  addMedication,
+  updateMedication,
+  deleteMedication,
+} from "../helpers/medApiHelper";
+import { MedResponse } from "../response/medResponse";
 
 import images from "../../constants/images";
 import icons from "../../constants/icons";
@@ -98,7 +103,7 @@ const MedReminder = () => {
       setMedList(medList.filter((_, i) => i !== index));
       setSelectedIndex(null);
     } catch (error) {
-      console.error('Error skipping medication:', error);
+      console.error("Error skipping medication:", error);
     }
   };
 
@@ -109,7 +114,7 @@ const MedReminder = () => {
       setMedList(medList.filter((_, i) => i !== index));
       setSelectedIndex(null);
     } catch (error) {
-      console.error('Error marking medication as taken:', error);
+      console.error("Error marking medication as taken:", error);
     }
   };
 
@@ -160,7 +165,7 @@ const MedReminder = () => {
     setShowReminderModal(true);
   };
 
-  const handleSetReminderPress = () => {
+  const handleSetReminderPress = async () => {
     if (!selectedStartDate || !selectedTime || !medName || !medDose) {
       alert("Please fill in all details for the reminder!");
       return;
