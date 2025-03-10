@@ -9,7 +9,6 @@ import {
   Animated,
   ScrollView,
   Dimensions,
-  ActivityIndicator,
 } from 'react-native';
 import {
   addDays,
@@ -23,16 +22,16 @@ import {
   isAfter,
   isSameDay,
 } from 'date-fns';
+import { ApiHelper } from '../helpers/ApiHelper'; // Pastikan ApiHelper sudah benar
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ApiHelper } from '../helpers/ApiHelper';
 
-const API_CYCLE_URL = 'http://127.0.0.1:8000/api/cycles';
+const API_BASE_URL = 'http://your-api-base-url.com';  // GANTI INI dengan URL dasar API Anda
 
 const Cycle = () => {
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(today);
   const [viewFullCalendar, setViewFullCalendar] = useState(false);
-  const [periodStartDate, setPeriodStartDate] = useState<Date | null>(null);
+  const [periodStartDate, setPeriodStartDate] = useState(null);
   const [periodDays, setPeriodDays] = useState(4);
   const [cycleLength, setCycleLength] = useState(28);
   const [isStartingPeriod, setIsStartingPeriod] = useState(false);
@@ -46,23 +45,139 @@ const Cycle = () => {
   const [showCycleLengthPicker, setShowCycleLengthPicker] = useState(false);
   const [showPeriodDaysPicker, setShowPeriodDaysPicker] = useState(false);
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isLoggedIn, setIsLoggedIn] = useState(false); // Track login status
-
-  const [painAnims] = useState(() => 
-    Array(5).fill(null).map(() => new Animated.Value(0))
-  );
-  const [bleedingAnims] = useState(() => 
-    Array(5).fill(null).map(() => new Animated.Value(0))
-  );
-  const [moodAnims] = useState(() => 
-    Array(5).fill(null).map(() => new Animated.Value(0))
-  );
+  const painAnims = useState(Array(5).fill(null).map(() => new Animated.Value(0)))[0];
+  const bleedingAnims = useState(Array(5).fill(null).map(() => new Animated.Value(0)))[0];
+  const moodAnims = useState(Array(5).fill(null).map(() => new Animated.Value(0)))[0];
 
   const screenWidth = Dimensions.get('window').width;
 
-  const animateIconChange = (animationValue: Animated.Value) => {
+  // Fungsi untuk menyimpan data siklus
+  const saveCycleData = async () => {
+    try {
+      const isGuest = await AsyncStorage.getItem('isGuest');
+        const dataToSave = {
+            start_date: periodStartDate ? periodStartDate.toISOString() : null, //handle null
+            cycle_length: cycleLength,
+            period_length: periodDays,
+            pain_level: painLevel.filter(Boolean).length,
+            bleeding_level: bleedingLevel.filter(Boolean).length,
+            mood_level: moodLevel.filter(Boolean).length,
+        };
+
+      if (isGuest === 'true') {
+        // Simpan ke AsyncStorage untuk guest
+        await AsyncStorage.setItem('guestCycleData', JSON.stringify(dataToSave));
+          Alert.alert('Success', 'Cycle data saved locally'); //inform user
+
+      } else {
+        // Untuk user terautentikasi
+        const accessToken = await AsyncStorage.getItem('access_token');
+        if (!accessToken) { //check access token
+            Alert.alert("Error", "User not authenticated");
+            return;
+        }
+        const response = await ApiHelper.request(
+          `${API_BASE_URL}/api/cycles/save`,
+          'POST',
+          dataToSave,
+          accessToken
+        );
+        if (response && response.message){  //check valid response
+            Alert.alert('Success', response.message); // Show message from API
+        } else {
+            Alert.alert('Success', 'Cycle data saved successfully');
+        }
+
+      }
+    } catch (error) {
+      console.error("Save Cycle Error:", error); // Log detailed error
+      Alert.alert('Error', 'Failed to save cycle data: ' + (error.message || "Unknown error")); // Show error details to user
+    }
+  };
+
+  // Fungsi untuk memuat data siklus
+  const loadCycleData = async () => {
+    try {
+      const isGuest = await AsyncStorage.getItem('isGuest');
+
+      if (isGuest === 'true') {
+        const data = await AsyncStorage.getItem('guestCycleData');
+        if (data) {
+          const parsedData = JSON.parse(data);
+          setPeriodStartDate(parsedData.start_date ? new Date(parsedData.start_date) : null); //handle null start date.
+          setCycleLength(parsedData.cycle_length);
+          setPeriodDays(parsedData.period_length);
+          // Load pain, bleeding, and mood levels
+            const newPainLevel = Array(5).fill(false);
+            for (let i = 0; i < parsedData.pain_level; i++) {
+              newPainLevel[i] = true;
+            }
+            setPainLevel(newPainLevel);
+
+            const newBleedingLevel = Array(5).fill(false);
+            for (let i = 0; i < parsedData.bleeding_level; i++) {
+                newBleedingLevel[i] = true;
+            }
+            setBleedingLevel(newBleedingLevel);
+
+            const newMoodLevel = Array(5).fill(false);
+            for (let i = 0; i < parsedData.mood_level; i++) {
+                newMoodLevel[i] = true;
+            }
+            setMoodLevel(newMoodLevel);
+
+        }
+      } else {
+        const accessToken = await AsyncStorage.getItem('access_token');
+        if (!accessToken) return; // No need to proceed if no token
+
+        const response = await ApiHelper.request(
+          `${API_BASE_URL}/api/cycles/latest`, //pastikan endpoint ini ada
+          'GET',
+          null,
+          accessToken
+        );
+          if (response && response.data) { // Check for valid response data
+              const cycleData = response.data;
+              setPeriodStartDate(cycleData.start_date ? new Date(cycleData.start_date) : null);
+              setCycleLength(cycleData.cycle_length);
+              setPeriodDays(cycleData.period_length);
+
+              const newPainLevel = Array(5).fill(false);
+              for (let i = 0; i < cycleData.pain_level; i++) {
+                newPainLevel[i] = true;
+              }
+              setPainLevel(newPainLevel);
+
+              const newBleedingLevel = Array(5).fill(false);
+              for (let i = 0; i < cycleData.bleeding_level; i++) {
+                newBleedingLevel[i] = true;
+              }
+              setBleedingLevel(newBleedingLevel);
+
+              const newMoodLevel = Array(5).fill(false);
+              for (let i = 0; i < cycleData.mood_level; i++) {
+                newMoodLevel[i] = true;
+              }
+              setMoodLevel(newMoodLevel);
+          }
+
+
+      }
+    } catch (error) {
+      console.error('Failed to load cycle data:', error);
+        Alert.alert("Error", "Failed to load cycle data");
+    }
+  };
+
+  // Panggil loadCycleData di useEffect
+  useEffect(() => {
+    loadCycleData();
+  }, []);
+
+
+
+  const animateIconChange = (animationValue) => {
     Animated.timing(animationValue, {
       toValue: 1,
       duration: 300,
@@ -72,7 +187,7 @@ const Cycle = () => {
     });
   };
 
-  const getAnimatedStyle = (animationValue: Animated.Value) => {
+  const getAnimatedStyle = (animationValue) => {
     return {
       transform: [{
         rotate: animationValue.interpolate({
@@ -83,196 +198,34 @@ const Cycle = () => {
     };
   };
 
-  useEffect(() => {
-    const loadCycleData = async () => {
-      if (!isLoggedIn) { 
-        setIsLoading(false);
-        return; 
-      }
-      try {
-        const isGuest = await AsyncStorage.getItem('isGuest');
-        if (isGuest === 'true') {
-          // Set default guest data if no stored data exists
-          setPeriodStartDate(null); 
-          setCycleLength(28);
-          setPeriodDays(4);
-          setSelectedCycleLength(28);
-          setSelectedPeriodDays(4);
-          setPainLevel(Array(5).fill(false));
-          setBleedingLevel(Array(5).fill(false));
-          setMoodLevel(Array(5).fill(false));
-
-          const guestData = await AsyncStorage.getItem('guest_cycle_data');
-          if (guestData) {
-            const data = JSON.parse(guestData);
-            setPeriodStartDate(data.periodStart ? new Date(data.periodStart) : null);
-            setCycleLength(data.cycleLength || 28);
-            setPeriodDays(data.periodDays || 4);
-            setSelectedCycleLength(data.cycleLength || 28);
-            setSelectedPeriodDays(data.periodDays || 4);
-            setPainLevel(data.painLevel || Array(5).fill(false));
-            setBleedingLevel(data.bleedingLevel || Array(5).fill(false));
-            setMoodLevel(data.moodLevel || Array(5).fill(false));
-          }
-          setIsLoading(false);
-          return;
-        }
-
-        const accessToken = await AsyncStorage.getItem('access_token');
-        if (!accessToken) throw new Error('No access token found');
-
-        const response = await ApiHelper.request(`${API_CYCLE_URL}`, 'GET', null, accessToken);
-        const data = (response as { data: any }).data;
-
-        setPeriodStartDate(data.period_start ? new Date(data.period_start) : null);
-        setCycleLength(data.cycle_length || 28);
-        setPeriodDays(data.period_days || 4);
-        setSelectedCycleLength(data.cycle_length || 28);
-        setSelectedPeriodDays(data.period_days || 4);
-        setPainLevel(Array(5).fill(false).map((_, i) => i < data.pain_level));
-        setBleedingLevel(Array(5).fill(false).map((_, i) => i < data.bleeding_level));
-        setMoodLevel(Array(5).fill(false).map((_, i) => i < data.mood_level));
-        setIsLoading(false);
-      } catch (error) {
-        console.error('Failed to load cycle data:', error);
-        setError(error instanceof Error ? error.message : 'Failed to load data.');
-        Alert.alert('Error', error instanceof Error ? error.message : 'Failed to load data.'); // Show error
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadCycleData();
-  }, []);
-
-  useEffect(() => {  // Initial login status check
-    const checkLoginStatus = async () => {
-      const accessToken = await AsyncStorage.getItem('access_token');
-      setIsLoggedIn(!!accessToken);
-    };
-    checkLoginStatus();
-  }, []);
-
-  const saveCycleData = async (data: any) => {
-    try {
-      const isGuest = await AsyncStorage.getItem('isGuest');
-      if (isGuest === 'true') {
-        const guestData = {
-          periodStart: periodStartDate?.toISOString(),
-          cycleLength,
-          periodDays,
-          painLevel,
-          bleedingLevel,
-          moodLevel,
-          ...data
-        };
-        await AsyncStorage.setItem('guest_cycle_data', JSON.stringify(guestData));
-        return;
-      }
-
-      const accessToken = await AsyncStorage.getItem('access_token');
-      if (!accessToken) throw new Error('No access token');
-
-      const payload = {
-        period_start: periodStartDate?.toISOString(),
-        cycle_length: cycleLength,
-        period_days: periodDays,
-        pain_level: painLevel.lastIndexOf(true) + 1 || 0,
-        bleeding_level: bleedingLevel.lastIndexOf(true) + 1 || 0,
-        mood_level: moodLevel.lastIndexOf(true) + 1 || 0,
-        ...data
-      };
-
-      const endpoint = periodStartDate ? `${API_CYCLE_URL}/update` : API_CYCLE_URL;
-      const response = await ApiHelper.request(endpoint, periodStartDate ? 'GET' : 'POST', payload, accessToken) as Response;
-
-      // Example error handling from API response
-      if (!response.ok) {
-        const errorData = await response.json();  // Get error details
-        console.error("API Error:", errorData);
-        throw new Error(errorData?.message || response.statusText || "API request failed");
-      }
-      
-      // Data saved successfully
-      // Update local state or show success message, etc.
-      console.log("Data saved successfully");
-
-    } catch (error) {
-      console.error("Save cycle data error:", error);
-      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to save data.'); // Show specific error
+  const handleSelectPainLevel = (index) => {
+    const newPainLevel = [...painLevel];
+    for (let i = 0; i < 5; i++) {
+      newPainLevel[i] = i <= index;
     }
-  };
-
-  const handleSelectDate = async (date: Date) => {
-    if (isAfter(date, today)) {
-      Alert.alert('Error', 'Cannot select future dates');
-      return;
-    }
-    
-    if (isValid(date)) {
-      setPeriodStartDate(date);
-      await saveCycleData({ period_start: date.toISOString() });
-      Alert.alert(
-        'Period Started',
-        `Period start date set to ${format(date, 'dd MMM yyyy')}`
-      );
-      setIsStartingPeriod(false);
-    }
-  };
-
-  const handleSelectPainLevel = async (index: number) => {
-    const newPainLevel = painLevel.map((_, i) => i <= index);
     setPainLevel(newPainLevel);
     animateIconChange(painAnims[index]);
-    await saveCycleData({ pain_level: index + 1 });
   };
 
-  const handleSelectBleedingLevel = async (index: number) => {
-    const newBleedingLevel = bleedingLevel.map((_, i) => i <= index);
+  const handleSelectBleedingLevel = (index) => {
+    const newBleedingLevel = [...bleedingLevel];
+    for (let i = 0; i < 5; i++) {
+      newBleedingLevel[i] = i <= index;
+    }
     setBleedingLevel(newBleedingLevel);
     animateIconChange(bleedingAnims[index]);
-    await saveCycleData({ bleeding_level: index + 1 });
   };
 
-  const handleSelectMoodLevel = async (index: number) => {
-    const newMoodLevel = moodLevel.map((_, i) => i <= index);
+  const handleSelectMoodLevel = (index) => {
+    const newMoodLevel = [...moodLevel];
+    for (let i = 0; i < 5; i++) {
+      newMoodLevel[i] = i <= index;
+    }
     setMoodLevel(newMoodLevel);
     animateIconChange(moodAnims[index]);
-    await saveCycleData({ mood_level: index + 1 });
   };
 
-  const handleCycleLengthUpdate = async (newLength: number) => {
-    setCycleLength(newLength);
-    setSelectedCycleLength(newLength);
-    await saveCycleData({ cycle_length: newLength });
-  };
-
-  const handlePeriodDaysUpdate = async (newDays: number) => {
-    setPeriodDays(newDays);
-    setSelectedPeriodDays(newDays);
-    await saveCycleData({ period_days: newDays });
-  };
-
-  if (isLoading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#0000ff" />
-      </View>
-    );
-  }
-
-  if (error) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Text style={{ color: 'red', fontSize: 18 }}>{error}</Text>
-        <TouchableOpacity onPress={() => window.location.reload()} style={{ marginTop: 10 }}>
-          <Text style={{ color: 'blue', fontSize: 16 }}>Try Again</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
-  const getPeriodDates = (startDate: Date | null) => {
+  const getPeriodDates = (startDate) => {
     const dates = [];
     if (startDate) {
       for (let i = 0; i < periodDays; i++) {
@@ -282,7 +235,7 @@ const Cycle = () => {
     return dates;
   };
 
-  const getFertileDates = (startDate: Date | null) => {
+  const getFertileDates = (startDate) => {
     if (!startDate) return [];
     const ovulationDate = addDays(startDate, cycleLength - 14);
     return [
@@ -293,7 +246,7 @@ const Cycle = () => {
     ];
   };
 
-  const getPredictedPeriodDates = (startDate: Date | null) => {
+  const getPredictedPeriodDates = (startDate) => {
     if (!startDate) return [];
     const nextPeriodStart = addDays(startDate, cycleLength);
     const predictedDates = getPeriodDates(nextPeriodStart);
@@ -304,12 +257,12 @@ const Cycle = () => {
   const fertileDates = periodStartDate ? getFertileDates(periodStartDate) : [];
   const predictedPeriodDates = periodStartDate ? getPredictedPeriodDates(periodStartDate) : [];
 
-  const generateWeekDates = (date: Date) => {
+  const generateWeekDates = (date) => {
     const startDate = startOfWeek(date, { weekStartsOn: 1 });
     return Array.from({ length: 7 }, (_, index) => addDays(startDate, index));
   };
 
-  const generateMonthDates = (date: Date) => {
+  const generateMonthDates = (date) => {
     const startDate = startOfWeek(new Date(date.getFullYear(), date.getMonth(), 1), { weekStartsOn: 1 });
     return Array.from({ length: 42 }, (_, index) => addDays(startDate, index));
   };
@@ -338,7 +291,7 @@ const Cycle = () => {
     }
 
     // Check if current date is within the fertile window
-    if (fertileDates.length > 0 && lastFertileDay && isWithinInterval(currentDate, { start: fertileDates[0], end: lastFertileDay })) {
+    if (fertileDates.length > 0 && isWithinInterval(currentDate, { start: fertileDates[0], end: lastFertileDay })) {
         const fertileDifference = differenceInDays(currentDate, fertileDates[0]);
         return { phase: 'Fertile Window', day: fertileDifference + 1 };
     }
@@ -387,7 +340,7 @@ const Cycle = () => {
 
   const { phase, day } = getCyclePhase();
 
-  const getRecommendation = (phase: string) => {
+  const getRecommendation = (phase) => {
     switch (phase) {
       case 'Period':
         return 'Drink Herbal Tea For Cramps';
@@ -401,8 +354,38 @@ const Cycle = () => {
   };
 
   const handleStartPeriod = () => {
-    setIsStartingPeriod(true);
+      //check if there is period start date
+    if (periodStartDate) {
+        Alert.alert(
+          'Confirmation',
+          'Are you sure you want to change your period start date?',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Yes', onPress: () => setIsStartingPeriod(true) },
+          ]
+        );
+    } else {
+        setIsStartingPeriod(true);
+    }
   };
+
+
+    const handleSelectDate = (date) => {
+        if (isAfter(date, today)) {
+            Alert.alert('Error', 'Cannot select a date after today.');
+            return;
+        }
+        if (isValid(date)) {
+            setPeriodStartDate(date);
+            Alert.alert(
+                'Period Started',
+                `Your period start date is set to ${format(date, 'dd MMM yyyy')}`
+            );
+            setIsStartingPeriod(false);
+            // Save immediately after selecting a date
+            saveCycleData();
+        }
+    };
 
   const toggleCalendarView = () => {
     if (viewFullCalendar) {
@@ -427,44 +410,50 @@ const Cycle = () => {
     return 'Good Evening';
   };
 
-  const [userName, setUserName] = useState('');
+    const [userName, setUserName] = useState('');  // Use state
 
-  // Tambahkan useEffect untuk load username
-  useEffect(() => {
-    const loadUserName = async () => {
-      try {
-        const isGuest = await AsyncStorage.getItem('isGuest');
-        if (isGuest === 'true') {
-          setUserName('Guest');
-          return;
-        }
+    useEffect(() => {
+        const fetchUserName = async () => {
+          try {
+            const storedUserName = await AsyncStorage.getItem('userName');
+            if (storedUserName) {
+              setUserName(storedUserName);
+            }
+          } catch (error) {
+            console.error('Failed to fetch user name:', error);
+          }
+        };
 
-        const profileData = await AsyncStorage.getItem('profile_data');
-        if (profileData) {
-          const parsedData = JSON.parse(profileData);
-          setUserName(parsedData.name || 'User');
-        }
-      } catch (error) {
-        console.error('Failed to load user name:', error);
-        setUserName('User');
-      }
-    };
+        fetchUserName();
+      }, []);
 
-    loadUserName();
-  }, []);
 
   const cycleOptions = Array.from({ length: 60 }, (_, i) => 1 + i);
   const periodOptions = Array.from({ length: 60 }, (_, i) => 1 + i);
 
-  const handleSelectCycleLengthOption = (newLength: number) => {
+  const handleSelectCycleLengthOption = (newLength) => {
     setSelectedCycleLength(newLength);
   };
 
-  const handleSelectPeriodDaysOption = (newDays: number) => {
+  const handleSelectPeriodDaysOption = (newDays) => {
     setSelectedPeriodDays(newDays);
   };
 
-  const renderCycleOption = ({ item }: { item: number }) => (
+    const handleConfirmCycleLength = () => {
+      setCycleLength(selectedCycleLength);
+      setShowCycleLengthPicker(false);
+      saveCycleData(); // Save after confirming
+    }
+
+    const handleConfirmPeriodDays = () => {
+      setPeriodDays(selectedPeriodDays);
+      setShowPeriodDaysPicker(false);
+      saveCycleData(); // Save after confirming
+    }
+
+
+
+  const renderCycleOption = ({ item }) => (
     <TouchableOpacity
       style={[
         {
@@ -483,7 +472,7 @@ const Cycle = () => {
     </TouchableOpacity>
   );
 
-  const renderPeriodOption = ({ item }: { item: number }) => (
+  const renderPeriodOption = ({ item }) => (
     <TouchableOpacity
       style={[
         {
@@ -502,7 +491,7 @@ const Cycle = () => {
     </TouchableOpacity>
   );
 
-  const renderCalendarItem = ({ item }: { item: Date }) => {
+  const renderCalendarItem = ({ item }) => {
     const isToday = today.toDateString() === item.toDateString();
     const isPeriod = periodDates.some((date) => date.toDateString() === item.toDateString());
     const isFertile = fertileDates.some((date) => date.toDateString() === item.toDateString());
@@ -566,7 +555,7 @@ const Cycle = () => {
     );
   };
 
-  const renderModalCalendarItem = ({ item }: { item: Date }) => {
+  const renderModalCalendarItem = ({ item }) => {
     const isToday = today.toDateString() === item.toDateString();
     const isPeriod = periodDates.some((date) => date.toDateString() === item.toDateString());
     const isFertile = fertileDates.some((date) => date.toDateString() === item.toDateString());
@@ -625,7 +614,7 @@ const Cycle = () => {
     );
   };
 
-  const keyExtractor = (item: Date) => item.toISOString();
+  const keyExtractor = (item) => item.toISOString();
 
   return (
     <ScrollView style={{ flex: 1}}>
@@ -803,36 +792,34 @@ const Cycle = () => {
           </View>
         </Modal>
 
-        <Modal visible={showCycleLengthPicker} transparent={true} animationType="slide">
-        <View style={{ flex: 1, justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <View style={{ backgroundColor: 'white', margin: 20, padding: 20, borderRadius: 10 }}>
-            <Text style={{ fontSize: 20, marginBottom: 10 }}>Select Cycle Length</Text>
-            <FlatList
-              data={cycleOptions}
-              keyExtractor={(item) => item.toString()}
-              renderItem={renderCycleOption}
-              contentContainerStyle={{ maxHeight: 200 }}
-            />
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 20 }}>
-              <TouchableOpacity
-                style={{ padding: 10, backgroundColor: '#ccc', borderRadius: 5 }}
-                onPress={() => setShowCycleLengthPicker(false)}
-              >
-                <Text>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={{ padding: 10, backgroundColor: 'pink', borderRadius: 5 }}
-                onPress={() => {
-                  handleCycleLengthUpdate(selectedCycleLength);
-                  setShowCycleLengthPicker(false);
-                }}
-              >
-                <Text>Confirm</Text>
-              </TouchableOpacity>
+        <Modal visible={showCycleLengthPicker} transparent={true} animationType="slide" onRequestClose={() => setShowCycleLengthPicker(false)}>
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+            <View style={{ backgroundColor: 'white', width: 300, borderRadius: 10, padding: 10 }}>
+              <Text style={{ fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginBottom: 10 }}>Cycle Length:</Text>
+              <FlatList data={cycleOptions} keyExtractor={(item) => String(item)} renderItem={renderCycleOption} style={{ maxHeight: 200 }} />
+              <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginTop: 15 }}>
+                <TouchableOpacity
+                  style={{ padding: 10, borderRadius: 5, backgroundColor: '#d3d3d3' }}
+                  onPress={() => {
+                    setShowCycleLengthPicker(false);
+                    setSelectedCycleLength(cycleLength);
+                  }}
+                >
+                  <Text style={{ fontWeight: 'bold', fontSize: 16 }}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{ padding: 10, borderRadius: 5, backgroundColor: '#FFC0CB' }}
+                  onPress={() => {
+                    setCycleLength(selectedCycleLength);
+                    setShowCycleLengthPicker(false);
+                  }}
+                >
+                  <Text style={{ fontWeight: 'bold', fontSize: 16 }}>Confirm</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
 
         <Modal visible={showPeriodDaysPicker} transparent={true} animationType="slide" onRequestClose={() => setShowPeriodDaysPicker(false)}>
           <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
