@@ -39,6 +39,12 @@ import notif from "../assets/icons/notif.png"
 import standing from "../assets/icons/standing.png"
 import trophy from "../assets/icons/trophy.png"
 
+import skipped from "../assets/icons/skipped.png"
+import taken from "../assets/icons/taken.png"
+import edit from "../assets/icons/edit.png"
+
+
+
 export default {
   bmi,
   challenge,
@@ -89,5 +95,9 @@ export default {
   notif,
   standing,
   trophy,
+
+  skipped,
+  taken,
+  edit
 }
 

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   StyleSheet,
   Dimensions,
@@ -13,9 +13,18 @@ import {
   Platform,
 } from "react-native";
 
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
 import CalendarPicker from "react-native-calendar-picker"; // Import CalendarPicker
+import {
+  getMedications,
+  addMedication,
+  updateMedication,
+  deleteMedication,
+} from "../helpers/medApiHelper";
+import { MedResponse } from "../response/medResponse";
 
 import images from "../../constants/images";
 import icons from "../../constants/icons";
@@ -24,6 +33,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 const { width, height } = Dimensions.get("window");
 
 const MedReminder = () => {
+  const [medications, setMedications] = useState([]);
   const [showImages, setShowImages] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showReminderModal, setShowReminderModal] = useState(false);
@@ -45,8 +55,28 @@ const MedReminder = () => {
   const [taken, setTaken] = useState([]);
   const [selectedIndex, setSelectedIndex] = useState(null);
 
-  const handleEditItem = (index) => {
-    const med = medList[index];
+  const handleEditItem = () => {
+    const [medList, setMedList] = useState([]);
+    const [selectedIndex, setSelectedIndex] = useState(null);
+
+    useEffect(() => {
+      const fetchMedications = async () => {
+        try {
+          const isGuest = await AsyncStorage.getItem("isGuest"); // Cek mode Guest
+          if (isGuest === "true") {
+            setMedList((prevMeds) => [...prevMeds, newMed]);  
+          } else {
+            const medications = await getMedications(); // Ambil dari backend
+            setMedList(medications);
+          }
+        } catch (error) {
+          console.error("Error fetching medications:", error);
+        }
+      };
+    
+      fetchMedications();
+    }, []);
+    
 
     // Set the values of the selected medication to edit
     setMedName(med.name);
@@ -57,13 +87,18 @@ const MedReminder = () => {
     // Waktu: Pastikan formatnya valid
     if (med.time) {
       const timeParts = med.time.split(":");
-      const timeDate = new Date();
-      timeDate.setHours(parseInt(timeParts[0], 10));
-      timeDate.setMinutes(parseInt(timeParts[1], 10));
-      setSelectedTime(timeDate);
+      if (timeParts.length >= 2) {
+        const timeDate = new Date();
+        timeDate.setHours(parseInt(timeParts[0], 10));
+        timeDate.setMinutes(parseInt(timeParts[1], 10));
+        setSelectedTime(timeDate);
+      } else {
+        setSelectedTime(new Date()); // Default ke waktu sekarang jika format tidak sesuai
+      }
     } else {
       setSelectedTime(new Date()); // Default ke waktu sekarang
     }
+    
 
     setSelectedIndex(index); // Set the selected index for editing
 
@@ -75,18 +110,26 @@ const MedReminder = () => {
     setSelectedIndex(index === selectedIndex ? null : index);
   };
 
-  const handleSkipItem = (index) => {
+  const handleSkipItem = async (index) => {
     const skippedMed = medList[index];
-    setSkipped([...skipped, skippedMed]);
-    setMedList(medList.filter((_, i) => i !== index));
-    setSelectedIndex(null);
+    try {
+      await deleteMedication(skippedMed.id);
+      setMedList(medList.filter((_, i) => i !== index));
+      setSelectedIndex(null);
+    } catch (error) {
+      console.error("Error skipping medication:", error);
+    }
   };
 
-  const handleTakenItem = (index) => {
+  const handleTakenItem = async (index) => {
     const takenMed = medList[index];
-    setTaken([...taken, takenMed]);
-    setMedList(medList.filter((_, i) => i !== index));
-    setSelectedIndex(null);
+    try {
+      await deleteMedication(takenMed.id);
+      setMedList(medList.filter((_, i) => i !== index));
+      setSelectedIndex(null);
+    } catch (error) {
+      console.error("Error marking medication as taken:", error);
+    }
   };
 
   const handleAddMedPress = () => {
@@ -136,48 +179,58 @@ const MedReminder = () => {
     setShowReminderModal(true);
   };
 
-  const handleSetReminderPress = () => {
+  const handleSetReminderPress = async () => {
     if (!selectedStartDate || !selectedTime || !medName || !medDose) {
       alert("Please fill in all details for the reminder!");
       return;
     }
 
-    if (selectedIndex !== null) {
-      // Update existing medication in the list
-      const updatedMedList = [...medList];
-      updatedMedList[selectedIndex] = {
-        ...updatedMedList[selectedIndex],
-        name: medName,
-        dose: medDose,
-        type: selectedMedType,
-        date: selectedStartDate.toDateString(), // Simpan tanggal
-        time: selectedTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit",second: "2-digit",}), 
-        image: medImage,
-      };
-      setMedList(updatedMedList); // Update the list with the new values
-    } else {
-      // Add new medication if it's a new entry
-      const newMed = {
-        name: medName,
-        dose: medDose,
-        type: selectedMedType,
-        date: selectedStartDate.toDateString(), 
-        time: selectedTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit",second: "2-digit",}), 
-        image: medImage,
-      };
-      setMedList([...medList, newMed]); // Add the new item to the list
+    const newMed = {
+      name: medName,
+      dose: medDose,
+      type: selectedMedType,
+      date: selectedStartDate.toDateString(),
+      time: selectedTime.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      }),
+      image: medImage,
+    };
+
+    try {
+      const isGuest = await AsyncStorage.getItem("isGuest");
+  
+      if (isGuest === "true") {
+        // Mode Guest: Simpan sementara
+        const updatedMedList = [...medList, newMed];
+        setMedList(updatedMedList);
+        // await saveGuestMedications(updatedMedList); // Simpan ke AsyncStorage
+      } else {
+        // Mode Login: Simpan ke backend
+        if (selectedIndex !== null) {
+          const updatedMed = await updateMedication(medList[selectedIndex].id, newMed);
+          const updatedMedList = medList.map((med, index) => (index === selectedIndex ? updatedMed : med));
+          setMedList(updatedMedList);
+        } else {
+          const addedMed = await addMedication(newMed);
+          setMedList([...medList, addedMed]);
+        }
+      }  
+
+      // Reset form fields
+      setMedName("");
+      setMedDose("");
+      setSelectedMedType(null);
+      setMedImage(null);
+      setSelectedStartDate(null);
+      setSelectedTime(new Date());
+      setSelectedIndex(null);
+
+      setShowReminderModal(false);
+    } catch (error) {
+      console.error("Error saving medication:", error);
     }
-
-    // Reset form fields
-    setMedName("");
-    setMedDose("");
-    setSelectedMedType(null);
-    setMedImage(null);
-    setSelectedStartDate(null);
-    setSelectedTime(new Date());
-    setSelectedIndex(null);
-
-    setShowReminderModal(false);
   };
 
   const toggleCalendar = () => {
