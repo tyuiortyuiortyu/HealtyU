@@ -16,7 +16,7 @@ import { ApiHelper } from '../helpers/ApiHelper';
 import { LoginResponse } from "../response/LoginResponse";
 
 const Login = () => {
-  const API_BASE_URL = 'http://10.68.111.137:8000';
+  const API_BASE_URL = 'http://10.68.107.46:8000';
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -68,7 +68,7 @@ const Login = () => {
   
       // Simpan token dan data pengguna ke AsyncStorage
       await AsyncStorage.setItem("access_token", response.output_schema.access_token);
-
+      
       await AsyncStorage.setItem("isLoggedIn", "true");
       await fetchUserData(response.output_schema.access_token);
       
@@ -161,6 +161,8 @@ const Login = () => {
                     placeholderTextColor="#8A8A8A"
                     value={email}
                     onChangeText={setEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
                 />
             </View>
 
