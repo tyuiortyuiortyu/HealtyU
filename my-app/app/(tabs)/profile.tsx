@@ -21,7 +21,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiHelper } from '../helpers/ApiHelper';
 import { ProfileResponse } from '../response/ProfileResponse';
 
-const API_BASE_URL = 'http://192.168.100.45:8000';
+const API_BASE_URL = 'http://10.68.111.137.45:8000';
 
 const Profile = () => {
   const [profileImage, setProfileImage] = useState<string | null>(null);
@@ -169,8 +169,8 @@ const Profile = () => {
       formData.append('email', inputEmail);
       formData.append('dob', inputDob ? inputDob.toISOString().split('T')[0] : '');
       formData.append('gender', inputGender);
-      formData.append('height', `${inputHeight} cm`);
-      formData.append('weight', `${inputWeight} kg`);
+      formData.append('height', inputHeight);
+      formData.append('weight', inputWeight);
 
       if (profileImage) {
         formData.append('profile_picture', {
@@ -187,6 +187,8 @@ const Profile = () => {
         accessToken,
         true
       );
+
+      console.log('Update Profile Response:', response);
 
       // Simpan data yang baru ke AsyncStorage
       const updatedProfileData = {
