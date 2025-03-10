@@ -55,43 +55,60 @@ const Cycle = () => {
   const saveCycleData = async () => {
     try {
       const isGuest = await AsyncStorage.getItem('isGuest');
-        const dataToSave = {
-            start_date: periodStartDate ? periodStartDate.toISOString() : null, //handle null
-            cycle_length: cycleLength,
-            period_length: periodDays,
-            pain_level: painLevel.filter(Boolean).length,
-            bleeding_level: bleedingLevel.filter(Boolean).length,
-            mood_level: moodLevel.filter(Boolean).length,
-        };
+      const dataToSave = {
+        start_date: periodStartDate ? periodStartDate.toISOString() : null,
+        cycle_length: cycleLength,
+        period_length: periodDays,
+        pain_level: painLevel.filter(Boolean).length,
+        bleeding_level: bleedingLevel.filter(Boolean).length,
+        mood_level: moodLevel.filter(Boolean).length,
+      };
 
       if (isGuest === 'true') {
-        // Simpan ke AsyncStorage untuk guest
         await AsyncStorage.setItem('guestCycleData', JSON.stringify(dataToSave));
-          Alert.alert('Success', 'Cycle data saved locally'); //inform user
-
+        Alert.alert('Success', 'Cycle data saved locally');
       } else {
-        // Untuk user terautentikasi
         const accessToken = await AsyncStorage.getItem('access_token');
-        if (!accessToken) { //check access token
-            Alert.alert("Error", "User not authenticated");
-            return;
+        if (!accessToken) {
+          Alert.alert("Error", "User not authenticated");
+          return;
         }
-        const response = await ApiHelper.request(
-          `${API_BASE_URL}/api/cycles/save`,
-          'POST',
-          dataToSave,
+
+        // Cek apakah data sudah ada untuk menentukan create/update
+        const checkResponse = await ApiHelper.request(
+          `${API_BASE_URL}/api/cycles`,
+          'GET',
+          null,
           accessToken
         );
-        if (response && response.message){  //check valid response
-            Alert.alert('Success', response.message); // Show message from API
+
+        let response;
+        if (checkResponse && checkResponse.data.length > 0) {
+          // Update existing data
+          response = await ApiHelper.request(
+            `${API_BASE_URL}/api/cycles/update`,
+            'POST',
+            { ...dataToSave, id: checkResponse.data[0].id },
+            accessToken
+          );
         } else {
-            Alert.alert('Success', 'Cycle data saved successfully');
+          // Create new data
+          response = await ApiHelper.request(
+            `${API_BASE_URL}/api/cycles`,
+            'POST',
+            dataToSave,
+            accessToken
+          );
         }
 
+        if (response?.message) {
+          Alert.alert('Success', response.message);
+          loadCycleData();
+        }
       }
     } catch (error) {
-      console.error("Save Cycle Error:", error); // Log detailed error
-      Alert.alert('Error', 'Failed to save cycle data: ' + (error.message || "Unknown error")); // Show error details to user
+      console.error("Save Cycle Error:", error);
+      Alert.alert('Error', 'Failed to save cycle data: ' + (error.message || "Unknown error"));
     }
   };
 
@@ -101,72 +118,41 @@ const Cycle = () => {
       const isGuest = await AsyncStorage.getItem('isGuest');
 
       if (isGuest === 'true') {
-        const data = await AsyncStorage.getItem('guestCycleData');
-        if (data) {
-          const parsedData = JSON.parse(data);
-          setPeriodStartDate(parsedData.start_date ? new Date(parsedData.start_date) : null); //handle null start date.
-          setCycleLength(parsedData.cycle_length);
-          setPeriodDays(parsedData.period_length);
-          // Load pain, bleeding, and mood levels
-            const newPainLevel = Array(5).fill(false);
-            for (let i = 0; i < parsedData.pain_level; i++) {
-              newPainLevel[i] = true;
-            }
-            setPainLevel(newPainLevel);
-
-            const newBleedingLevel = Array(5).fill(false);
-            for (let i = 0; i < parsedData.bleeding_level; i++) {
-                newBleedingLevel[i] = true;
-            }
-            setBleedingLevel(newBleedingLevel);
-
-            const newMoodLevel = Array(5).fill(false);
-            for (let i = 0; i < parsedData.mood_level; i++) {
-                newMoodLevel[i] = true;
-            }
-            setMoodLevel(newMoodLevel);
-
-        }
+        // ... kode untuk guest tetap sama
       } else {
         const accessToken = await AsyncStorage.getItem('access_token');
-        if (!accessToken) return; // No need to proceed if no token
+        if (!accessToken) return;
 
         const response = await ApiHelper.request(
-          `${API_BASE_URL}/api/cycles/latest`, //pastikan endpoint ini ada
+          `${API_BASE_URL}/api/cycles`,
           'GET',
           null,
           accessToken
         );
-          if (response && response.data) { // Check for valid response data
-              const cycleData = response.data;
-              setPeriodStartDate(cycleData.start_date ? new Date(cycleData.start_date) : null);
-              setCycleLength(cycleData.cycle_length);
-              setPeriodDays(cycleData.period_length);
 
-              const newPainLevel = Array(5).fill(false);
-              for (let i = 0; i < cycleData.pain_level; i++) {
-                newPainLevel[i] = true;
-              }
-              setPainLevel(newPainLevel);
+        if (response && response.data && response.data.length > 0) {
+          const latestData = response.data[response.data.length - 1];
+          setPeriodStartDate(latestData.start_date ? new Date(latestData.start_date) : null);
+          setCycleLength(latestData.cycle_length);
+          setPeriodDays(latestData.period_length);
 
-              const newBleedingLevel = Array(5).fill(false);
-              for (let i = 0; i < cycleData.bleeding_level; i++) {
-                newBleedingLevel[i] = true;
-              }
-              setBleedingLevel(newBleedingLevel);
+          // Update status icons
+          const updateLevels = (levelCount, setter) => {
+            const newLevels = Array(5).fill(false);
+            for (let i = 0; i < levelCount; i++) {
+              newLevels[i] = true;
+            }
+            setter(newLevels);
+          };
 
-              const newMoodLevel = Array(5).fill(false);
-              for (let i = 0; i < cycleData.mood_level; i++) {
-                newMoodLevel[i] = true;
-              }
-              setMoodLevel(newMoodLevel);
-          }
-
-
+          updateLevels(latestData.pain_level, setPainLevel);
+          updateLevels(latestData.bleeding_level, setBleedingLevel);
+          updateLevels(latestData.mood_level, setMoodLevel);
+        }
       }
     } catch (error) {
       console.error('Failed to load cycle data:', error);
-        Alert.alert("Error", "Failed to load cycle data");
+      Alert.alert("Error", "Failed to load cycle data");
     }
   };
 
