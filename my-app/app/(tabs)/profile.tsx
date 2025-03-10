@@ -111,21 +111,38 @@ const Profile = () => {
     checkGuestStatus();
   }, []);
 
-  useEffect(() => {
+//   useEffect(() => {
+//   const fetchProfileData = async () => {
+//     try {
+//       const storedProfileData = await AsyncStorage.getItem('userData');
+//       if (storedProfileData) {
+//         const parsedProfileData = JSON.parse(storedProfileData);
+//         setProfileData(parsedProfileData);
+//         // Set state input dengan data dari profileData
+//         setInputUsername(parsedProfileData.username);
+//         setInputName(parsedProfileData.name);
+//         setInputEmail(parsedProfileData.email);
+//         setInputDob(parsedProfileData.dob ? new Date(parsedProfileData.dob) : null);
+//         setInputGender(parsedProfileData.gender);
+//         setInputHeight(parsedProfileData.height);
+//         setInputWeight(parsedProfileData.weight);
+//       }
+//     } catch (error) {
+//       console.error('Failed to fetch profile data:', error);
+//     }
+//   };
+
+//   fetchProfileData();
+// }, []);
+
+useEffect(() => {
   const fetchProfileData = async () => {
     try {
-      const storedProfileData = await AsyncStorage.getItem('userData');
+      const storedProfileData = await AsyncStorage.getItem('profile_data');
       if (storedProfileData) {
         const parsedProfileData = JSON.parse(storedProfileData);
+        console.log('Data loaded from AsyncStorage:', parsedProfileData);
         setProfileData(parsedProfileData);
-        // Set state input dengan data dari profileData
-        setInputUsername(parsedProfileData.username);
-        setInputName(parsedProfileData.name);
-        setInputEmail(parsedProfileData.email);
-        setInputDob(parsedProfileData.dob ? new Date(parsedProfileData.dob) : null);
-        setInputGender(parsedProfileData.gender);
-        setInputHeight(parsedProfileData.height);
-        setInputWeight(parsedProfileData.weight);
       }
     } catch (error) {
       console.error('Failed to fetch profile data:', error);
@@ -133,7 +150,7 @@ const Profile = () => {
   };
 
   fetchProfileData();
-}, []);
+}, [isEditing]);
 
   useEffect(() => {
     if (isEditing) {
@@ -213,7 +230,8 @@ const Profile = () => {
       };
   
       await AsyncStorage.setItem('profile_data', JSON.stringify(updatedProfileData));
-  
+      console.log('Data saved to AsyncStorage:', updatedProfileData);
+
       setProfileData(updatedProfileData); // Perbarui state profileData
       setEditing(false);
       setShowHalloPage(false);
@@ -262,30 +280,61 @@ const Profile = () => {
 
 
 
-  const handleSave = () => {
-      if (hasChanges()) {
-        setProfileData({
+  const handleSave = async () => {
+    if (hasChanges()) {
+      try {
+        // Buat objek data profil yang akan disimpan
+        const updatedProfileData = {
           username: inputUsername,
           name: inputName,
           email: inputEmail,
-          dob: inputDob ? inputDob.toISOString().split('T')[0] : '',
+          dob: inputDob ? inputDob.toISOString().split('T')[0] : '', // Format tanggal ke YYYY-MM-DD
           gender: inputGender,
           height: parseFloat(inputHeight),
           weight: parseFloat(inputWeight),
           profile_picture: profileImage,
-        });
-    
-        if (profileImage) {
-          setProfileImage(profileImage);
+        };
+  
+        // Simpan data ke AsyncStorage
+        await AsyncStorage.setItem('profile_data', JSON.stringify(updatedProfileData));
+        console.log('Profile data saved to AsyncStorage:', updatedProfileData);
+  
+        // Kirim data ke backend untuk disimpan ke database
+        const accessToken = await AsyncStorage.getItem('access_token');
+        if (!accessToken) {
+          Alert.alert('Error', 'No access token found. Please log in again.');
+          return;
         }
-    
-        saveProfileData(); // Panggil fungsi untuk menyimpan data ke API
+  
+        const updateResponse = await ApiHelper.request(
+          `${API_BASE_URL}/api/auth/updateProfile`,
+          'POST',
+          updatedProfileData,
+          accessToken
+        );
+  
+        if (updateResponse.error_schema.error_code !== "S001") {
+          throw new Error(updateResponse.error_schema.error_message);
+        }
+  
+        console.log('Profile updated in database:', updateResponse);
+  
+        // Perbarui state profileData dengan data terbaru
+        setProfileData(updatedProfileData);
+  
+        // Nonaktifkan mode editing
         setEditing(false);
         setShowHalloPage(false);
-      } else {
-        Alert.alert('Info', 'No changes detected.');
+  
+        Alert.alert('Success', 'Profile updated successfully!');
+      } catch (error) {
+        console.error('Save profile error:', error);
+        Alert.alert('Error', 'Failed to save profile data. Please try again.');
       }
-    };
+    } else {
+      Alert.alert('Info', 'No changes detected.');
+    }
+  };
 
   const onChangeDate = (event: any, selectedDate: Date | undefined) => {
     const currentDate = selectedDate || inputDob;
