@@ -13,6 +13,8 @@ import {
   Platform,
 } from "react-native";
 
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
 import CalendarPicker from "react-native-calendar-picker"; // Import CalendarPicker
@@ -31,6 +33,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 const { width, height } = Dimensions.get("window");
 
 const MedReminder = () => {
+  const [medications, setMedications] = useState([]);
   const [showImages, setShowImages] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showReminderModal, setShowReminderModal] = useState(false);
@@ -59,15 +62,21 @@ const MedReminder = () => {
     useEffect(() => {
       const fetchMedications = async () => {
         try {
-          const medications = await getMedications();
-          setMedList(medications);
+          const isGuest = await AsyncStorage.getItem("isGuest"); // Cek mode Guest
+          if (isGuest === "true") {
+            setMedList((prevMeds) => [...prevMeds, newMed]);  
+          } else {
+            const medications = await getMedications(); // Ambil dari backend
+            setMedList(medications);
+          }
         } catch (error) {
           console.error("Error fetching medications:", error);
         }
       };
-
+    
       fetchMedications();
     }, []);
+    
 
     // Set the values of the selected medication to edit
     setMedName(med.name);
@@ -78,13 +87,18 @@ const MedReminder = () => {
     // Waktu: Pastikan formatnya valid
     if (med.time) {
       const timeParts = med.time.split(":");
-      const timeDate = new Date();
-      timeDate.setHours(parseInt(timeParts[0], 10));
-      timeDate.setMinutes(parseInt(timeParts[1], 10));
-      setSelectedTime(timeDate);
+      if (timeParts.length >= 2) {
+        const timeDate = new Date();
+        timeDate.setHours(parseInt(timeParts[0], 10));
+        timeDate.setMinutes(parseInt(timeParts[1], 10));
+        setSelectedTime(timeDate);
+      } else {
+        setSelectedTime(new Date()); // Default ke waktu sekarang jika format tidak sesuai
+      }
     } else {
       setSelectedTime(new Date()); // Default ke waktu sekarang
     }
+    
 
     setSelectedIndex(index); // Set the selected index for editing
 
@@ -185,21 +199,24 @@ const MedReminder = () => {
     };
 
     try {
-      if (selectedIndex !== null) {
-        // Update existing medication
-        const updatedMed = await updateMedication(
-          medList[selectedIndex].id,
-          newMed
-        );
-        const updatedMedList = medList.map((med, index) =>
-          index === selectedIndex ? updatedMed : med
-        );
+      const isGuest = await AsyncStorage.getItem("isGuest");
+  
+      if (isGuest === "true") {
+        // Mode Guest: Simpan sementara
+        const updatedMedList = [...medList, newMed];
         setMedList(updatedMedList);
+        // await saveGuestMedications(updatedMedList); // Simpan ke AsyncStorage
       } else {
-        // Add new medication
-        const addedMed = await addMedication(newMed);
-        setMedList([...medList, addedMed]);
-      }
+        // Mode Login: Simpan ke backend
+        if (selectedIndex !== null) {
+          const updatedMed = await updateMedication(medList[selectedIndex].id, newMed);
+          const updatedMedList = medList.map((med, index) => (index === selectedIndex ? updatedMed : med));
+          setMedList(updatedMedList);
+        } else {
+          const addedMed = await addMedication(newMed);
+          setMedList([...medList, addedMed]);
+        }
+      }  
 
       // Reset form fields
       setMedName("");
