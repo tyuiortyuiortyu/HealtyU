@@ -17,7 +17,7 @@ import { LoginResponse } from "../response/LoginResponse";
 
 const Login = () => {
   // URL API backend
-  const API_BASE_URL = 'http://10.68.110.255:8081'; // Ganti dengan URL API Anda
+  const API_BASE_URL = 'http://192.168.160.193:8081'; // Ganti dengan URL API Anda
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

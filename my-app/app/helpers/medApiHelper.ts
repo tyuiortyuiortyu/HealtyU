@@ -1,6 +1,6 @@
 import { ApiHelper } from '../helpers/ApiHelper';
 
-const BASE_URL = 'http://127.0.0.1:8000/api/MedReminder'; // Sesuai dengan route API
+const BASE_URL = 'http://192.168.160.193:8081/api/MedReminder'; // Sesuai dengan route API
 
 export const getMedications = async () => {
   try {
