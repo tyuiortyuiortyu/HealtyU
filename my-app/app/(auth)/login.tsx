@@ -16,7 +16,7 @@ import ApiHelper from '../helpers/ApiHelper';
 import { LoginResponse } from "../response/LoginResponse";
 
 const Login = () => {
-  const API_BASE_URL = 'http://10.0.2.2:8000/api/auth';
+  const API_BASE_URL = 'http://10.68.110.255:8081/api/auth';
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

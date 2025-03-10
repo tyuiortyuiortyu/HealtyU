@@ -18,7 +18,17 @@ class Medicine extends Model
         'duration'
     ];
 
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
     public function unit(){
-        return $this->belongsTo(Unit::class, 'unit_id');
+        return $this->belongsTo(Unit::class);
+    }
+
+    public function schedules()
+    {
+        return $this->hasMany(MedSchedule::class, 'med_id');
     }
 }

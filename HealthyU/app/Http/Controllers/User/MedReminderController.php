@@ -36,7 +36,13 @@ class MedReminderController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
+        // Validasi input
+        $validatedData = $request->validate([
+            'med_name' => 'required|string|max:255',
+            'unit' => 'required|string|in:ml,mg',
+            'med_dose' => 'required|string|max:50',
+            'food_relation' => 'required|string|max:50',
+            'duration' => 'required|integer',
             'monday' => 'boolean',
             'tuesday' => 'boolean',
             'wednesday' => 'boolean',
@@ -44,30 +50,43 @@ class MedReminderController extends Controller
             'friday' => 'boolean',
             'saturday' => 'boolean',
             'sunday' => 'boolean',
-            'time_to_take' => 'required',
-            'med_name' => 'required|string',
-            'unit' => 'required|string',
-            'med_dose' => 'required|string',
-            'food_relation' => 'required|string',
-            'duration' => 'required|integer',
+            'time_to_take' => 'required|date_format:H:i:s'
         ]);
 
-        DB::transaction(function () use ($request) {
-            $schedule = MedSchedule::create($request->only([
-                'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday', 'time_to_take'
-            ]));
+        // Dapatkan ID user yang sedang login
+        $userId = auth()->id();
 
-            Medicine::create([
-                'med_schedule_id' => $schedule->id,
-                'med_name' => $request->med_name,
-                'unit' => $request->unit,
-                'med_dose' => $request->med_dose,
-                'food_relation' => $request->food_relation,
-                'duration' => $request->duration,
-            ]);
-        });
+        // Konversi nama unit menjadi unit_id
+        $unitId = ($validatedData['unit'] === 'mg') ? 1 : 2;
 
-        return response()->json(['message' => 'Data berhasil disimpan'], 201);
+        // Simpan ke tabel medicines
+        $medicine = Medicine::create([
+            'user_id' => $userId,
+            'med_name' => $validatedData['med_name'],
+            'unit_id' => $unitId,
+            'med_dose' => $validatedData['med_dose'],
+            'food_relation' => $validatedData['food_relation'],
+            'duration' => $validatedData['duration']
+        ]);
+
+        // Simpan ke tabel med_schedules dengan foreign key dari medicines
+        $schedule = MedSchedule::create([
+            'med_id' => $medicine->id,
+            'monday' => $validatedData['monday'] ?? false,
+            'tuesday' => $validatedData['tuesday'] ?? false,
+            'wednesday' => $validatedData['wednesday'] ?? false,
+            'thursday' => $validatedData['thursday'] ?? false,
+            'friday' => $validatedData['friday'] ?? false,
+            'saturday' => $validatedData['saturday'] ?? false,
+            'sunday' => $validatedData['sunday'] ?? false,
+            'time_to_take' => $validatedData['time_to_take']
+        ]);
+
+        return response()->json([
+            'message' => 'Medicine and schedule created successfully',
+            'medicine' => $medicine,
+            'schedule' => $schedule
+        ], 201);
     }
 
     /**
@@ -106,12 +125,24 @@ class MedReminderController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $medReminder = MedSchedule::find($id);
-        if (!$medReminder) {
-            return response()->json(['message' => 'Data tidak ditemukan'], 404);
+        // Cari data schedule berdasarkan ID
+        $schedule = MedSchedule::findOrFail($id);
+        
+        // Cari data medicine berdasarkan foreign key di med_schedules
+        $medicine = Medicine::findOrFail($schedule->med_id);
+
+        // Cek apakah user yang login adalah pemilik data
+        if ($medicine->user_id !== auth()->id()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        $request->validate([
+        // Validasi input
+        $validatedData = $request->validate([
+            'med_name' => 'required|string|max:255',
+            'unit' => 'required|string|in:ml,mg',
+            'med_dose' => 'required|string|max:50',
+            'food_relation' => 'required|string|max:50',
+            'duration' => 'required|integer',
             'monday' => 'boolean',
             'tuesday' => 'boolean',
             'wednesday' => 'boolean',
@@ -119,32 +150,38 @@ class MedReminderController extends Controller
             'friday' => 'boolean',
             'saturday' => 'boolean',
             'sunday' => 'boolean',
-            'time_to_take' => 'required',
-            'med_name' => 'required|string',
-            'unit' => 'required|string',
-            'med_dose' => 'required|string',
-            'food_relation' => 'required|string',
-            'duration' => 'required|integer',
+            'time_to_take' => 'required|date_format:H:i:s'
         ]);
 
-        DB::transaction(function () use ($request, $medReminder) {
-            $medReminder->update($request->only([
-                'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday', 'time_to_take'
-            ]));
+        // Konversi nama unit menjadi unit_id
+        $unitId = ($validatedData['unit'] === 'mg') ? 1 : 2;
 
-            $medicine = $medReminder->medicines()->first();
-            if ($medicine) {
-                $medicine->update([
-                    'med_name' => $request->med_name,
-                    'unit' => $request->unit,
-                    'med_dose' => $request->med_dose,
-                    'food_relation' => $request->food_relation,
-                    'duration' => $request->duration,
-                ]);
-            }
-        });
+        // Update data medicine
+        $medicine->update([
+            'med_name' => $validatedData['med_name'],
+            'unit_id' => $unitId,
+            'med_dose' => $validatedData['med_dose'],
+            'food_relation' => $validatedData['food_relation'],
+            'duration' => $validatedData['duration']
+        ]);
 
-        return response()->json(['message' => 'Data berhasil diperbarui'], 200);
+        // Update data schedule
+        $schedule->update([
+            'monday' => $validatedData['monday'] ?? false,
+            'tuesday' => $validatedData['tuesday'] ?? false,
+            'wednesday' => $validatedData['wednesday'] ?? false,
+            'thursday' => $validatedData['thursday'] ?? false,
+            'friday' => $validatedData['friday'] ?? false,
+            'saturday' => $validatedData['saturday'] ?? false,
+            'sunday' => $validatedData['sunday'] ?? false,
+            'time_to_take' => $validatedData['time_to_take']
+        ]);
+
+        return response()->json([
+            'message' => 'Medicine and schedule updated successfully',
+            'medicine' => $medicine,
+            'schedule' => $schedule
+        ], 200);
     }
 
     /**
