@@ -54,16 +54,23 @@ const Cycle = () => {
   // Fungsi untuk menyimpan data siklus
   const saveCycleData = async () => {
     try {
+      // Validasi: Pastikan periodStartDate sudah diisi
+      if (!periodStartDate) {
+        Alert.alert('Error', 'Please select a start date for your period.');
+        return;
+      }
+  
       const isGuest = await AsyncStorage.getItem('isGuest');
       const dataToSave = {
-        start_date: periodStartDate ? periodStartDate.toISOString() : null,
-        cycle_length: cycleLength,
-        period_length: periodDays,
-        pain_level: painLevel.filter(Boolean).length,
-        bleeding_level: bleedingLevel.filter(Boolean).length,
-        mood_level: moodLevel.filter(Boolean).length,
+        start: format(periodStartDate, 'yyyy-MM-dd'), // Format tanggal ke 'yyyy-MM-dd'
+        end: format(addDays(periodStartDate, periodDays - 1), 'yyyy-MM-dd'), // Format tanggal ke 'yyyy-MM-dd'
+        cycle_len: parseInt(cycleLength, 10), // Pastikan integer
+        period_len: parseInt(periodDays, 10), // Pastikan integer
+        pain_lv: parseInt(painLevel.filter(Boolean).length, 10), // Pastikan integer
+        bleeding_lv: parseInt(bleedingLevel.filter(Boolean).length, 10), // Pastikan integer
+        mood_lv: parseInt(moodLevel.filter(Boolean).length, 10), // Pastikan integer
       };
-
+  
       if (isGuest === 'true') {
         await AsyncStorage.setItem('guestCycleData', JSON.stringify(dataToSave));
         Alert.alert('Success', 'Cycle data saved locally');
@@ -73,7 +80,7 @@ const Cycle = () => {
           Alert.alert("Error", "User not authenticated");
           return;
         }
-
+  
         // Cek apakah data sudah ada untuk menentukan create/update
         const checkResponse = await ApiHelper.request(
           `${API_BASE_URL}/api/cycles`,
@@ -81,7 +88,7 @@ const Cycle = () => {
           null,
           accessToken
         );
-
+  
         let response;
         if (checkResponse && checkResponse.data.length > 0) {
           // Update existing data
@@ -100,7 +107,7 @@ const Cycle = () => {
             accessToken
           );
         }
-
+  
         if (response?.message) {
           Alert.alert('Success', response.message);
           loadCycleData();
@@ -118,8 +125,33 @@ const Cycle = () => {
       const isGuest = await AsyncStorage.getItem('isGuest');
 
       if (isGuest === 'true') {
-        // ... kode untuk guest tetap sama
-      } else {
+        const data = await AsyncStorage.getItem('guestCycleData');
+        if (data) {
+          const parsedData = JSON.parse(data);
+          setPeriodStartDate(parsedData.start ? new Date(parsedData.start) : null); // Perbaikan di sini
+          setCycleLength(parsedData.cycle_len);
+          setPeriodDays(parsedData.period_len);
+      
+          // Load pain, bleeding, and mood levels
+          const newPainLevel = Array(5).fill(false);
+          for (let i = 0; i < parsedData.pain_lv; i++) {
+            newPainLevel[i] = true;
+          }
+          setPainLevel(newPainLevel);
+      
+          const newBleedingLevel = Array(5).fill(false);
+          for (let i = 0; i < parsedData.bleeding_lv; i++) {
+            newBleedingLevel[i] = true;
+          }
+          setBleedingLevel(newBleedingLevel);
+      
+          const newMoodLevel = Array(5).fill(false);
+          for (let i = 0; i < parsedData.mood_lv; i++) {
+            newMoodLevel[i] = true;
+          }
+          setMoodLevel(newMoodLevel);
+        }
+      }else {
         const accessToken = await AsyncStorage.getItem('access_token');
         if (!accessToken) return;
 
@@ -132,9 +164,9 @@ const Cycle = () => {
 
         if (response && response.data && response.data.length > 0) {
           const latestData = response.data[response.data.length - 1];
-          setPeriodStartDate(latestData.start_date ? new Date(latestData.start_date) : null);
-          setCycleLength(latestData.cycle_length);
-          setPeriodDays(latestData.period_length);
+          setPeriodStartDate(latestData.start ? new Date(latestData.start) : null);
+          setCycleLength(latestData.cycle_len);
+          setPeriodDays(latestData.period_len);
 
           // Update status icons
           const updateLevels = (levelCount, setter) => {
@@ -145,9 +177,9 @@ const Cycle = () => {
             setter(newLevels);
           };
 
-          updateLevels(latestData.pain_level, setPainLevel);
-          updateLevels(latestData.bleeding_level, setBleedingLevel);
-          updateLevels(latestData.mood_level, setMoodLevel);
+          updateLevels(latestData.pain_lv, setPainLevel);
+          updateLevels(latestData.bleeding_lv, setBleedingLevel);
+          updateLevels(latestData.mood_lv, setMoodLevel);
         }
       }
     } catch (error) {
@@ -258,8 +290,9 @@ const Cycle = () => {
 
   const getCyclePhase = () => {
     if (!periodStartDate) return { phase: 'Not set', day: null };
-
+  
     const currentDate = new Date();
+    const daysSinceLastPeriod = differenceInDays(currentDate, periodStartDate);
 
     // Calculate the last day of the fertile window
     const lastFertileDay = fertileDates.length > 0 ? fertileDates[fertileDates.length - 1] : null;
@@ -356,22 +389,21 @@ const Cycle = () => {
   };
 
 
-    const handleSelectDate = (date) => {
-        if (isAfter(date, today)) {
-            Alert.alert('Error', 'Cannot select a date after today.');
-            return;
-        }
-        if (isValid(date)) {
-            setPeriodStartDate(date);
-            Alert.alert(
-                'Period Started',
-                `Your period start date is set to ${format(date, 'dd MMM yyyy')}`
-            );
-            setIsStartingPeriod(false);
-            // Save immediately after selecting a date
-            saveCycleData();
-        }
-    };
+  const handleSelectDate = (date) => {
+    if (isAfter(date, today)) {
+      Alert.alert('Error', 'Cannot select a date after today.');
+      return;
+    }
+    if (isValid(date)) {
+      setPeriodStartDate(date);
+      Alert.alert(
+        'Period Started',
+        `Your period start date is set to ${format(date, 'dd MMM yyyy')}`
+      );
+      setIsStartingPeriod(false);
+      saveCycleData(); // Simpan data setelah memilih tanggal
+    }
+  };
 
   const toggleCalendarView = () => {
     if (viewFullCalendar) {
@@ -425,17 +457,17 @@ const Cycle = () => {
     setSelectedPeriodDays(newDays);
   };
 
-    const handleConfirmCycleLength = () => {
-      setCycleLength(selectedCycleLength);
-      setShowCycleLengthPicker(false);
-      saveCycleData(); // Save after confirming
-    }
-
-    const handleConfirmPeriodDays = () => {
-      setPeriodDays(selectedPeriodDays);
-      setShowPeriodDaysPicker(false);
-      saveCycleData(); // Save after confirming
-    }
+  const handleConfirmCycleLength = () => {
+    setCycleLength(selectedCycleLength);
+    setShowCycleLengthPicker(false);
+    saveCycleData(); // Simpan data setelah mengonfirmasi
+  };
+  
+  const handleConfirmPeriodDays = () => {
+    setPeriodDays(selectedPeriodDays);
+    setShowPeriodDaysPicker(false);
+    saveCycleData(); // Simpan data setelah mengonfirmasi
+  };
 
 
 
@@ -483,7 +515,7 @@ const Cycle = () => {
     const isFertile = fertileDates.some((date) => date.toDateString() === item.toDateString());
     const isPredictedPeriod = predictedPeriodDates.some((date) => date.toDateString() === item.toDateString());
     const isInCurrentMonth = item.getMonth() === currentMonth.getMonth();
-
+  
     return (
       <TouchableOpacity
         style={[
