@@ -123,7 +123,7 @@ export class ApiHelper {
 
             // Kirim permintaan logout ke backend
             await this.request<void>(
-                "http://10.68.107.46:8000/api/auth/logout", // http://192.168.100.45:800/api/auth/logout
+                "http://10.68.111.137:8000/api/auth/logout", // http://192.168.100.45:800/api/auth/logout
                 "POST",
                 undefined, // Tidak perlu body untuk logout
                 accessToken
@@ -133,6 +133,7 @@ export class ApiHelper {
             await AsyncStorage.removeItem("access_token");
             await AsyncStorage.removeItem("isGuest");
             await AsyncStorage.removeItem("profile_data");
+            await AsyncStorage.removeItem("userData");
         } catch (error) {
             if (error instanceof Error) {
                 throw new Error(error.message || "Logout failed");

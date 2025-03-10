@@ -18,6 +18,8 @@ class DatabaseSeeder extends Seeder
             UnitSeeder::class,
             MedicineSeeder::class,
             MedScheduleSeeder::class,
+            PostSeeder::class,
+            PostLikeSeeder::class,
         ]);
     }
 }

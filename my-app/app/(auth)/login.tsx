@@ -16,7 +16,7 @@ import { ApiHelper } from '../helpers/ApiHelper';
 import { LoginResponse } from "../response/LoginResponse";
 
 const Login = () => {
-  const API_BASE_URL = 'http://10.68.107.46:8000';
+  const API_BASE_URL = 'http://10.68.111.137:8000';
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -86,8 +86,8 @@ const Login = () => {
         ]
       );
     } catch (error) {
-      console.error('Login error:', error);
-        const errorMessage = error.response || "An error occurred during login";
+        // console.error('Login error:', error);
+        const errorMessage = error.message || "An error occurred during login";
         Alert.alert("Login Failed", errorMessage);
     }
   };

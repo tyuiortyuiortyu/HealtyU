@@ -21,7 +21,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiHelper } from '../helpers/ApiHelper';
 import { ProfileResponse } from '../response/ProfileResponse';
 
-const API_BASE_URL = 'http://10.68.107.46:8000';
+const API_BASE_URL = 'http://10.68.111.137:8000';
 
 const Profile = () => {
   const [profileImage, setProfileImage] = useState<string | null>(null);
@@ -216,7 +216,7 @@ useEffect(() => {
         accessToken,
         true
       );
-  
+
       // Simpan data yang baru ke AsyncStorage
       const updatedProfileData = {
         username: inputUsername,
@@ -1023,7 +1023,7 @@ useEffect(() => {
         )} */}
         {profileData.name === 'Guest' ? (
             <View style={{ alignItems: 'center' }}>
-            <Text style={{ fontSize: 25, color: '#666', marginBottom: 8 }}>Guest Account</Text>
+            <Text style={{ fontSize: 25, color: '#666', marginTop: 10 }}>Guest Account</Text>
             <TouchableOpacity
                 onPress={() => router.push('/welcome')} // Arahkan ke halaman Welcome
                 style={{
