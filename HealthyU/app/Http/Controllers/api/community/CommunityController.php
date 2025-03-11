@@ -124,7 +124,7 @@ class CommunityController extends Controller
         return ApiResponse::mapResponse($comment, "S001", "Comment added successfully");
     }
 
-    public function deleteComment(Request $request, $commentId) {
+    public function deleteComment(Request $request, $post_id, $commentId) {
         $user = ValidateJwt::validateAndGetUser();
     
         if (!$user) {
@@ -132,7 +132,7 @@ class CommunityController extends Controller
         }
     
         // Cari komentar berdasarkan ID dan pastikan user adalah pemilik komentar
-        $comment = Comment::where('id', $commentId)->where('user_id', $user->id)->first();
+        $comment = Comment::where('id', $commentId)->where('post_id', $post_id)->where('user_id', $user->id)->first();
     
         if (!$comment) {
             return ApiResponse::mapResponse(null, "E004", "Comment not found or unauthorized");
