@@ -17,7 +17,13 @@ return new class extends Migration
             $table->id();
             $table->unsignedBigInteger('med_id');
             $table->time('time_to_take');
-            $table->date('date_to_take');
+            $table->boolean('monday')->default(false);
+            $table->boolean('tuesday')->default(false);
+            $table->boolean('wednesday')->default(false);
+            $table->boolean('thursday')->default(false);
+            $table->boolean('friday')->default(false);
+            $table->boolean('saturday')->default(false);
+            $table->boolean('sunday')->default(false);
             $table->timestamps();
 
             $table->foreign('med_id')->references('id')->on('medicines')->onDelete('cascade');
