@@ -79,7 +79,12 @@ const Community = () => {
     try {
       setIsLoading(true);
       const token = await AsyncStorage.getItem("access_token");
-      const response = await fetch("${API_BASE_URL}/api/community/getPosts", {
+      if (!token) {
+        console.error("No token found");
+        return;
+      }
+  
+      const response = await fetch(`${API_BASE_URL}/api/community/getPosts`, {
         method: "GET",
         headers: {
           "Authorization": `Bearer ${token}`,
@@ -87,27 +92,32 @@ const Community = () => {
       });
   
       if (!response.ok) {
-        throw new Error("HTTP error! status: ${response.status}");
+        const errorData = await response.json();
+        console.error("Error response:", errorData);
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
   
-      const data = await response.json(); // Langsung parse JSON
+      const data = await response.json();
+      console.log("Response data:", data);
+  
       if (data.output_schema && data.output_schema.posts) {
         setPosts(data.output_schema.posts);
       } else {
         throw new Error("Invalid response format");
       }
     } catch (error) {
+      console.error("Fetch error:", error);
       setError(error.message || "Failed to fetch posts.");
     } finally {
       setIsLoading(false);
     }
   };
-
+  
   // likepost
   const handleLike = async (postId: number) => {
     try {
       const response = await ApiHelper.request(
-        "${API_BASE_URL}/api/community/likePost",
+        `${API_BASE_URL}/api/community/likePost`,
         "POST",
         { postId } // Kirim postId dalam body request
       );
@@ -148,7 +158,7 @@ const Community = () => {
       }
   
       const response = await ApiHelper.request(
-        "${API_BASE_URL}/api/community/createPost",
+        `${API_BASE_URL}/api/community/createPost`,
         "POST",
         formData,
         undefined,
@@ -189,7 +199,7 @@ const Community = () => {
   const handleDeletePost = async (postId: number) => {
     try {
       const response = await ApiHelper.request(
-        "${API_BASE_URL}/api/community/deletePost/${postId}",
+        `${API_BASE_URL}/api/community/deletePost/${postId}`,
         "DELETE"
       );
   
@@ -204,7 +214,7 @@ const Community = () => {
   const fetchComments = async (postId: number) => {
     try {
       const response = await ApiHelper.request(
-        "${API_BASE_URL}/api/community/posts/${postId}/comments",
+        `${API_BASE_URL}/api/community/posts/${postId}/comments`,
         "GET"
       );
   
@@ -227,7 +237,7 @@ const Community = () => {
     if (commentText.trim() && selectedPostId !== null) {
       try {
         const response = await ApiHelper.request(
-          "${API_BASE_URL}/api/community/posts/${selectedPostId}/comments",
+          `${API_BASE_URL}/api/community/posts/${selectedPostId}/comments`,
           "POST",
           {
             text: commentText,
@@ -255,7 +265,7 @@ const Community = () => {
   const handleDeleteComment = async (postId: number, commentId: number) => {
     try {
       const response = await ApiHelper.request(
-        "${API_BASE_URL}/api/community/posts/${postId}/comments/${commentId}",
+        `${API_BASE_URL}/api/community/posts/${postId}/comments/${commentId}`,
         "DELETE"
       );
   
