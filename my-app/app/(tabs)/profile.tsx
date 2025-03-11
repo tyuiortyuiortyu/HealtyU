@@ -21,7 +21,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiHelper } from '../helpers/ApiHelper';
 import { ProfileResponse } from '../response/ProfileResponse';
 
-const API_BASE_URL = 'http://10.68.111.137:8000';
+const API_BASE_URL = 'http://192.168.66.124:8081';
 
 const Profile = () => {
   const [profileImage, setProfileImage] = useState<string | null>(null);
