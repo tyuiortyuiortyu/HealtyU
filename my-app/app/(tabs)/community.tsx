@@ -58,7 +58,6 @@ const Community = () => {
   const [newPostImage, setNewPostImage] = useState<string | null>(null);
   const [isLeaveModalVisible, setIsLeaveModalVisible] = useState(false);
   const [commentText, setCommentText] = useState("");
-
   const [comments, setComments] = useState<Comment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -70,39 +69,42 @@ const Community = () => {
 
   const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
 
-  useEffect(() => {
-    fetchPosts();
-  }, []);
-
   // getpost
+
   const fetchPosts = async () => {
     try {
       setIsLoading(true);
+  
       const token = await AsyncStorage.getItem("access_token");
       if (!token) {
         console.error("No token found");
+        setError("No token found. Please log in again.");
         return;
       }
   
       const response = await fetch(`${API_BASE_URL}/api/community/getPosts`, {
         method: "GET",
         headers: {
-          "Authorization": `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
       });
   
       if (!response.ok) {
         const errorData = await response.json();
         console.error("Error response:", errorData);
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorData.message || "No error message"}`);
       }
   
       const data = await response.json();
       console.log("Response data:", data);
   
-      if (data.output_schema && data.output_schema.posts) {
+      if (data.posts) {
+        setPosts(data.posts);
+      } else if (data.output_schema && data.output_schema.posts) {
         setPosts(data.output_schema.posts);
       } else {
+        console.error("Invalid response format:", data);
+        setPosts([]); // Set posts ke array kosong jika respons tidak valid
         throw new Error("Invalid response format");
       }
     } catch (error) {
@@ -112,6 +114,10 @@ const Community = () => {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchPosts();
+  }, []);
   
   // likepost
   const handleLike = async (postId: number) => {
@@ -426,7 +432,7 @@ const Community = () => {
 
               {/* Posts */}
               <FlatList
-                data={posts}
+                data={posts || []}
                 keyExtractor={(item) => item.id.toString()}
                 renderItem={({ item }) => (
                   <View
@@ -668,7 +674,8 @@ const Community = () => {
 
                     {/* Daftar komentar */}
                     <FlatList
-                      data={posts ? posts.find((post) => post.id === selectedPostId)?.comments || [] : []}
+                      // data={posts ? posts.find((post) => post.id === selectedPostId)?.comments || [] : []}
+                      data={posts.find((post) => post.id === selectedPostId)?.comments || []}
                       keyExtractor={(item) => item.id.toString()}
                       renderItem={({ item }) => (
                         <View style={{ padding: 10, borderBottomWidth: 1, borderBottomColor: '#ccc' }}>
