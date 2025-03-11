@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\User;
+namespace App\Http\Controllers\api\med_reminder;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
@@ -54,7 +54,13 @@ class MedReminderController extends Controller
             'med_dose' => 'required|numeric|min:0.1',
             'type' => 'required|string|in:Pil,Sirup,Tetes,Krim,Tablet',
             'time_to_take' => 'required|date_format:H:i:s',
-            'date_to_take' => 'required|date_format:Y-m-d'
+            'monday' => 'required|boolean',
+            'tuesday' => 'required|boolean',
+            'wednesday' => 'required|boolean',
+            'thursday' => 'required|boolean',
+            'friday' => 'required|boolean',
+            'saturday' => 'required|boolean',
+            'sunday' => 'required|boolean'
         ]);
 
         // Dapatkan ID user yang sedang login
@@ -76,7 +82,13 @@ class MedReminderController extends Controller
         $schedule = MedSchedule::create([
             'med_id' => $medicine->id,
             'time_to_take' => $validatedData['time_to_take'],
-            'date_to_take' => $validatedData['date_to_take']
+            'monday' => $validatedData['monday'],
+            'tuesday' => $validatedData['tuesday'],
+            'wednesday' => $validatedData['wednesday'],
+            'thursday' => $validatedData['thursday'],
+            'friday' => $validatedData['friday'],
+            'saturday' => $validatedData['saturday'],
+            'sunday' => $validatedData['sunday']
         ]);
 
         return response()->json([
@@ -140,7 +152,13 @@ class MedReminderController extends Controller
             'med_dose' => 'required|string|max:50',
             'type' => 'required|string|in:Pil,Sirup,Tetes,Krim,Tablet',
             'time_to_take' => 'required|date_format:H:i:s',
-            'date_to_take' => 'required|date_format:Y-m-d'
+            'monday' => 'required|boolean',
+            'tuesday' => 'required|boolean',
+            'wednesday' => 'required|boolean',
+            'thursday' => 'required|boolean',
+            'friday' => 'required|boolean',
+            'saturday' => 'required|boolean',
+            'sunday' => 'required|boolean'
         ]);
 
         // Konversi nama unit menjadi unit_id
@@ -157,7 +175,13 @@ class MedReminderController extends Controller
         // Update data schedule
         $schedule->update([
             'time_to_take' => $validatedData['time_to_take'],
-            'date_to_take' => $validatedData['date_to_take']
+            'monday' => $validatedData['monday'],
+            'tuesday' => $validatedData['tuesday'],
+            'wednesday' => $validatedData['wednesday'],
+            'thursday' => $validatedData['thursday'],
+            'friday' => $validatedData['friday'],
+            'saturday' => $validatedData['saturday'],
+            'sunday' => $validatedData['sunday']
         ]);
 
         return response()->json([

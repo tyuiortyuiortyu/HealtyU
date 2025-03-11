@@ -18,7 +18,7 @@ return new class extends Migration
             $table->unsignedBigInteger('user_id');
             $table->unsignedBigInteger('unit_id');
             $table->string('med_name');
-            $table->float('med_dose', 5,2);
+            $table->float('med_dose', 10,2);
             $table->string('type');
             $table->timestamps();
 
