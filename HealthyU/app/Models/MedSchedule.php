@@ -12,7 +12,13 @@ class MedSchedule extends Model
     protected $fillable = [
         'med_id',
         'time_to_take',
-        'date_to_take'
+        'monday',
+        'tuesday',
+        'wednesday',
+        'thursday',
+        'friday',
+        'saturday',
+        'sunday'
     ];
 
     public function medicines()
