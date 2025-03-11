@@ -25,28 +25,35 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
-  const fetchUserData = async (token: string) => {
+  const fetchUserData = async (accessToken) => { // Take accessToken as argument
     try {
-      const response = await ApiHelper.request<LoginResponse>(
-        `${API_BASE_URL}/api/auth/getUserData`,
-        "GET",
-        null,
-        token
-      );
-  
-      if (response?.error_schema.error_code != "S001") {
-        throw new Error("Failed to fetch data");
+      if (!accessToken) { // accessToken is now passed as argument, no need to get from AsyncStorage here.
+        console.log('No access token provided to fetchUserData.');
+        return; // Exit if no token is provided, handle login error upstream if token is missing.
       }
-  
-      const userData = JSON.stringify(response.output_schema);
-      await AsyncStorage.setItem("userData", userData);
-      console.log("User data saved:", response.output_schema);
 
-      await AsyncStorage.setItem("isGuest", "false");
+      const response = await ApiHelper.request(
+        `${API_BASE_URL}/api/auth/getUserData`,
+        'GET',
+        null,
+        accessToken
+      );
+
+      if (response.error_schema.error_code === "S001") {
+        const userData = response.output_schema;
+        await AsyncStorage.setItem('userData', JSON.stringify(userData));
+      // Tidak perlu menyetel profileData dan profileImage di sini dalam komponen Login -> ke login
+      // Komponen Login hanya bertanggung jawab untuk login dan mengambil data pengguna ke AsyncStorage
+        console.log('User data fetched and stored in AsyncStorage successfully.');
+      } else {
+        throw new Error(response.error_schema.error_message);
+      }
     } catch (error) {
-      Alert.alert("Login Failed", error.response);
+      console.error('Failed to fetch user data:', error);
+      Alert.alert('Error', 'Failed to fetch user data. Please try again.');
     }
   };
+
 
   const handleLogin = async () => {
     if (!email || !password) {

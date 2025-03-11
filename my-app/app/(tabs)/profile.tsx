@@ -57,7 +57,7 @@ const Profile = () => {
       setIsLoading(true);
       const storedProfileData = await AsyncStorage.getItem('userData');
       console.log('Stored Profile Data:', storedProfileData);
-  
+
       if (storedProfileData) {
         const parsedProfileData = JSON.parse(storedProfileData);
         setProfileData({
@@ -68,8 +68,9 @@ const Profile = () => {
           gender: parsedProfileData.gender || '',
           height: parsedProfileData.height || 0,
           weight: parsedProfileData.weight || 0,
+          profile_picture: parsedProfileData.profile_picture || null, // Include profile_picture from stored data
         });
-  
+
         if (parsedProfileData.profile_picture) {
           setProfileImage(parsedProfileData.profile_picture);
         }
@@ -87,7 +88,7 @@ const Profile = () => {
   const checkGuestStatus = async () => {
     const isGuest = await AsyncStorage.getItem('isGuest');
     console.log('Is Guest:', isGuest);
-  
+
     if (isGuest === 'true') {
       setIsLoading(true);
       setProfileData({
@@ -105,52 +106,11 @@ const Profile = () => {
       fetchProfileDataFromStorage();
     }
   };
-  
+
   // Panggil fungsi ini di useEffect atau di tempat yang sesuai
   useEffect(() => {
     checkGuestStatus();
   }, []);
-
-//   useEffect(() => {
-//   const fetchProfileData = async () => {
-//     try {
-//       const storedProfileData = await AsyncStorage.getItem('userData');
-//       if (storedProfileData) {
-//         const parsedProfileData = JSON.parse(storedProfileData);
-//         setProfileData(parsedProfileData);
-//         // Set state input dengan data dari profileData
-//         setInputUsername(parsedProfileData.username);
-//         setInputName(parsedProfileData.name);
-//         setInputEmail(parsedProfileData.email);
-//         setInputDob(parsedProfileData.dob ? new Date(parsedProfileData.dob) : null);
-//         setInputGender(parsedProfileData.gender);
-//         setInputHeight(parsedProfileData.height);
-//         setInputWeight(parsedProfileData.weight);
-//       }
-//     } catch (error) {
-//       console.error('Failed to fetch profile data:', error);
-//     }
-//   };
-
-//   fetchProfileData();
-// }, []);
-
-useEffect(() => {
-  const fetchProfileData = async () => {
-    try {
-      const storedProfileData = await AsyncStorage.getItem('profile_data');
-      if (storedProfileData) {
-        const parsedProfileData = JSON.parse(storedProfileData);
-        console.log('Data loaded from AsyncStorage:', parsedProfileData);
-        setProfileData(parsedProfileData);
-      }
-    } catch (error) {
-      console.error('Failed to fetch profile data:', error);
-    }
-  };
-
-  fetchProfileData();
-}, [isEditing]);
 
   useEffect(() => {
     if (isEditing) {
@@ -168,7 +128,7 @@ useEffect(() => {
   const [inputName, setInputName] = useState('');
   const [inputEmail, setInputEmail] = useState('');
   const [inputDob, setInputDob] = useState<Date | null>(null);
-  const [inputGender, setInputGender] = useState<string>(''); 
+  const [inputGender, setInputGender] = useState<string>('');
   const [inputHeight, setInputHeight] = useState('');
   const [inputWeight, setInputWeight] = useState('');
 
@@ -184,14 +144,14 @@ useEffect(() => {
     try {
       setIsLoading(true);
       setError(null);
-  
+
       const accessToken = await AsyncStorage.getItem('access_token');
-  
+
       if (!accessToken) {
         Alert.alert('Error', 'No access token found. Please log in again.');
         return;
       }
-  
+
       const formData = new FormData();
       formData.append('username', inputUsername);
       formData.append('name', inputName);
@@ -200,43 +160,52 @@ useEffect(() => {
       formData.append('gender', inputGender);
       formData.append('height', `${inputHeight}`);
       formData.append('weight', `${inputWeight}`);
-  
+
       if (profileImage) {
-        formData.append('profile_picture', {
+        const imageFile = {
           uri: profileImage,
           name: 'profile.jpg',
           type: 'image/jpeg',
-        } as any);
+        } as any;
+        formData.append('profile_picture', imageFile);
       }
-  
-      const response = await ApiHelper.request(
+
+      const response = await ApiHelper.request<ProfileResponse>(
         `${API_BASE_URL}/api/auth/updateProfile`,
         'POST',
         formData,
         accessToken,
-        true
+        true // isFormData true for multipart/form-data
       );
 
-      // Simpan data yang baru ke AsyncStorage
-      const updatedProfileData = {
+      if (response?.error_schema.error_code != "S001") {
+        throw new Error(response.error_schema.error_message);
+      }
+
+      // Simpan data yang baru ke AsyncStorage dan update state dengan data dari response API
+      const updatedUserData = {
+        ...profileData, // Keep existing profileData, then overwrite with updated values from input and API response
         username: inputUsername,
         name: inputName,
         email: inputEmail,
         dob: inputDob ? inputDob.toISOString().split('T')[0] : '',
-        gender: inputGender === 'Female' ? 'Female' : 'Male', // masi ?
+        gender: inputGender,
         height: parseFloat(inputHeight),
         weight: parseFloat(inputWeight),
-        profile_picture: profileImage,
+        profile_picture: response.output_schema.profile_picture || profileImage, // Use backend profile_picture if available, else keep local URI
       };
-  
-      await AsyncStorage.setItem('profile_data', JSON.stringify(updatedProfileData));
-      console.log('Data saved to AsyncStorage:', updatedProfileData);
 
-      setProfileData(updatedProfileData); // Perbarui state profileData
+      await AsyncStorage.setItem('userData', JSON.stringify(updatedUserData));
+      console.log('Data saved to AsyncStorage:', updatedUserData);
+
+      setProfileData(updatedUserData); // Perbarui state profileData dengan data dari API response
+      if (response.output_schema.profile_picture) {
+        setProfileImage(response.output_schema.profile_picture); // Update profileImage state with backend URL
+      }
       setEditing(false);
       setShowHalloPage(false);
       setIsLoading(false);
-  
+
       Alert.alert('Success', 'Profile updated successfully!');
     } catch (error) {
       console.error('Save profile error:', error);
@@ -245,6 +214,7 @@ useEffect(() => {
       Alert.alert('Error', 'Failed to save profile data. Please try again.');
     }
   };
+
 
   // Tampilkan loading indicator jika data sedang dimuat
   if (isLoading) {
@@ -280,55 +250,7 @@ useEffect(() => {
 
   const handleSave = async () => {
     if (hasChanges()) {
-      try {
-        // Buat objek data profil yang akan disimpan
-        const updatedProfileData = {
-          username: inputUsername,
-          name: inputName,
-          email: inputEmail,
-          dob: inputDob ? inputDob.toISOString().split('T')[0] : '', // Format tanggal ke YYYY-MM-DD
-          gender: inputGender === 'Female' ? 'Female' : 'Male', // masi ?
-          height: parseFloat(inputHeight),
-          weight: parseFloat(inputWeight),
-          profile_picture: profileImage,
-        };
-  
-        // Simpan data ke AsyncStorage
-        await AsyncStorage.setItem('profile_data', JSON.stringify(updatedProfileData));
-        console.log('Profile data saved to AsyncStorage:', updatedProfileData);
-  
-        // Kirim data ke backend untuk disimpan ke database
-        const accessToken = await AsyncStorage.getItem('access_token');
-        if (!accessToken) {
-          Alert.alert('Error', 'No access token found. Please log in again.');
-          return;
-        }
-  
-        const updateResponse = await ApiHelper.request(
-          `${API_BASE_URL}/api/auth/updateProfile`,
-          'POST',
-          updatedProfileData,
-          accessToken
-        );
-  
-        if (updateResponse.error_schema.error_code !== "S001") {
-          throw new Error(updateResponse.error_schema.error_message);
-        }
-  
-        console.log('Profile updated in database:', updateResponse);
-  
-        // Perbarui state profileData dengan data terbaru
-        setProfileData(updatedProfileData);
-  
-        // Nonaktifkan mode editing
-        setEditing(false);
-        setShowHalloPage(false);
-  
-        Alert.alert('Success', 'Profile updated successfully!');
-      } catch (error) {
-        console.error('Save profile error:', error);
-        Alert.alert('Error', 'Failed to save profile data. Please try again.');
-      }
+      saveProfileData(); // Call the saveProfileData function which now handles image upload
     } else {
       Alert.alert('Info', 'No changes detected.');
     }
@@ -380,7 +302,7 @@ useEffect(() => {
       inputGender !== profileData.gender ||
       inputHeight !== profileData.height.toString() ||
       inputWeight !== profileData.weight.toString() ||
-      profileImage !== profileData.profile_picture
+      profileImage !== profileData.profile_picture // Compare profileImage URI with existing profile_picture URL
     );
   };
 
@@ -389,16 +311,16 @@ useEffect(() => {
     try {
       const accessToken = await AsyncStorage.getItem('access_token');
       console.log('Access Token:', accessToken);
-  
+
       if (accessToken) {
         await ApiHelper.logout();
       }
-  
+
       await AsyncStorage.removeItem('isGuest');
       await AsyncStorage.removeItem('profile_data');
       await AsyncStorage.removeItem('access_token');
       await AsyncStorage.removeItem('userData');
-  
+
       console.log('Logged out successfully');
       router.push('/login');
     } catch (error) {
@@ -406,7 +328,6 @@ useEffect(() => {
       Alert.alert('Error', 'Failed to logout. Please try again.');
     }
   };
-
 
 
   const pickImage = async () => {
@@ -441,56 +362,56 @@ useEffect(() => {
         </TouchableOpacity>
 
         <View style={{ alignItems: 'center', padding: 20 }}>
-            <TouchableOpacity onPress={pickImage}>
-                <View
-                style={{
-                    width: 100,
-                    height: 100,
-                    borderRadius: 50,
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    backgroundColor: '#ccc',
-                }}
-                >
-                {profileImage ? (
-                    <Image
-                    source={{ uri: profileImage }}
-                    style={{ width: 100, height: 100, borderRadius: 50 }}
-                    resizeMode="cover"
-                    />
-                ) : (
-                    <MaterialIcons name="person" size={50} color="#fff" />
-                )}
-                </View>
-            </TouchableOpacity>
-            {/* Nama di bawah foto profil */}
-            <Text style={{ fontSize: 25, fontWeight: 'bold', marginTop: 10 }}>{profileData.name}</Text>
-
-            {/* {profileData.name === 'Guest' ? (
+          <TouchableOpacity onPress={pickImage}>
+            <View
+              style={{
+                width: 100,
+                height: 100,
+                borderRadius: 50,
+                justifyContent: 'center',
+                alignItems: 'center',
+                backgroundColor: '#ccc',
+              }}
+            >
+              {profileImage ? (
+                <Image
+                  source={{ uri: profileImage }}
+                  style={{ width: 100, height: 100, borderRadius: 50 }}
+                  resizeMode="cover"
+                />
+              ) : (
+                <MaterialIcons name="person" size={50} color="#fff" />
+              )}
+            </View>
+          </TouchableOpacity>
+          {/* Nama di bawah foto profil */}
+          <Text style={{ fontSize: 25, fontWeight: 'bold', marginTop: 10 }}>{profileData.name}</Text>
+          <Text style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>{profileData.email}</Text>
+          {/* {profileData.name === 'Guest' ? (
             <Text style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>Guest Account</Text>
-            ) : (
+          ) : (
             <Text style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>{profileData.email}</Text>
-            )} */}
+          )} */}
 
-            {profileData.name === 'Guest' ? (
-                <View style={{ alignItems: 'center' }}>
-                <Text style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>Guest Account</Text>
-                <TouchableOpacity
-                    onPress={() => router.push('/welcome')} // Arahkan ke halaman Welcome
-                    style={{
-                    backgroundColor: '#2B4763', // Warna background tombol
-                    paddingVertical: 10,
-                    paddingHorizontal: 20,
-                    borderRadius: 20,
-                    marginTop: 10,
-                    }}
-                >
-                    <Text style={{ color: 'white', fontSize: 16, fontWeight: 'bold' }}>Sign In</Text>
-                </TouchableOpacity>
-                </View>
-            ) : (
-                <Text style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>{profileData.email}</Text>
-            )}
+          {profileData.name === 'Guest' ? (
+            <View style={{ alignItems: 'center' }}>
+              <Text style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>Guest Account</Text>
+              <TouchableOpacity
+                onPress={() => router.push('/welcome')} // Arahkan ke halaman Welcome
+                style={{
+                  backgroundColor: '#2B4763', // Warna background tombol
+                  paddingVertical: 10,
+                  paddingHorizontal: 20,
+                  borderRadius: 20,
+                  marginTop: 10,
+                }}
+              >
+                <Text style={{ color: 'white', fontSize: 16, fontWeight: 'bold' }}>Sign In</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <Text style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>{profileData.email}</Text>
+          )}
 
         </View>
 
@@ -781,7 +702,7 @@ useEffect(() => {
         </TouchableOpacity>
 
         <View style={{ flex: 1, alignItems: 'center', padding: 20, marginBottom: 20 }}>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={pickImage}>
             <View
               style={{
                 width: 100,
@@ -792,12 +713,14 @@ useEffect(() => {
                 backgroundColor: '#ccc',
               }}
             >
-              {profileImage && (
+              {profileImage ? (
                 <Image
                   source={{ uri: profileImage }}
                   style={{ width: 100, height: 100, borderRadius: 50 }}
                   resizeMode="cover"
                 />
+              ) : (
+                <MaterialIcons name="person" size={50} color="#fff" />
               )}
             </View>
           </TouchableOpacity>
@@ -811,6 +734,7 @@ useEffect(() => {
         </View>
 
         <View style={{ alignItems: 'flex-start' }}>
+          {/* Input Fields - Same as in showHalloPage with editable=false */}
           <Text style={{ fontSize: 16, marginBottom: 2, marginLeft: 4 }}>Username</Text>
           <TextInput
             placeholder="Enter your username"
@@ -992,60 +916,60 @@ useEffect(() => {
 
   return (
     <View style={{ flex: 1, backgroundColor: 'white', marginTop: 25 }}>
-        <View style={{ alignItems: 'center', padding: 20 }}>
+      <View style={{ alignItems: 'center', padding: 20 }}>
         <TouchableOpacity onPress={pickImage}>
-            <View
+          <View
             style={{
-                width: 100,
-                height: 100,
-                borderRadius: 50,
-                justifyContent: 'center',
-                alignItems: 'center',
-                backgroundColor: '#ccc',
+              width: 100,
+              height: 100,
+              borderRadius: 50,
+              justifyContent: 'center',
+              alignItems: 'center',
+              backgroundColor: '#ccc',
             }}
-            >
+          >
             {profileImage ? (
-                <Image
+              <Image
                 source={{ uri: profileImage }}
                 style={{ width: 100, height: 100, borderRadius: 50 }}
                 resizeMode="cover"
-                />
+              />
             ) : (
-                <MaterialIcons name="person" size={50} color="#fff" />
+              <MaterialIcons name="person" size={50} color="#fff" />
             )}
-            </View>
+          </View>
         </TouchableOpacity>
         {/* Nama di bawah foto profil */}
         {/* {profileData.name === 'Guest' ? (
-            <Text style={{ fontSize: 25, fontWeight: 'bold', marginTop: 10 }}>Guest Account</Text>
+          <Text style={{ fontSize: 25, fontWeight: 'bold', marginTop: 10 }}>Guest Account</Text>
         ) : (
-            <Text style={{ fontSize: 25, fontWeight: 'bold', marginTop: 10 }}>{profileData.name}</Text>
+          <Text style={{ fontSize: 25, fontWeight: 'bold', marginTop: 10 }}>{profileData.name}</Text>
         )} */}
         {profileData.name === 'Guest' ? (
-            <View style={{ alignItems: 'center' }}>
+          <View style={{ alignItems: 'center' }}>
             <Text style={{ fontSize: 25, color: '#666', marginTop: 10 }}>Guest Account</Text>
             <TouchableOpacity
-                onPress={() => router.push('/welcome')} // Arahkan ke halaman Welcome
-                style={{
+              onPress={() => router.push('/welcome')} // Arahkan ke halaman Welcome
+              style={{
                 backgroundColor: '#2B4763', // Warna background tombol
                 paddingVertical: 10,
                 paddingHorizontal: 20,
                 borderRadius: 20,
                 marginTop: 10,
-                }}
+              }}
             >
-                <Text style={{ color: 'white', fontSize: 16, fontWeight: 'bold' }}>Sign In</Text>
+              <Text style={{ color: 'white', fontSize: 16, fontWeight: 'bold' }}>Sign In</Text>
             </TouchableOpacity>
-            </View>
+          </View>
         ) : (
-            <Text style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>{profileData.name}</Text>
+          <Text style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>{profileData.name}</Text>
         )}
-        </View>
+      </View>
 
-        {/* Tombol dan opsi lainnya */}
-        <View style={{ marginTop: 12, paddingHorizontal: 20 }}>
+      {/* Tombol dan opsi lainnya */}
+      <View style={{ marginTop: 12, paddingHorizontal: 20 }}>
         <TouchableOpacity
-            style={{
+          style={{
             flexDirection: 'row',
             alignItems: 'center',
             backgroundColor: '#fff',
@@ -1057,17 +981,17 @@ useEffect(() => {
             shadowOpacity: 0.5,
             shadowRadius: 4,
             elevation: 2,
-            }}
-            onPress={() => {
+          }}
+          onPress={() => {
             if (profileData.name !== 'Guest') {
-                setEditing(true);
+              setEditing(true);
             } else {
-                Alert.alert('Info', 'Guest users cannot edit profiles.');
+              Alert.alert('Info', 'Guest users cannot edit profiles.');
             }
-            }}
+          }}
         >
-            <MaterialIcons name="edit" size={20} color="#000" style={{ marginRight: 10 }} />
-            <Text style={{ fontSize: 16, flex: 1, fontWeight: '600' }}>Ubah Informasi Profil</Text>
+          <MaterialIcons name="edit" size={20} color="#000" style={{ marginRight: 10 }} />
+          <Text style={{ fontSize: 16, flex: 1, fontWeight: '600' }}>Ubah Informasi Profil</Text>
         </TouchableOpacity>
 
         <View
@@ -1129,7 +1053,7 @@ useEffect(() => {
 
           <TouchableOpacity
             style={{ flexDirection: 'row', alignItems: 'center', padding: 15, marginTop: -8 }}
-            onPress={handleLogout}  
+            onPress={handleLogout}
           >
             <MaterialIcons name="logout" size={20} color="#000" style={{ marginRight: 10 }} />
             <Text style={{ fontSize: 16, flex: 1, fontWeight: '600' }}>Log Out</Text>

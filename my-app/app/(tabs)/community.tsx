@@ -76,19 +76,19 @@ const Community = () => {
   // getpost
   const fetchPosts = async () => {
     try {
-      setIsLoading(true);
-      const response = await ApiHelper.request<CommunityResponse>(
-        `${API_BASE_URL}/community/getPosts`,
-        "GET"
-      );
-  
-      if (response.output_schema) {
-        setPosts(response.output_schema.posts);
-      }
+        setIsLoading(true);
+        const response = await fetch(`${API_BASE_URL}/community/getPosts`);
+        if (!response.ok) { // Check for HTTP errors (e.g., 404, 500)
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.text(); // Get response as text first
+        console.log("Raw response from server:", data); // Log the raw response
+        const jsonData = JSON.parse(data); // *Then* try to parse as JSON
+        setPosts(jsonData.output_schema.posts);
     } catch (error) {
-      setError(error.message || "Failed to fetch posts.");
+        setError(error.message || "Failed to fetch posts.");
     } finally {
-      setIsLoading(false);
+        setIsLoading(false);
     }
   };
 
