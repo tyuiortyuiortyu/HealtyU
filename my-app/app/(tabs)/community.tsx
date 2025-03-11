@@ -34,7 +34,6 @@ interface Post {
   isCaptionExpanded: boolean;
   isLiked: boolean;
   likes: number;
-  comments: Comment[]; // daftar komentar untuk postingan
   time: string;
 }
 
@@ -59,7 +58,7 @@ const Community = () => {
   const [isLeaveModalVisible, setIsLeaveModalVisible] = useState(false);
   const [commentText, setCommentText] = useState("");
 
-  const [comments, setComments] = useState<Comment[]>([]);
+  const [comments, setComments] = useState<{ [key: number]: Comment[] }>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -72,6 +71,7 @@ const Community = () => {
 
   useEffect(() => {
     fetchPosts();
+    console.log(posts)
   }, []);
 
   // getpost
@@ -80,8 +80,7 @@ const Community = () => {
       setIsLoading(true);
       const token = await AsyncStorage.getItem("access_token");
       if (!token) {
-        console.error("No token found");
-        return;
+        throw new Error("Token not found");
       }
   
       const response = await fetch(`${API_BASE_URL}/api/community/getPosts`, {
@@ -90,21 +89,28 @@ const Community = () => {
           "Authorization": `Bearer ${token}`,
         },
       });
+
+      console.log(response);
   
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error("Error response:", errorData);
-        throw new Error(`HTTP error! status: ${response.status}`);
+      const responseData = await response.json();
+      if (responseData?.error_schema.error_code != "S001") {
+        throw new Error(responseData?.error_schema.error_message || "Failed to fetch posts.");
       }
-  
-      const data = await response.json();
-      console.log("Response data:", data);
-  
-      if (data.output_schema) {
-        setPosts(data.output_schema);
-      } else {
-        throw new Error("Invalid response format");
-      }
+
+      const transformedPosts: Post[] = responseData.output_schema.map((post) => ({
+        id: post.id,
+        name: post.user.name,
+        profilePicture: post.user.profile_picture || "", // Jika null, default ke string kosong
+        postImage: post.content, // Jika content adalah URL gambar
+        caption: post.description?.length > 15 ? post.description.slice(0, 15) + "..." : post.description || "",
+        fullCaption: post.description || "",
+        isCaptionExpanded: false,
+        isLiked: post.liked,
+        likes: post.like_count,
+        time: post.created_at, // Bisa diformat ulang jika perlu
+      }));
+
+      setPosts(transformedPosts);
     } catch (error) {
       console.error("Fetch error:", error);
       setError(error.message || "Failed to fetch posts.");
@@ -116,29 +122,34 @@ const Community = () => {
   // likepost
   const handleLike = async (postId: number) => {
     try {
-      const response = await ApiHelper.request(
+      const responseData = await ApiHelper.request(
         `${API_BASE_URL}/api/community/likePost`,
         "POST",
-        { postId } // Kirim postId dalam body request
-      );
-  
-      if (response.output_schema) {
-        setPosts((prevPosts) =>
-          prevPosts.map((post) =>
-            post.id === postId
-              ? {
-                  ...post,
-                  isLiked: !post.isLiked,
-                  likes: post.isLiked ? post.likes - 1 : post.likes + 1,
-                }
-              : post
-          )
-        );
+        { post_id: postId }
+      ); // Jangan panggil .json() jika sudah berupa object
+
+      if (responseData?.error_schema?.error_code !== "S001") {
+        throw new Error(responseData?.error_schema?.error_message);
       }
+
+      setPosts((prevPosts) =>
+        prevPosts.map((post) =>
+          post.id === postId
+            ? {
+                ...post,
+                isLiked: responseData.output_schema.isLiked,
+                likes: responseData.output_schema.likes,
+              }
+            : post
+        )
+      );
+
     } catch (error) {
-      setError(error.message || "Failed to like post.");
+      Alert.alert("Error", error.message || "Failed to like post.");
     }
-  };
+};
+
+  
 
   // createpost
   const handlePost = async () => {
@@ -217,49 +228,65 @@ const Community = () => {
         `${API_BASE_URL}/api/community/posts/${postId}/comments`,
         "GET"
       );
-  
+      
+      console.log(response);
+
       if (response.output_schema) {
-        setPosts((prevPosts) =>
-          prevPosts.map((post) =>
-            post.id === postId
-              ? { ...post, comments: response.output_schema.comments }
-              : post
-          )
-        );
+        const formattedComments: Comment[] = response.output_schema.map((item: any) => ({
+          id: item.id,
+          text: item.content, // Sesuaikan dengan `content` dari API
+          username: item.user.name, // Ambil dari `user.name`
+          time: new Date(item.created_at).toLocaleString(), // Format waktu
+        }));
+  
+        setComments((prevComments) => ({
+          ...prevComments,
+          [postId]: formattedComments, // Simpan berdasarkan `postId`
+        }));
       }
     } catch (error) {
       setError(error.message || "Failed to fetch comments.");
     }
   };
+  
 
   // addcomment
   const handleSendComment = async () => {
     if (commentText.trim() && selectedPostId !== null) {
       try {
+        const userData = await AsyncStorage.getItem("userData");
+        const currentUser = userData ? JSON.parse(userData) : { name: "Guest" };
+
         const response = await ApiHelper.request(
           `${API_BASE_URL}/api/community/posts/${selectedPostId}/comments`,
           "POST",
           {
-            text: commentText,
-            username: currentUser.name,
+            content: commentText, // Format sesuai API
           }
         );
   
         if (response.output_schema) {
-          setPosts((prevPosts) =>
-            prevPosts.map((post) =>
-              post.id === selectedPostId
-                ? { ...post, comments: [...post.comments, response.output_schema.comment] }
-                : post
-            )
-          );
-          setCommentText('');
+          const newComment: Comment = {
+            id: response.output_schema.id,
+            text: response.output_schema.content,
+            username: currentUser.name, // Gunakan nama dari user yang sedang login
+            time: new Date(response.output_schema.created_at).toLocaleString(),
+          };
+  
+          setComments((prevComments) => ({
+            ...prevComments,
+            [selectedPostId]: [...(prevComments[selectedPostId] || []), newComment],
+          }));
+  
+          setCommentText("");
         }
       } catch (error) {
         setError(error.message || "Failed to create comment.");
       }
     }
   };
+  
+  
 
   // deletecomment
   const handleDeleteComment = async (postId: number, commentId: number) => {
@@ -269,22 +296,17 @@ const Community = () => {
         "DELETE"
       );
   
-      if (response.output_schema) {
-        setPosts((prevPosts) =>
-          prevPosts.map((post) =>
-            post.id === postId
-              ? {
-                  ...post,
-                  comments: post.comments.filter((comment) => comment.id !== commentId),
-                }
-              : post
-          )
-        );
+      if (response.error_schema?.error_code === "S001") { // Pastikan API berhasil
+        setComments((prevComments) => ({
+          ...prevComments,
+          [postId]: prevComments[postId].filter((comment) => comment.id !== commentId),
+        }));
       }
     } catch (error) {
       setError(error.message || "Failed to delete comment.");
     }
   };
+  
 
   const toggleCaption = (id: number) => {
     setPosts((prevPosts) =>
@@ -522,7 +544,6 @@ const Community = () => {
                         onPress={() => handleComment(item.id)}
                       >
                         <MaterialIcons name="comment" size={24} color="gray" />
-                        <Text>{item.comments.length}</Text>
                       </TouchableOpacity>
 
                       <TouchableOpacity
@@ -668,19 +689,25 @@ const Community = () => {
 
                     {/* Daftar komentar */}
                     <FlatList
-                      data={posts ? posts.find((post) => post.id === selectedPostId)?.comments || [] : []}
+                      data={comments[selectedPostId] || []} // Ambil komentar dari state `comments`
                       keyExtractor={(item) => item.id.toString()}
                       renderItem={({ item }) => (
-                        <View style={{ padding: 10, borderBottomWidth: 1, borderBottomColor: '#ccc' }}>
-                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Text style={{ fontWeight: 'bold' }}>{item.username}</Text>
-                            <Text style={{ fontSize: 12, color: '#888' }}>{item.time}</Text>
+                        <View style={{ padding: 10, borderBottomWidth: 1, borderBottomColor: "#ccc" }}>
+                          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                            <Text style={{ fontWeight: "bold" }}>{item.username}</Text>
+                            <Text style={{ fontSize: 12, color: "#888" }}>{item.time}</Text>
+                            {/* Tombol Hapus */}
+                            <TouchableOpacity onPress={() => handleDeleteComment(item.id)}>
+                              <MaterialIcons name="delete" size={20} color="red" />
+                            </TouchableOpacity>
                           </View>
                           <Text>{item.text}</Text>
                         </View>
                       )}
                       style={{ maxHeight: 300 }}
                     />
+
+
 
                     {/* Input untuk menulis komentar */}
                     <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10 }}>
