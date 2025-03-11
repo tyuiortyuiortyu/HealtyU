@@ -123,7 +123,7 @@ class ApiHelper {
 
             // Kirim permintaan logout ke backend
             await this.request<void>(
-                "http://192.168.160.193:8081/api/auth/logout", // http://192.168.100.45:800/api/auth/logout
+                "http://10.68.102.81:8081/api/auth/logout", // http://192.168.100.45:800/api/auth/logout
                 "POST",
                 undefined, // Tidak perlu body untuk logout
                 accessToken

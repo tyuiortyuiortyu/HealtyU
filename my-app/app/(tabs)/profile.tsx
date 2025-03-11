@@ -21,7 +21,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiHelper } from '../helpers/ApiHelper';
 import { ProfileResponse } from '../response/ProfileResponse';
 
-const API_BASE_URL = 'http://192.168.160.193:8081';
+const API_BASE_URL = 'http://10.68.102.81:8081';
 
 const Profile = () => {
   const [profileImage, setProfileImage] = useState<string | null>(null);
@@ -198,8 +198,8 @@ useEffect(() => {
       formData.append('email', inputEmail);
       formData.append('dob', inputDob ? inputDob.toISOString().split('T')[0] : '');
       formData.append('gender', inputGender);
-      formData.append('height', ${inputHeight} cm);
-      formData.append('weight', ${inputWeight} kg);
+      formData.append('height', `${inputHeight} cm`);
+      formData.append('weight', `${inputWeight} kg`);
   
       if (profileImage) {
         formData.append('profile_picture', {
@@ -210,7 +210,7 @@ useEffect(() => {
       }
   
       const response = await ApiHelper.request(
-        ${API_BASE_URL}/api/auth/updateProfile,
+        `${API_BASE_URL}/api/auth/updateProfile`,
         'POST',
         formData,
         accessToken,
@@ -307,7 +307,7 @@ useEffect(() => {
         }
   
         const updateResponse = await ApiHelper.request(
-          ${API_BASE_URL}/api/auth/updateProfile,
+          `${API_BASE_URL}/api/auth/updateProfile`,
           'POST',
           updatedProfileData,
           accessToken
