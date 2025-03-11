@@ -962,7 +962,7 @@ const Profile = () => {
             </TouchableOpacity>
           </View>
         ) : (
-          <Text style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>{profileData.name}</Text>
+          <Text style={{ fontSize: 25, color: '#666', marginTop: 10, fontWeight: 'bold' }}>{profileData.name}</Text>
         )}
       </View>
 
