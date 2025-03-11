@@ -21,7 +21,7 @@ import { CommunityResponse } from "../response/CommunityResponse";
 import icons from "../../constants/icons";
 import images from "../../constants/images";
 
-const API_BASE_URL = 'https://your-api-endpoint.com'; // disini bang
+const API_BASE_URL = 'http://10.68.107.46:8000'; // disini bang
 
 interface Post {
   id: number;
@@ -33,7 +33,7 @@ interface Post {
   isCaptionExpanded: boolean;
   isLiked: boolean;
   likes: number;
-  comments: Comment[]; // Daftar komentar untuk postingan ini
+  comments: Comment[]; // daftar komentar untuk postingan
   time: string;
 }
 
@@ -67,11 +67,18 @@ const Community = () => {
     profilePicture: "",
   });
 
+  const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetchPosts();
+  }, []);
+
+  // getpost
   const fetchPosts = async () => {
     try {
       setIsLoading(true);
       const response = await ApiHelper.request<CommunityResponse>(
-        `${API_BASE_URL}/community/posts`,
+        `${API_BASE_URL}/community/getPosts`,
         "GET"
       );
   
@@ -85,19 +92,56 @@ const Community = () => {
     }
   };
 
-  const handlePost = async () => {
+  // likepost
+  const handleLike = async (postId: number) => {
     try {
       const response = await ApiHelper.request(
-        `${API_BASE_URL}/community/posts`,
+        `${API_BASE_URL}/community/likePost`,
         "POST",
-        {
-          name: currentUser.name,
-          profilePicture: currentUser.profilePicture,
-          postImage: newPostImage || "https://via.placeholder.com/300",
-          caption: postText,
-          fullCaption: postText,
-          comments: [], // Tambahkan properti comments
-        }
+        { postId } // Kirim postId dalam body request
+      );
+  
+      if (response.output_schema) {
+        setPosts((prevPosts) =>
+          prevPosts.map((post) =>
+            post.id === postId
+              ? {
+                  ...post,
+                  isLiked: !post.isLiked,
+                  likes: post.isLiked ? post.likes - 1 : post.likes + 1,
+                }
+              : post
+          )
+        );
+      }
+    } catch (error) {
+      setError(error.message || "Failed to like post.");
+    }
+  };
+
+  // createpost
+  const handlePost = async () => {
+    try {
+      const formData = new FormData();
+      formData.append("name", currentUser.name);
+      formData.append("profilePicture", currentUser.profilePicture);
+      formData.append("caption", postText);
+      formData.append("fullCaption", postText);
+  
+      if (newPostImage) {
+        formData.append("postImage", {
+          uri: newPostImage,
+          name: "photo.jpg",
+          type: "image/jpeg",
+        });
+      }
+  
+      const response = await ApiHelper.request(
+        `${API_BASE_URL}/community/createPost`,
+        "POST",
+        formData,
+        undefined,
+        true // isMultipart = true
       );
   
       if (response.output_schema) {
@@ -130,28 +174,96 @@ const Community = () => {
     }
   }, []);
 
-  useEffect(() => {
-    fetchPosts();
-  }, []);
+  // deletepost
+  const handleDeletePost = async (postId: number) => {
+    try {
+      const response = await ApiHelper.request(
+        `${API_BASE_URL}/community/deletePost/${postId}`,
+        "DELETE"
+      );
+  
+      if (response.output_schema) {
+        setPosts(posts.filter((post) => post.id !== postId));
+      }
+    } catch (error) {
+      setError(error.message || "Failed to delete post.");
+    }
+  };
 
-  if (isLoading) {
-    return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#fff" }}>
-        <ActivityIndicator size="large" color="#0000ff" />
-      </View>
-    );
-  }
+  const fetchComments = async (postId: number) => {
+    try {
+      const response = await ApiHelper.request(
+        `${API_BASE_URL}/community/posts/${postId}/comments`,
+        "GET"
+      );
 
-  if (error) {
-    return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#fff" }}>
-        <Text style={{ color: "red", fontSize: 18 }}>{error}</Text>
-        <TouchableOpacity onPress={fetchPosts} style={{ marginTop: 10 }}>
-          <Text style={{ color: "blue", fontSize: 16 }}>Try Again</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
+      if (response.output_schema) {
+        setPosts((prevPosts) =>
+          prevPosts.map((post) =>
+            post.id === postId
+              ? { ...post, comments: response.output_schema.comments }
+              : post
+          )
+        );
+      }
+    } catch (error) {
+      setError(error.message || "Failed to fetch comments.");
+    }
+  };
+
+  // addcomment
+  const handleSendComment = async () => {
+    if (commentText.trim() && selectedPostId !== null) {
+      try {
+        const response = await ApiHelper.request(
+          `${API_BASE_URL}/community/posts/${selectedPostId}/comments`,
+          "POST",
+          {
+            text: commentText,
+            username: currentUser.name,
+          }
+        );
+
+        if (response.output_schema) {
+          setPosts((prevPosts) =>
+            prevPosts.map((post) =>
+              post.id === selectedPostId
+                ? { ...post, comments: [...post.comments, response.output_schema.comment] }
+                : post
+            )
+          );
+          setCommentText('');
+        }
+      } catch (error) {
+        setError(error.message || "Failed to create comment.");
+      }
+    }
+  };
+
+  // deletecomment
+  const handleDeleteComment = async (postId: number, commentId: number) => {
+    try {
+      const response = await ApiHelper.request(
+        `${API_BASE_URL}/community/posts/${postId}/comments/${commentId}`,
+        "DELETE"
+      );
+  
+      if (response.output_schema) {
+        setPosts((prevPosts) =>
+          prevPosts.map((post) =>
+            post.id === postId
+              ? {
+                  ...post,
+                  comments: post.comments.filter((comment) => comment.id !== commentId),
+                }
+              : post
+          )
+        );
+      }
+    } catch (error) {
+      setError(error.message || "Failed to delete comment.");
+    }
+  };
 
   const toggleCaption = (id: number) => {
     setPosts((prevPosts) =>
@@ -172,25 +284,10 @@ const Community = () => {
     setIsSearching(false);
   };
 
-  const handleLike = (id: number) => {
-    setPosts((prevPosts) =>
-      prevPosts.map((post) =>
-        post.id === id
-          ? {
-              ...post,
-              isLiked: !post.isLiked,
-              likes: post.isLiked ? post.likes - 1 : post.likes + 1,
-            }
-          : post
-      )
-    );
-  };
-
-  const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
-  
   const handleComment = (postId: number) => {
-    setSelectedPostId(postId); // Simpan ID postingan yang sedang dikomentari
-    setCommentModalVisible(true); // Buka modal komentar
+    setSelectedPostId(postId);
+    fetchComments(postId);
+    setCommentModalVisible(true);
   };
 
   const handleShare = () => {
@@ -230,32 +327,28 @@ const Community = () => {
     setPopupVisible(false);
   };
 
-  const handleSendComment = () => {
-    if (commentText.trim() && selectedPostId !== null) {
-      const newComment = {
-        id: new Date().getTime(), // Gunakan timestamp sebagai ID unik
-        text: commentText,
-        username: currentUser.name,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      };
-  
-      // Perbarui daftar komentar di postingan yang sesuai
-      setPosts((prevPosts) =>
-        prevPosts.map((post) =>
-          post.id === selectedPostId
-            ? { ...post, comments: [...post.comments, newComment] } // Tambahkan komentar baru
-            : post
-        )
-      );
-  
-      // Reset input komentar
-      setCommentText('');
-    }
+  const onClose = () => {
+    setCommentModalVisible(false);
   };
 
-  const onClose = () => {
-    setCommentModalVisible(false); // Jika menggunakan state untuk mengontrol visibility modal
-  };
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#fff" }}>
+        <ActivityIndicator size="large" color="#0000ff" />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#fff" }}>
+        <Text style={{ color: "red", fontSize: 18 }}>{error}</Text>
+        <TouchableOpacity onPress={fetchPosts} style={{ marginTop: 10 }}>
+          <Text style={{ color: "blue", fontSize: 16 }}>Try Again</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>

@@ -168,7 +168,7 @@ useEffect(() => {
   const [inputName, setInputName] = useState('');
   const [inputEmail, setInputEmail] = useState('');
   const [inputDob, setInputDob] = useState<Date | null>(null);
-  const [inputGender, setInputGender] = useState('');
+  const [inputGender, setInputGender] = useState<string>(''); 
   const [inputHeight, setInputHeight] = useState('');
   const [inputWeight, setInputWeight] = useState('');
 

@@ -54,7 +54,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export class ApiHelper {
     static async request<T>(
         url: string,
-        method: "GET" | "POST",
+        method: "GET" | "POST" | "DELETE" | "PUT", // Tambahkan method DELETE dan PUT
         model?: any,
         accessToken?: string,
         isMultipart: boolean = false
@@ -98,8 +98,12 @@ export class ApiHelper {
                 body,
             });
 
+            // Jika response tidak OK, lempar error dengan detail response
             if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
+                const errorResponse = await response.json();
+                throw new Error(
+                    errorResponse.message || `HTTP error! Status: ${response.status}`
+                );
             }
 
             return await response.json();
