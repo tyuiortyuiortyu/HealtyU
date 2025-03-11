@@ -35,11 +35,6 @@ interface Post {
   isLiked: boolean;
   likes: number;
   time: string;
-  user: {
-    id: number;
-    name: string;
-    profilePicture: string;
-  };
 }
 
 
@@ -91,51 +86,47 @@ const Community = () => {
   // getpost
   const fetchPosts = async () => {
     try {
-        const accessToken = await AsyncStorage.getItem("access_token");
+      setIsLoading(true);
+      const token = await AsyncStorage.getItem("access_token");
+      if (!token) {
+        throw new Error("Token not found");
+      }
+  
+      const response = await fetch(`${API_BASE_URL}/api/community/getPosts`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+        },
+      });
 
-        const response = await fetch(`${API_BASE_URL}/api/community/getPosts`, {
-            method: "GET",
-            headers: {
-                "Authorization": `Bearer ${accessToken}`,
-            },
-        });
+      
+      const responseData = await response.json();
+      console.log(responseData.output_schema.content);
+      if (responseData?.error_schema.error_code != "S001") {
+        throw new Error(responseData?.error_schema.error_message || "Failed to fetch posts.");
+      }
 
-        const responseData = await response.json();
-        console.log("Fetched Posts:", responseData);
+      const transformedPosts: Post[] = responseData.output_schema.map((post) => ({
+        id: post.id,
+        name: post.user.name,
+        profilePicture: post.user.profile_picture || "", // Jika null, default ke string kosong
+        postImage: post.content, // Jika content adalah URL gambar
+        caption: post.description?.length > 15 ? post.description.slice(0, 15) + "..." : post.description || "",
+        fullCaption: post.description || "",
+        isCaptionExpanded: false,
+        isLiked: post.liked,
+        likes: post.like_count,
+        time: post.created_at, // Bisa diformat ulang jika perlu
+      }));
 
-        if (responseData?.error_schema?.error_code !== "S001") {
-            throw new Error(responseData?.error_schema?.additional_message || "Failed to fetch posts.");
-        }
-
-        if (responseData.output_schema) {
-            const formattedPosts = responseData.output_schema.map((post) => ({
-                id: post.id,
-                name: post.user.name,
-                profilePicture: post.user.profilePicture
-                    ? `${API_BASE_URL}/storage/${post.user.profilePicture}`
-                    : `${API_BASE_URL}/default_profile.png`,
-                postImage: `${API_BASE_URL}/storage/${post.content}`,
-                caption: post.description,
-                fullCaption: post.description,
-                isCaptionExpanded: false,
-                isLiked: post.liked,
-                likes: post.like_count,
-                time: post.created_at,
-                user: {
-                    id: post.user.id,
-                    name: post.user.name,
-                    profilePicture: post.user.profilePicture
-                        ? `${API_BASE_URL}/storage/${post.user.profilePicture}`
-                        : `${API_BASE_URL}/default_profile.png`,
-                },
-            }));
-
-            setPosts(formattedPosts);
-        }
+      setPosts(transformedPosts);
     } catch (error) {
-        Alert.alert("Error", error.message || "Failed to fetch posts", [{ text: "OK" }]);
+      console.error("Fetch error:", error);
+      setError(error.message || "Failed to fetch posts.");
+    } finally {
+      setIsLoading(false);
     }
-};
+  };
 
 
   
@@ -184,8 +175,8 @@ const Community = () => {
                             "image/jpeg"; 
 
             formData.append("content", {
-                uri: newPostImage,
-                name: `photo${Date.now()}.${fileType}`, // Pakai timestamp biar unik
+                uri: newPostImage.startsWith("file://") ? newPostImage : `file://${newPostImage}`, 
+                name: `photo${Date.now()}.${fileType}`,
                 type: mimeType,
             });
         }
@@ -208,25 +199,35 @@ const Community = () => {
         }
 
         if (responseData.output_schema) {
-            // Pastikan URL gambar menggunakan path lengkap dari API
             const newPost = {
-                ...responseData.output_schema,
-                content: responseData.output_schema.content, // Sudah full URL dari API
+                id: responseData.output_schema.id,
+                name: responseData.output_schema.user.name,
+                profilePicture: responseData.output_schema.user.profilePicture, 
+                postImage: responseData.output_schema.content, // Pastikan ini URL penuh
+                caption: responseData.output_schema.description,
+                fullCaption: responseData.output_schema.description,
+                isCaptionExpanded: false,
+                isLiked: responseData.output_schema.liked,
+                likes: responseData.output_schema.like_count,
+                time: responseData.output_schema.created_at,
                 user: {
-                    ...responseData.output_schema.user,
-                    profilePicture: responseData.output_schema.user.profilePicture, // Sudah full URL dari API
+                    id: responseData.output_schema.user.id,
+                    name: responseData.output_schema.user.name,
+                    profilePicture: responseData.output_schema.user.profilePicture,
                 },
             };
 
-            setPosts((prevPosts) => [newPost, ...prevPosts]); // Tambah ke atas daftar post
+            setPosts((prevPosts) => [newPost, ...prevPosts]); // Tambah post baru ke atas
             setPostText("");
             setNewPostImage(null);
             setIsNewPostScreenVisible(false);
         }
     } catch (error) {
+        console.error("Error posting:", error);
         Alert.alert("Error", error.message || "Failed to create post", [{ text: "OK" }]);
     }
 };
+
 
 
 
@@ -535,7 +536,7 @@ const Community = () => {
                       }}
                     >
                       <Image
-                        // source={{ uri: `${API_BASE_URL}/storage/${item.user.profile_picture}` }}
+                        source={{ uri: item.profilePicture }}
                         style={{
                           width: 40,
                           height: 40,
@@ -554,7 +555,7 @@ const Community = () => {
 
                     {/* Post Image */}
                     <Image
-                      source={{ uri: `${API_BASE_URL}/storage/app/public/posts/${item.postImage}` }}
+                      source={{ uri: item.postImage }}
                       style={{
                         width: "100%",
                         height: 200,

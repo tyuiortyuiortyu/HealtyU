@@ -80,6 +80,7 @@ const Login = () => {
       await fetchUserData(response.output_schema.access_token);
       
       // Tampilkan pesan sukses dan arahkan ke halaman profile
+      await AsyncStorage.setItem("isGuest", "false");
       Alert.alert(
         'Success',
         'You have successfully logged in.',

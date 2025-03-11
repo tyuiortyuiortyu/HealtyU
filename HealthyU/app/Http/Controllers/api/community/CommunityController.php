@@ -47,14 +47,17 @@ class CommunityController extends Controller
         $postWithUser = $post->load('user');
     
         return ApiResponse::mapResponse([
-            'id' => $postWithUser->id,
-            'description' => $postWithUser->description,
-            'content' => $imageUrl, // Pastikan frontend menerima URL lengkap
+            'id' => $post->id,
+            'description' => $post->description,
+            'content' => $post->content,
+            'liked' => PostLike::where('user_id', $user->id)->where('post_id', $post->id)->exists(),
+            'like_count' => PostLike::where('post_id', $post->id)->count(),
             'user' => [
-                'id' => $postWithUser->user->id,
-                'name' => $postWithUser->user->name,
-                'profilePicture' => asset("storage/{$postWithUser->user->profile_picture}"),
+                'id' => $post->user->id,
+                'name' => $post->user->name,
+                'profilePicture' => asset("storage/{$post->user->profile_picture}"), // URL lengkap foto profil
             ],
+            'created_at' => $post->created_at,
         ], "S001", "Post created successfully");
     }
     
@@ -207,7 +210,7 @@ class CommunityController extends Controller
             return [
                 'id' => $post->id,
                 'description' => $post->description,
-                'content' => asset("storage/{$post->content}"), // Buat URL lengkap gambar post
+                'content' => $post->content, // Buat URL lengkap gambar post
                 'liked' => PostLike::where('user_id', $user->id)->where('post_id', $post->id)->exists(),
                 'like_count' => PostLike::where('post_id', $post->id)->count(),
                 'user' => [
