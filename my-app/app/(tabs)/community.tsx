@@ -22,7 +22,7 @@ import icons from "../../constants/icons";
 import images from "../../constants/images";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_BASE_URL = 'http://127.0.0.1:8000'; // disini bang
+const API_BASE_URL = 'http://10.68.111.137:8000'; // disini bang
 
 interface Post {
   id: number;
@@ -98,10 +98,8 @@ const Community = () => {
       const data = await response.json();
       console.log("Response data:", data);
   
-      if (data.posts) {
-        setPosts(data.posts);
-      } else if (data.output_schema && data.output_schema.posts) {
-        setPosts(data.output_schema.posts);
+      if (data.output_schema) {
+        setPosts(data.output_schema);
       } else {
         console.error("Invalid response format:", data);
         setPosts([]); // Set posts ke array kosong jika respons tidak valid

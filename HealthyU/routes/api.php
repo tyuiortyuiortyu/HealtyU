@@ -5,6 +5,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\api\auth\AuthController;
 use App\Http\Middleware\JwtMiddleware;
 use App\Http\Controllers\api\community\CommunityController;
+use App\Http\Controllers\api\cycle\CycleController;
+use App\Http\Controllers\api\med_reminder\MedReminderController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -33,4 +35,20 @@ route::prefix('community')->group(function(){
     Route::post('/posts/{post_id}/comments', [CommunityController::class, 'addComment'])->middleware(JwtMiddleware::class);
     Route::get('/posts/{post_id}/comments', [CommunityController::class, 'getComments'])->middleware(JwtMiddleware::class);
     Route::delete('/posts/{post_id}/comments/{comment_id}', [CommunityController::class, 'deleteComment'])->middleware(JwtMiddleware::class);
+});
+
+route::prefix('cycles')->group(function(){
+    Route::get('/cycles', [CycleController::class, 'index']); // Ambil semua data siklus user
+    Route::post('/cycles', [CycleController::class, 'store']); // Simpan data siklus baru
+    Route::get('/cycles/{id}', [CycleController::class, 'show']); // Ambil detail siklus berdasarkan ID
+    Route::post('/cycles/update', [CycleController::class, 'update']); // Perbarui siklus berdasarkan ID
+    Route::delete('/cycles', [CycleController::class, 'destroy']); // Hapus siklus berdasarkan ID
+});
+
+route::prefix('MedReminder')->group(function(){
+    Route::get('/MedReminder', [MedReminderController::class, 'index']); // Ambil semua data siklus user
+    Route::post('/MedReminder', [MedReminderController::class, 'store']); // Simpan data siklus baru
+    Route::get('/MedReminder/{id}', [MedReminderController::class, 'show']); // Ambil detail siklus berdasarkan ID
+    Route::post('/MedReminder/update/{id}', [MedReminderController::class, 'update']); // Perbarui siklus berdasarkan ID
+    Route::delete('/MedReminder/{id}', [MedReminderController::class, 'destroy']); // Hapus siklus berdasarkan ID
 });

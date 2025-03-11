@@ -22,8 +22,7 @@ class MedicineSeeder extends Seeder{
             'unit_id' => $faker->numberBetween(1, 3),
             'med_name' => $faker->word,
             'med_dose' => $faker->randomFloat(2, 1, 500),
-            'food_relation' => $faker->randomElement(['before', 'after', 'with']),
-            'duration' => $faker->numberBetween(1, 30),
+            'type' => $faker->randomElement(['Pil', 'Sirup', 'Tetes', 'Krim', 'Tablet']),
             ]);
         }
 

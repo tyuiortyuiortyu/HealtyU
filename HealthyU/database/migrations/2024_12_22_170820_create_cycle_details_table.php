@@ -18,6 +18,11 @@ return new class extends Migration
             $table->unsignedBigInteger('user_id');
             $table->date('start');
             $table->date('end');
+            $table->integer('cycle_len');   
+            $table->integer('period_len');  
+            $table->integer('pain_lv');     
+            $table->integer('bleeding_lv'); 
+            $table->integer('mood_lv');
             $table->timestamps();
 
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
