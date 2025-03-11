@@ -49,3 +49,4 @@ export class RegisterResponse {
     }
 }
 
+export default RegisterResponse;

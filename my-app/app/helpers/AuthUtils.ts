@@ -119,3 +119,5 @@ export class AuthUtil {
         // Redirect ke halaman login atau lakukan tindakan lain
     }
 }
+
+export default AuthUtil;

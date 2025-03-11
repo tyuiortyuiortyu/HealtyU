@@ -21,7 +21,7 @@ import { CommunityResponse } from "../response/CommunityResponse";
 import icons from "../../constants/icons";
 import images from "../../constants/images";
 
-const API_BASE_URL = 'http://10.68.107.46:8000'; // disini bang
+const API_BASE_URL = 'http://127.0.0.1:8000'; // disini bang
 
 interface Post {
   id: number;

@@ -21,3 +21,4 @@ export class LoginResponse {
     }
 }
 
+export default LoginResponse;

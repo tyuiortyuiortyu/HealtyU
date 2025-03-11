@@ -88,3 +88,5 @@ ErrorSchema.getFromStorage().then((storedError) => {
         console.log("Retrieved error from AsyncStorage:", storedError.toJSON());
     }
 });
+
+export default ErrorSchema;

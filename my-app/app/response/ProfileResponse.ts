@@ -32,3 +32,5 @@ export class ProfileResponse {
         this.output_schema = output_schema;
     }
 }
+
+export default ProfileResponse;
