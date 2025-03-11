@@ -20,6 +20,7 @@ import { ApiHelper } from "../helpers/ApiHelper";
 import { CommunityResponse } from "../response/CommunityResponse";
 import icons from "../../constants/icons";
 import images from "../../constants/images";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_BASE_URL = 'http://127.0.0.1:8000'; // disini bang
 
@@ -76,27 +77,47 @@ const Community = () => {
   // getpost
   const fetchPosts = async () => {
     try {
-        setIsLoading(true);
-        const response = await fetch(`${API_BASE_URL}/community/getPosts`);
-        if (!response.ok) { // Check for HTTP errors (e.g., 404, 500)
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.text(); // Get response as text first
-        console.log("Raw response from server:", data); // Log the raw response
-        const jsonData = JSON.parse(data); // *Then* try to parse as JSON
-        setPosts(jsonData.output_schema.posts);
+      setIsLoading(true);
+      const token = await AsyncStorage.getItem("access_token");
+      if (!token) {
+        console.error("No token found");
+        return;
+      }
+  
+      const response = await fetch(`${API_BASE_URL}/api/community/getPosts`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+        },
+      });
+  
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Error response:", errorData);
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+  
+      const data = await response.json();
+      console.log("Response data:", data);
+  
+      if (data.output_schema && data.output_schema.posts) {
+        setPosts(data.output_schema.posts);
+      } else {
+        throw new Error("Invalid response format");
+      }
     } catch (error) {
-        setError(error.message || "Failed to fetch posts.");
+      console.error("Fetch error:", error);
+      setError(error.message || "Failed to fetch posts.");
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
   };
-
+  
   // likepost
   const handleLike = async (postId: number) => {
     try {
       const response = await ApiHelper.request(
-        `${API_BASE_URL}/community/likePost`,
+        `${API_BASE_URL}/api/community/likePost`,
         "POST",
         { postId } // Kirim postId dalam body request
       );
@@ -137,7 +158,7 @@ const Community = () => {
       }
   
       const response = await ApiHelper.request(
-        `${API_BASE_URL}/community/createPost`,
+        `${API_BASE_URL}/api/community/createPost`,
         "POST",
         formData,
         undefined,
@@ -178,7 +199,7 @@ const Community = () => {
   const handleDeletePost = async (postId: number) => {
     try {
       const response = await ApiHelper.request(
-        `${API_BASE_URL}/community/deletePost/${postId}`,
+        `${API_BASE_URL}/api/community/deletePost/${postId}`,
         "DELETE"
       );
   
@@ -193,10 +214,10 @@ const Community = () => {
   const fetchComments = async (postId: number) => {
     try {
       const response = await ApiHelper.request(
-        `${API_BASE_URL}/community/posts/${postId}/comments`,
+        `${API_BASE_URL}/api/community/posts/${postId}/comments`,
         "GET"
       );
-
+  
       if (response.output_schema) {
         setPosts((prevPosts) =>
           prevPosts.map((post) =>
@@ -216,14 +237,14 @@ const Community = () => {
     if (commentText.trim() && selectedPostId !== null) {
       try {
         const response = await ApiHelper.request(
-          `${API_BASE_URL}/community/posts/${selectedPostId}/comments`,
+          `${API_BASE_URL}/api/community/posts/${selectedPostId}/comments`,
           "POST",
           {
             text: commentText,
             username: currentUser.name,
           }
         );
-
+  
         if (response.output_schema) {
           setPosts((prevPosts) =>
             prevPosts.map((post) =>
@@ -244,7 +265,7 @@ const Community = () => {
   const handleDeleteComment = async (postId: number, commentId: number) => {
     try {
       const response = await ApiHelper.request(
-        `${API_BASE_URL}/community/posts/${postId}/comments/${commentId}`,
+        `${API_BASE_URL}/api/community/posts/${postId}/comments/${commentId}`,
         "DELETE"
       );
   
@@ -647,7 +668,7 @@ const Community = () => {
 
                     {/* Daftar komentar */}
                     <FlatList
-                      data={posts.find((post) => post.id === selectedPostId)?.comments || []} // Ambil komentar untuk postingan yang dipilih
+                      data={posts ? posts.find((post) => post.id === selectedPostId)?.comments || [] : []}
                       keyExtractor={(item) => item.id.toString()}
                       renderItem={({ item }) => (
                         <View style={{ padding: 10, borderBottomWidth: 1, borderBottomColor: '#ccc' }}>
@@ -658,7 +679,7 @@ const Community = () => {
                           <Text>{item.text}</Text>
                         </View>
                       )}
-                      style={{ maxHeight: 300 }} // Atur tinggi maksimal untuk daftar komentar
+                      style={{ maxHeight: 300 }}
                     />
 
                     {/* Input untuk menulis komentar */}
