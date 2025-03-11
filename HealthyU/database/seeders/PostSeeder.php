@@ -19,7 +19,6 @@ class PostSeeder extends Seeder{
         for ($i = 1; $i <= 10; $i++) {
             Post::create([
                 'user_id' => $i,
-                'title' => $faker->sentence(6, true),
                 'description' => $faker->sentence(15, true),
                 'content' => 'This is a placeholder for image content',
             ]);

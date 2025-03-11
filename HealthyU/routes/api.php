@@ -5,6 +5,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\api\auth\AuthController;
 use App\Http\Middleware\JwtMiddleware;
 use App\Http\Controllers\api\community\CommunityController;
+use App\Http\Controllers\api\cycle\CycleController;
+use App\Http\Controllers\api\med_reminder\MedReminderController;
 /*
 |--------------------------------------------------------------------------
 | API Routes

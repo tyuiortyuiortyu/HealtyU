@@ -100,8 +100,8 @@ const Community = () => {
       const data = await response.json();
       console.log("Response data:", data);
   
-      if (data.output_schema && data.output_schema.posts) {
-        setPosts(data.output_schema.posts);
+      if (data.output_schema) {
+        setPosts(data.output_schema);
       } else {
         throw new Error("Invalid response format");
       }
