@@ -168,42 +168,52 @@ const Community = () => {
   // createpost
   const handlePost = async () => {
     try {
-      const formData = new FormData();
-      formData.append("title", postTitle);
-      formData.append("description", postText);
+        const formData = new FormData();
+        formData.append("description", postText || ""); // Pastikan tetap dikirim meskipun kosong
 
-      if (newPostImage) {
-        const fileType = newPostImage.split('.').pop()?.toLowerCase();
-        const mimeType = fileType === "png" ? "image/png" :
-                        fileType === "gif" ? "image/gif" :
-                        "image/jpeg"; // Default ke jpeg
+        if (newPostImage) {
+            const fileType = newPostImage.split('.').pop()?.toLowerCase();
+            const mimeType = fileType === "png" ? "image/png" :
+                            fileType === "gif" ? "image/gif" :
+                            "image/jpeg"; // Default ke jpeg
 
-        formData.append("image", {
-          uri: newPostImage,
-          name: `photo.${fileType}`,
-          type: mimeType,
+            formData.append("content", {
+                uri: newPostImage,
+                name: `photo.${fileType}`,
+                type: mimeType,
+            });
+        }
+
+        console.log("FormData:", formData);
+
+        const response = await fetch(`${API_BASE_URL}/api/community/createPost`, {
+            method: "POST",
+            body: formData,
+            headers: {
+                "Accept": "application/json", // Pastikan response dalam format JSON
+            },
         });
-      }
 
-      const response = await ApiHelper.request(
-        `${API_BASE_URL}/api/community/createPost`,
-        "POST",
-        formData,
-        undefined,
-        true // isMultipart = true
-      );
+        const responseData = await response.json();
+        console.log("API Response:", responseData);
 
-      if (response.output_schema) {
-        setPosts([response.output_schema.post, ...posts]);
-        setPostTitle("");
-        setPostText("");
-        setNewPostImage(null);
-        setIsNewPostScreenVisible(false);
-      }
+        if (responseData?.error_schema?.error_code !== "S001") {
+            throw new Error(responseData?.error_schema?.additional_message || "Failed to create post.");
+        }
+
+        if (responseData.output_schema) {
+            setPosts((prevPosts) => [...prevPosts, responseData.output_schema]);
+            setPostText("");
+            setNewPostImage(null);
+            setIsNewPostScreenVisible(false);
+        }
     } catch (error) {
-      setError(error.message || "Failed to create post.");
+        Alert.alert("Error", error.message || "Failed to create post", [{ text: "OK" }]);
     }
 };
+
+
+
 
 
   const handleAddImage = useCallback(async () => {
@@ -227,26 +237,28 @@ const Community = () => {
 
   // deletepost
   const handleDeletePost = async (postId: number) => {
-    console.log(postId)
+    console.log(postId);
     try {
-      const response = await ApiHelper.request(
-        `${API_BASE_URL}/api/community/deletePost/${postId}`,
-        "DELETE"
-      );
+        const response = await ApiHelper.request(
+            `${API_BASE_URL}/api/community/deletePost/${postId}`,
+            "DELETE"
+        );
 
-      console.log(response);
+        console.log(response);
 
-      if (response?.error_schema.error_code != "S001") {
-        throw new Error(response?.error_schema.additional_message);
-      }
-  
-      if (response.output_schema) {
-        setPosts(posts.filter((post) => post.id !== postId));
-      }
+        if (response?.error_schema.error_code !== "S001") {
+            throw new Error(response?.error_schema.additional_message);
+        }
+
+        // Pastikan post dihapus dari state
+        setPosts((prevPosts) => prevPosts.filter((post) => post.id !== postId));
     } catch (error) {
         Alert.alert("Error", error.message || "Failed to delete post", [{ text: "OK" }]);
+    } finally {
+        setPopupVisible(false);
     }
-  };
+};
+
 
   const fetchComments = async (postId: number) => {
     try {
@@ -824,9 +836,21 @@ const Community = () => {
 
           {/* New Post Modal */}
           <Modal visible={isNewPostScreenVisible} animationType="slide">
-            <ScrollView contentContainerStyle={styles.container}>
+            <ScrollView
+              contentContainerStyle={{
+                flexGrow: 1,
+                padding: 20,
+                backgroundColor: "#fff",
+              }}
+            >
               {/* Header with Close and Post buttons */}
-              <View style={styles.header}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
                 <TouchableOpacity onPress={handleCloseNewPostScreen}>
                   <MaterialIcons name="close" size={24} color="black" />
                 </TouchableOpacity>
@@ -834,27 +858,53 @@ const Community = () => {
                   onPress={handlePost}
                   disabled={!postText.trim() && !newPostImage}
                 >
-                  <Text style={[styles.postButton, {
-                    color: postText.trim() || newPostImage ? "#007BFF" : "#ccc",
-                  }]}>
+                  <Text
+                    style={{
+                      fontSize: 18,
+                      color: postText.trim() || newPostImage ? "#007BFF" : "#ccc",
+                    }}
+                  >
                     Post
                   </Text>
                 </TouchableOpacity>
               </View>
 
-              {/* Image Preview */}
+              {/* Image added */}
               {newPostImage && (
-                <View style={styles.imageContainer}>
-                  <Image source={{ uri: newPostImage }} style={styles.image} />
-                  <TouchableOpacity onPress={() => setNewPostImage(null)} style={styles.closeImageButton}>
+                <View style={{ position: "relative", marginTop: 10 }}>
+                  <Image
+                    source={{ uri: newPostImage }}
+                    style={{
+                      width: "100%",
+                      height: 200,
+                      borderRadius: 10,
+                    }}
+                  />
+                  <TouchableOpacity
+                    onPress={() => setNewPostImage(null)}
+                    style={{
+                      position: "absolute",
+                      top: 10,
+                      right: 10,
+                      backgroundColor: "rgba(0, 0, 0, 0.6)",
+                      borderRadius: 15,
+                      padding: 5,
+                    }}
+                  >
                     <MaterialIcons name="close" size={20} color="#fff" />
                   </TouchableOpacity>
                 </View>
               )}
 
-              {/* Text Input */}
+              {/* Text input */}
               <TextInput
-                style={styles.textInput}
+                style={{
+                  height: 120,
+                  marginTop: 10,
+                  padding: 10,
+                  fontSize: 16,
+                  textAlignVertical: "top",
+                }}
                 placeholder="What's new"
                 placeholderTextColor="#888"
                 multiline
@@ -864,32 +914,99 @@ const Community = () => {
             </ScrollView>
 
             {/* Add Image Button */}
-            {isNewPostScreenVisible && (
-              <TouchableOpacity onPress={handleAddImage} style={styles.addImageButton}>
-                <MaterialIcons name="add-a-photo" size={24} color="#fff" />
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity
+              onPress={handleAddImage}
+              style={{
+                position: "absolute",
+                bottom: 20,
+                right: 20,
+                width: 50,
+                height: 50,
+                justifyContent: "center",
+                alignItems: "center",
+                backgroundColor: "#2B4763",
+                borderRadius: 25,
+                shadowColor: "#000",
+                shadowOpacity: 0.2,
+                shadowRadius: 5,
+                elevation: 5,
+              }}
+            >
+              <MaterialIcons name="add-a-photo" size={24} color="#fff" />
+            </TouchableOpacity>
           </Modal>
 
           {/* Leave without saving popup */}
-          <Modal visible={isLeaveModalVisible} transparent animationType="fade" onRequestClose={handleCancelLeave}>
-            <View style={styles.overlay}>
-              <View style={styles.leaveModal}>
-                <Text style={styles.leaveText}>
+          <Modal
+            visible={isLeaveModalVisible}
+            transparent={true}
+            animationType="fade"
+            onRequestClose={handleCancelLeave}
+          >
+            <View
+              style={{
+                flex: 1,
+                justifyContent: "center",
+                alignItems: "center",
+                backgroundColor: "rgba(0, 0, 0, 0.5)",
+              }}
+            >
+              <View
+                style={{
+                  backgroundColor: "#fff",
+                  padding: 20,
+                  borderRadius: 10,
+                  width: 300,
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 5,
+                  elevation: 5,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 15,
+                    marginBottom: 20,
+                    textAlign: "center",
+                    color: "#666",
+                  }}
+                >
                   Leave without saving your post? Your changes won’t be saved.
                 </Text>
-                <View style={styles.leaveActions}>
-                  <TouchableOpacity onPress={handleCancelLeave} style={styles.cancelButton}>
-                    <Text style={styles.cancelText}>Cancel</Text>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <TouchableOpacity
+                    onPress={handleCancelLeave}
+                    style={{
+                      paddingVertical: 10,
+                      paddingHorizontal: 20,
+                      borderRadius: 20,
+                      borderWidth: 1,
+                      borderColor: "#ccc",
+                    }}
+                  >
+                    <Text style={{ fontWeight: "bold", color: "black" }}>Cancel</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={handleLeaveWithoutSaving} style={styles.leaveButton}>
-                    <Text style={styles.leaveButtonText}>Leave</Text>
+                  <TouchableOpacity
+                    onPress={handleLeaveWithoutSaving}
+                    style={{
+                      paddingVertical: 10,
+                      paddingHorizontal: 20,
+                      borderRadius: 20,
+                      backgroundColor: "#ff4444",
+                    }}
+                  >
+                    <Text style={{ fontWeight: "bold", color: "white" }}>Leave</Text>
                   </TouchableOpacity>
                 </View>
               </View>
             </View>
           </Modal>
-
 
           {/* Floating Action Button */}
           <TouchableOpacity

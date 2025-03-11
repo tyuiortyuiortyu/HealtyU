@@ -24,7 +24,6 @@ class CommunityController extends Controller
         }
     
         $validator = Validator::make($request->all(), [
-            'title' => 'required|string|max:255',
             'description' => 'nullable|string|max:500',
             'content' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
@@ -38,7 +37,6 @@ class CommunityController extends Controller
     
         // Simpan hanya relative path
         $post = Post::create([
-            'title' => $request->title,
             'description' => $request->description,
             'content' => $imagePath,
             'user_id' => $user->id,
