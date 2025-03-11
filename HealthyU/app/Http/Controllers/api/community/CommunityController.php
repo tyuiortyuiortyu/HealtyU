@@ -24,7 +24,6 @@ class CommunityController extends Controller
         }
     
         $validator = Validator::make($request->all(), [
-            'title' => 'required|string|max:255',
             'description' => 'nullable|string|max:500',
             'content' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
@@ -33,19 +32,33 @@ class CommunityController extends Controller
             return ApiResponse::mapResponse(null, "E002", $validator->errors());
         }
     
-        // Simpan gambar di storage/app/public/posts
+        // Simpan gambar
         $imagePath = $request->file('content')->store('posts', 'public');
+        $imageUrl = asset("storage/$imagePath"); // Buat URL lengkap
     
-        // Simpan hanya relative path
+        // Simpan post
         $post = Post::create([
-            'title' => $request->title,
             'description' => $request->description,
-            'content' => $imagePath,
+            'content' => $imageUrl, // Simpan URL lengkap ke database
             'user_id' => $user->id,
         ]);
     
-        return ApiResponse::mapResponse($post, "S001", "Post created successfully");
+        // Ambil data post beserta user-nya
+        $postWithUser = $post->load('user');
+    
+        return ApiResponse::mapResponse([
+            'id' => $postWithUser->id,
+            'description' => $postWithUser->description,
+            'content' => $imageUrl, // Pastikan frontend menerima URL lengkap
+            'user' => [
+                'id' => $postWithUser->user->id,
+                'name' => $postWithUser->user->name,
+                'profilePicture' => asset("storage/{$postWithUser->user->profile_picture}"),
+            ],
+        ], "S001", "Post created successfully");
     }
+    
+    
 
     public function deletePost(Request $request, $id) {
         $user = ValidateJwt::validateAndGetUser();
@@ -191,11 +204,22 @@ class CommunityController extends Controller
         }
     
         $posts = Post::with('user')->inRandomOrder()->take(10)->get()->map(function ($post) use ($user) {
-            $post->liked = PostLike::where('user_id', $user->id)->where('post_id', $post->id)->exists();
-            $post->like_count = PostLike::where('post_id', $post->id)->count(); // Tambahkan jumlah like
-            return $post;
+            return [
+                'id' => $post->id,
+                'description' => $post->description,
+                'content' => asset("storage/{$post->content}"), // Buat URL lengkap gambar post
+                'liked' => PostLike::where('user_id', $user->id)->where('post_id', $post->id)->exists(),
+                'like_count' => PostLike::where('post_id', $post->id)->count(),
+                'user' => [
+                    'id' => $post->user->id,
+                    'name' => $post->user->name,
+                    'profilePicture' => asset("storage/{$post->user->profile_picture}"), // URL lengkap foto profil
+                ],
+                'created_at' => $post->created_at,
+            ];
         });
     
         return ApiResponse::mapResponse($posts, "S001");
     }
+    
 }
