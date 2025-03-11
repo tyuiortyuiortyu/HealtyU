@@ -82,7 +82,7 @@ class CommunityController extends Controller
         }
     
         // Pastikan post ada
-        $post = Post::find($postId);
+        $post = Post::find($post_id);
         if (!$post) {
             return ApiResponse::mapResponse(null, "E004", "Post not found");
         }
@@ -124,7 +124,7 @@ class CommunityController extends Controller
         return ApiResponse::mapResponse($comment, "S001", "Comment added successfully");
     }
 
-    public function deleteComment(Request $request, $commentId) {
+    public function deleteComment(Request $request, $post_id, $commentId) {
         $user = ValidateJwt::validateAndGetUser();
     
         if (!$user) {
@@ -132,7 +132,7 @@ class CommunityController extends Controller
         }
     
         // Cari komentar berdasarkan ID dan pastikan user adalah pemilik komentar
-        $comment = Comment::where('id', $commentId)->where('user_id', $user->id)->first();
+        $comment = Comment::where('id', $commentId)->where('post_id', $post_id)->where('user_id', $user->id)->first();
     
         if (!$comment) {
             return ApiResponse::mapResponse(null, "E004", "Comment not found or unauthorized");
@@ -145,34 +145,43 @@ class CommunityController extends Controller
 
     public function likePost(Request $request) {
         $user = ValidateJwt::validateAndGetUser();
-
+    
         if (!$user) {
             return ApiResponse::mapResponse(null, "E002", "Unauthorized User");
         }
-
+    
         $validator = Validator::make($request->all(), [
             'post_id' => 'required|exists:posts,id',
         ]);
-
+    
         if ($validator->fails()) {
             return ApiResponse::mapResponse(null, "E002", $validator->errors());
         }
-
+    
         $postID = $request->post_id;
         $existLike = PostLike::where('user_id', $user->id)->where('post_id', $postID)->first();
-
+    
         if ($existLike) {
             $existLike->delete();
-            return ApiResponse::mapResponse(null, "S001", "Unlike post success");
+            $isLiked = false;
+        } else {
+            PostLike::create([
+                'user_id' => $user->id,
+                'post_id' => $postID,
+            ]);
+            $isLiked = true;
         }
-
-        $like = PostLike::create([
-            'user_id' => $user->id,
+    
+        // Hitung jumlah like terbaru
+        $likeCount = PostLike::where('post_id', $postID)->count();
+    
+        return ApiResponse::mapResponse([
             'post_id' => $postID,
-        ]);
-
-        return ApiResponse::mapResponse($like, "S001", "Like post success");
+            'isLiked' => $isLiked,
+            'likes' => $likeCount,
+        ], "S001", $isLiked ? "Like post success" : "Unlike post success");
     }
+    
 
     public function getPosts(Request $request) {
         $user = ValidateJwt::validateAndGetUser();
@@ -180,12 +189,13 @@ class CommunityController extends Controller
         if (!$user) {
             return ApiResponse::mapResponse(null, "E002", "Unauthorized User");
         }
-
+    
         $posts = Post::with('user')->inRandomOrder()->take(10)->get()->map(function ($post) use ($user) {
             $post->liked = PostLike::where('user_id', $user->id)->where('post_id', $post->id)->exists();
+            $post->like_count = PostLike::where('post_id', $post->id)->count(); // Tambahkan jumlah like
             return $post;
         });
-
+    
         return ApiResponse::mapResponse($posts, "S001");
     }
 }

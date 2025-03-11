@@ -34,7 +34,6 @@ interface Post {
   isCaptionExpanded: boolean;
   isLiked: boolean;
   likes: number;
-  comments: Comment[]; // daftar komentar untuk postingan
   time: string;
 }
 
@@ -43,6 +42,7 @@ interface Comment {
   text: string;
   username: string;
   time: string;
+  user_id: number;
 }
 
 const Community = () => {
@@ -58,16 +58,29 @@ const Community = () => {
   const [newPostImage, setNewPostImage] = useState<string | null>(null);
   const [isLeaveModalVisible, setIsLeaveModalVisible] = useState(false);
   const [commentText, setCommentText] = useState("");
-  const [comments, setComments] = useState<Comment[]>([]);
+
+  const [comments, setComments] = useState<{ [key: number]: Comment[] }>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [currentUser] = useState({
-    name: "Guest",
-    profilePicture: "",
-  });
+  const [currentUser, setCurrentUser] = useState({ name: "", profilePicture: "" });
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      const userData = await AsyncStorage.getItem("userData");
+      const parsedUserData = userData ? JSON.parse(userData) : { name: "Guest", profilePicture: "" };
+      setCurrentUser({ name: parsedUserData.name, profilePicture: parsedUserData.profilePicture });
+    };
+
+    fetchUserData();
+  }, []);
 
   const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetchPosts();
+    console.log(posts)
+  }, []);
 
   // getpost
 
@@ -77,9 +90,7 @@ const Community = () => {
   
       const token = await AsyncStorage.getItem("access_token");
       if (!token) {
-        console.error("No token found");
-        setError("No token found. Please log in again.");
-        return;
+        throw new Error("Token not found");
       }
   
       const response = await fetch(`${API_BASE_URL}/api/community/getPosts`, {
@@ -88,23 +99,28 @@ const Community = () => {
           Authorization: `Bearer ${token}`,
         },
       });
+
+      console.log(response);
   
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error("Error response:", errorData);
-        throw new Error(`HTTP error! status: ${response.status}, message: ${errorData.message || "No error message"}`);
+      const responseData = await response.json();
+      if (responseData?.error_schema.error_code != "S001") {
+        throw new Error(responseData?.error_schema.error_message || "Failed to fetch posts.");
       }
-  
-      const data = await response.json();
-      console.log("Response data:", data);
-  
-      if (data.output_schema) {
-        setPosts(data.output_schema);
-      } else {
-        console.error("Invalid response format:", data);
-        setPosts([]); // Set posts ke array kosong jika respons tidak valid
-        throw new Error("Invalid response format");
-      }
+
+      const transformedPosts: Post[] = responseData.output_schema.map((post) => ({
+        id: post.id,
+        name: post.user.name,
+        profilePicture: post.user.profile_picture || "", // Jika null, default ke string kosong
+        postImage: post.content, // Jika content adalah URL gambar
+        caption: post.description?.length > 15 ? post.description.slice(0, 15) + "..." : post.description || "",
+        fullCaption: post.description || "",
+        isCaptionExpanded: false,
+        isLiked: post.liked,
+        likes: post.like_count,
+        time: post.created_at, // Bisa diformat ulang jika perlu
+      }));
+
+      setPosts(transformedPosts);
     } catch (error) {
       console.error("Fetch error:", error);
       setError(error.message || "Failed to fetch posts.");
@@ -120,47 +136,55 @@ const Community = () => {
   // likepost
   const handleLike = async (postId: number) => {
     try {
-      const response = await ApiHelper.request(
+      const responseData = await ApiHelper.request(
         `${API_BASE_URL}/api/community/likePost`,
         "POST",
-        { postId } // Kirim postId dalam body request
-      );
-  
-      if (response.output_schema) {
-        setPosts((prevPosts) =>
-          prevPosts.map((post) =>
-            post.id === postId
-              ? {
-                  ...post,
-                  isLiked: !post.isLiked,
-                  likes: post.isLiked ? post.likes - 1 : post.likes + 1,
-                }
-              : post
-          )
-        );
+        { post_id: postId }
+      ); // Jangan panggil .json() jika sudah berupa object
+
+      if (responseData?.error_schema?.error_code !== "S001") {
+        throw new Error(responseData?.error_schema?.error_message);
       }
+
+      setPosts((prevPosts) =>
+        prevPosts.map((post) =>
+          post.id === postId
+            ? {
+                ...post,
+                isLiked: responseData.output_schema.isLiked,
+                likes: responseData.output_schema.likes,
+              }
+            : post
+        )
+      );
+
     } catch (error) {
-      setError(error.message || "Failed to like post.");
+      Alert.alert("Error", error.message || "Failed to like post.");
     }
-  };
+};
+
+  
 
   // createpost
   const handlePost = async () => {
     try {
       const formData = new FormData();
-      formData.append("name", currentUser.name);
-      formData.append("profilePicture", currentUser.profilePicture);
-      formData.append("caption", postText);
-      formData.append("fullCaption", postText);
-  
+      formData.append("title", postTitle);
+      formData.append("description", postText);
+
       if (newPostImage) {
-        formData.append("postImage", {
+        const fileType = newPostImage.split('.').pop()?.toLowerCase();
+        const mimeType = fileType === "png" ? "image/png" :
+                        fileType === "gif" ? "image/gif" :
+                        "image/jpeg"; // Default ke jpeg
+
+        formData.append("image", {
           uri: newPostImage,
-          name: "photo.jpg",
-          type: "image/jpeg",
+          name: `photo.${fileType}`,
+          type: mimeType,
         });
       }
-  
+
       const response = await ApiHelper.request(
         `${API_BASE_URL}/api/community/createPost`,
         "POST",
@@ -168,9 +192,10 @@ const Community = () => {
         undefined,
         true // isMultipart = true
       );
-  
+
       if (response.output_schema) {
         setPosts([response.output_schema.post, ...posts]);
+        setPostTitle("");
         setPostText("");
         setNewPostImage(null);
         setIsNewPostScreenVisible(false);
@@ -178,7 +203,8 @@ const Community = () => {
     } catch (error) {
       setError(error.message || "Failed to create post.");
     }
-  };
+};
+
 
   const handleAddImage = useCallback(async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -201,17 +227,24 @@ const Community = () => {
 
   // deletepost
   const handleDeletePost = async (postId: number) => {
+    console.log(postId)
     try {
       const response = await ApiHelper.request(
         `${API_BASE_URL}/api/community/deletePost/${postId}`,
         "DELETE"
       );
+
+      console.log(response);
+
+      if (response?.error_schema.error_code != "S001") {
+        throw new Error(response?.error_schema.additional_message);
+      }
   
       if (response.output_schema) {
         setPosts(posts.filter((post) => post.id !== postId));
       }
     } catch (error) {
-      setError(error.message || "Failed to delete post.");
+        Alert.alert("Error", error.message || "Failed to delete post", [{ text: "OK" }]);
     }
   };
 
@@ -221,74 +254,91 @@ const Community = () => {
         `${API_BASE_URL}/api/community/posts/${postId}/comments`,
         "GET"
       );
-  
+      
+      console.log(response);
+
       if (response.output_schema) {
-        setPosts((prevPosts) =>
-          prevPosts.map((post) =>
-            post.id === postId
-              ? { ...post, comments: response.output_schema.comments }
-              : post
-          )
-        );
+        const formattedComments: Comment[] = response.output_schema.map((item: any) => ({
+          id: item.id,
+          text: item.content, // Sesuaikan dengan `content` dari API
+          username: item.user.name, // Ambil dari `user.name`
+          time: new Date(item.created_at).toLocaleString(), // Format waktu
+        }));
+  
+        setComments((prevComments) => ({
+          ...prevComments,
+          [postId]: formattedComments, // Simpan berdasarkan `postId`
+        }));
       }
     } catch (error) {
       setError(error.message || "Failed to fetch comments.");
     }
   };
+  
 
   // addcomment
   const handleSendComment = async () => {
     if (commentText.trim() && selectedPostId !== null) {
       try {
+        const userData = await AsyncStorage.getItem("userData");
+        const currentUser = userData ? JSON.parse(userData) : { name: "Guest" };
+
         const response = await ApiHelper.request(
           `${API_BASE_URL}/api/community/posts/${selectedPostId}/comments`,
           "POST",
           {
-            text: commentText,
-            username: currentUser.name,
+            content: commentText, // Format sesuai API
           }
         );
   
         if (response.output_schema) {
-          setPosts((prevPosts) =>
-            prevPosts.map((post) =>
-              post.id === selectedPostId
-                ? { ...post, comments: [...post.comments, response.output_schema.comment] }
-                : post
-            )
-          );
-          setCommentText('');
+          const newComment: Comment = {
+            id: response.output_schema.id,
+            text: response.output_schema.content,
+            username: currentUser.name, // Gunakan nama dari user yang sedang login
+            time: new Date(response.output_schema.created_at).toLocaleString(),
+            user_id: response.output_schema.user_id,
+          };
+  
+          setComments((prevComments) => ({
+            ...prevComments,
+            [selectedPostId]: [...(prevComments[selectedPostId] || []), newComment],
+          }));
+  
+          setCommentText("");
         }
       } catch (error) {
         setError(error.message || "Failed to create comment.");
       }
     }
   };
+  
+  
 
   // deletecomment
-  const handleDeleteComment = async (postId: number, commentId: number) => {
+  const handleDeleteComment = async (postId: number | null, commentId: number) => {
+    if (postId === null) return;
+    console.log(postId, commentId)
+
     try {
       const response = await ApiHelper.request(
         `${API_BASE_URL}/api/community/posts/${postId}/comments/${commentId}`,
         "DELETE"
       );
+
+      console.log(response);
   
-      if (response.output_schema) {
-        setPosts((prevPosts) =>
-          prevPosts.map((post) =>
-            post.id === postId
-              ? {
-                  ...post,
-                  comments: post.comments.filter((comment) => comment.id !== commentId),
-                }
-              : post
-          )
-        );
+      if (response?.error_schema.error_code === "S001") { // Pastikan API berhasil
+        setComments((prevComments) => ({
+          ...prevComments,
+          [postId]: prevComments[postId].filter((comment) => comment.id !== commentId),
+        }));
       }
     } catch (error) {
       setError(error.message || "Failed to delete comment.");
     }
   };
+  
 
   const toggleCaption = (id: number) => {
     setPosts((prevPosts) =>
@@ -321,6 +371,7 @@ const Community = () => {
 
   const handleThreeDots = (post: Post) => {
     setSelectedPost(post);
+    setSelectedPostId(post.id);
     setPopupVisible(true);
   };
 
@@ -526,7 +577,6 @@ const Community = () => {
                         onPress={() => handleComment(item.id)}
                       >
                         <MaterialIcons name="comment" size={24} color="gray" />
-                        <Text>{item.comments.length}</Text>
                       </TouchableOpacity>
 
                       <TouchableOpacity
@@ -546,7 +596,7 @@ const Community = () => {
                           color: "#888",
                         }}
                       >
-                        {item.time}
+                        {new Date(item.time).toLocaleString()}
                       </Text>
                     </View>
                   </View>
@@ -672,20 +722,25 @@ const Community = () => {
 
                     {/* Daftar komentar */}
                     <FlatList
-                      // data={posts ? posts.find((post) => post.id === selectedPostId)?.comments || [] : []}
-                      data={posts.find((post) => post.id === selectedPostId)?.comments || []}
+                      data={comments[selectedPostId] || []} // Ambil komentar dari state `comments`
                       keyExtractor={(item) => item.id.toString()}
                       renderItem={({ item }) => (
-                        <View style={{ padding: 10, borderBottomWidth: 1, borderBottomColor: '#ccc' }}>
-                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Text style={{ fontWeight: 'bold' }}>{item.username}</Text>
-                            <Text style={{ fontSize: 12, color: '#888' }}>{item.time}</Text>
+                        <View style={{ padding: 10, borderBottomWidth: 1, borderBottomColor: "#ccc" }}>
+                          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                            <Text style={{ fontWeight: "bold" }}>{item.username}</Text>
+                            <Text style={{ fontSize: 12, color: "#888" }}>{item.time}</Text>
+                            {/* Tombol Hapus */}
+                            <TouchableOpacity onPress={() => selectedPostId !== null && handleDeleteComment(selectedPostId, item.id)}>
+                              <MaterialIcons name="delete" size={20} color="red" />
+                            </TouchableOpacity>
                           </View>
                           <Text>{item.text}</Text>
                         </View>
                       )}
                       style={{ maxHeight: 300 }}
                     />
+
+
 
                     {/* Input untuk menulis komentar */}
                     <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10 }}>
@@ -749,21 +804,12 @@ const Community = () => {
                     }}
                   >
                     <TouchableOpacity
-                      onPress={() => console.log("Hide this post")}
+                      onPress={() => handleDeletePost(selectedPostId)}
                       style={{ paddingVertical: 10 }}
                     >
-                      <Text>Hide this post</Text>
+                      <Text>Delete Post</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => {
-                        if (selectedPost) {
-                          hideAllUpdatesFrom(selectedPost.name);
-                        }
-                      }}
-                      style={{ paddingVertical: 10 }}
-                    >
-                      <Text>Hide all updates from {selectedPost?.name}</Text>
-                    </TouchableOpacity>
+
                     <TouchableOpacity
                       onPress={() => setPopupVisible(false)}
                       style={{ paddingVertical: 10 }}
@@ -778,21 +824,9 @@ const Community = () => {
 
           {/* New Post Modal */}
           <Modal visible={isNewPostScreenVisible} animationType="slide">
-            <ScrollView
-              contentContainerStyle={{
-                flexGrow: 1,
-                padding: 20,
-                backgroundColor: "#fff",
-              }}
-            >
+            <ScrollView contentContainerStyle={styles.container}>
               {/* Header with Close and Post buttons */}
-              <View
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
+              <View style={styles.header}>
                 <TouchableOpacity onPress={handleCloseNewPostScreen}>
                   <MaterialIcons name="close" size={24} color="black" />
                 </TouchableOpacity>
@@ -800,53 +834,27 @@ const Community = () => {
                   onPress={handlePost}
                   disabled={!postText.trim() && !newPostImage}
                 >
-                  <Text
-                    style={{
-                      fontSize: 18,
-                      color: postText.trim() || newPostImage ? "#007BFF" : "#ccc",
-                    }}
-                  >
+                  <Text style={[styles.postButton, {
+                    color: postText.trim() || newPostImage ? "#007BFF" : "#ccc",
+                  }]}>
                     Post
                   </Text>
                 </TouchableOpacity>
               </View>
 
-              {/* Image added */}
+              {/* Image Preview */}
               {newPostImage && (
-                <View style={{ position: "relative", marginTop: 10 }}>
-                  <Image
-                    source={{ uri: newPostImage }}
-                    style={{
-                      width: "100%",
-                      height: 200,
-                      borderRadius: 10,
-                    }}
-                  />
-                  <TouchableOpacity
-                    onPress={() => setNewPostImage(null)}
-                    style={{
-                      position: "absolute",
-                      top: 10,
-                      right: 10,
-                      backgroundColor: "rgba(0, 0, 0, 0.6)",
-                      borderRadius: 15,
-                      padding: 5,
-                    }}
-                  >
+                <View style={styles.imageContainer}>
+                  <Image source={{ uri: newPostImage }} style={styles.image} />
+                  <TouchableOpacity onPress={() => setNewPostImage(null)} style={styles.closeImageButton}>
                     <MaterialIcons name="close" size={20} color="#fff" />
                   </TouchableOpacity>
                 </View>
               )}
 
-              {/* Text input */}
+              {/* Text Input */}
               <TextInput
-                style={{
-                  height: 120,
-                  marginTop: 10,
-                  padding: 10,
-                  fontSize: 16,
-                  textAlignVertical: "top",
-                }}
+                style={styles.textInput}
                 placeholder="What's new"
                 placeholderTextColor="#888"
                 multiline
@@ -856,99 +864,32 @@ const Community = () => {
             </ScrollView>
 
             {/* Add Image Button */}
-            <TouchableOpacity
-              onPress={handleAddImage}
-              style={{
-                position: "absolute",
-                bottom: 20,
-                right: 20,
-                width: 50,
-                height: 50,
-                justifyContent: "center",
-                alignItems: "center",
-                backgroundColor: "#2B4763",
-                borderRadius: 25,
-                shadowColor: "#000",
-                shadowOpacity: 0.2,
-                shadowRadius: 5,
-                elevation: 5,
-              }}
-            >
-              <MaterialIcons name="add-a-photo" size={24} color="#fff" />
-            </TouchableOpacity>
+            {isNewPostScreenVisible && (
+              <TouchableOpacity onPress={handleAddImage} style={styles.addImageButton}>
+                <MaterialIcons name="add-a-photo" size={24} color="#fff" />
+              </TouchableOpacity>
+            )}
           </Modal>
 
           {/* Leave without saving popup */}
-          <Modal
-            visible={isLeaveModalVisible}
-            transparent={true}
-            animationType="fade"
-            onRequestClose={handleCancelLeave}
-          >
-            <View
-              style={{
-                flex: 1,
-                justifyContent: "center",
-                alignItems: "center",
-                backgroundColor: "rgba(0, 0, 0, 0.5)",
-              }}
-            >
-              <View
-                style={{
-                  backgroundColor: "#fff",
-                  padding: 20,
-                  borderRadius: 10,
-                  width: 300,
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 5,
-                  elevation: 5,
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 15,
-                    marginBottom: 20,
-                    textAlign: "center",
-                    color: "#666",
-                  }}
-                >
+          <Modal visible={isLeaveModalVisible} transparent animationType="fade" onRequestClose={handleCancelLeave}>
+            <View style={styles.overlay}>
+              <View style={styles.leaveModal}>
+                <Text style={styles.leaveText}>
                   Leave without saving your post? Your changes won’t be saved.
                 </Text>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    justifyContent: "space-between",
-                  }}
-                >
-                  <TouchableOpacity
-                    onPress={handleCancelLeave}
-                    style={{
-                      paddingVertical: 10,
-                      paddingHorizontal: 20,
-                      borderRadius: 20,
-                      borderWidth: 1,
-                      borderColor: "#ccc",
-                    }}
-                  >
-                    <Text style={{ fontWeight: "bold", color: "black" }}>Cancel</Text>
+                <View style={styles.leaveActions}>
+                  <TouchableOpacity onPress={handleCancelLeave} style={styles.cancelButton}>
+                    <Text style={styles.cancelText}>Cancel</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={handleLeaveWithoutSaving}
-                    style={{
-                      paddingVertical: 10,
-                      paddingHorizontal: 20,
-                      borderRadius: 20,
-                      backgroundColor: "#ff4444",
-                    }}
-                  >
-                    <Text style={{ fontWeight: "bold", color: "white" }}>Leave</Text>
+                  <TouchableOpacity onPress={handleLeaveWithoutSaving} style={styles.leaveButton}>
+                    <Text style={styles.leaveButtonText}>Leave</Text>
                   </TouchableOpacity>
                 </View>
               </View>
             </View>
           </Modal>
+
 
           {/* Floating Action Button */}
           <TouchableOpacity
