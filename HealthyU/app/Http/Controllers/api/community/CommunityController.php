@@ -55,7 +55,7 @@ class CommunityController extends Controller
             'user' => [
                 'id' => $post->user->id,
                 'name' => $post->user->name,
-                'profilePicture' => asset("storage/{$post->user->profile_picture}"), // URL lengkap foto profil
+                'profilePicture' => $post->user->profile_picture, // URL lengkap foto profil
             ],
             'created_at' => $post->created_at,
         ], "S001", "Post created successfully");
@@ -63,14 +63,14 @@ class CommunityController extends Controller
     
     
 
-    public function deletePost(Request $request, $id) {
+    public function deletePost(Request $request, $post_id) {
         $user = ValidateJwt::validateAndGetUser();
     
         if (!$user) {
             return ApiResponse::mapResponse(null, "E002", "Unauthorized User");
         }
     
-        $post = Post::where('id', $id)->where('user_id', $user->id)->first();
+        $post = Post::where('id', $post_id)->where('user_id', $user->id)->first();
     
         if (!$post) {
             return ApiResponse::mapResponse(null, "E004", "Post not found or unauthorized");
@@ -78,7 +78,7 @@ class CommunityController extends Controller
     
         // Hapus gambar jika ada
         if (!empty($post->content)) {
-            $imagePath = 'public/' . $post->content; // Sesuaikan path dengan storage
+            $imagePath = str_replace(asset('storage/'), '', $post->content);
             if (Storage::exists($imagePath)) {
                 Storage::delete($imagePath);
             }
@@ -206,7 +206,8 @@ class CommunityController extends Controller
             return ApiResponse::mapResponse(null, "E002", "Unauthorized User");
         }
     
-        $posts = Post::with('user')->inRandomOrder()->take(10)->get()->map(function ($post) use ($user) {
+        $posts = Post::with('user')->inRandomOrder()->take(10)->get();
+        $posts = $posts->map(function ($post) use ($user) {
             return [
                 'id' => $post->id,
                 'description' => $post->description,
@@ -216,7 +217,7 @@ class CommunityController extends Controller
                 'user' => [
                     'id' => $post->user->id,
                     'name' => $post->user->name,
-                    'profilePicture' => asset("storage/{$post->user->profile_picture}"), // URL lengkap foto profil
+                    'profilePicture' => $post->user->profile_picture // URL lengkap foto profil
                 ],
                 'created_at' => $post->created_at,
             ];
