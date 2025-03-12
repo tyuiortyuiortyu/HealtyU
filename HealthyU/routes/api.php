@@ -28,22 +28,20 @@ route::prefix('auth')->group(function(){
 });
 
 route::prefix('community')->group(function(){
-    Route::post('/likePost', [CommunityController::class, 'likePost'])->middleware(JwtMiddleware::class);
-    Route::get('/getPosts', [CommunityController::class, 'getPosts'])->middleware(JwtMiddleware::class);
-    Route::post('/createPost', [CommunityController::class, 'createPost'])->middleware(JwtMiddleware::class);
-    Route::delete('/deletePost/{id}', [CommunityController::class, 'deletePost'])->middleware(JwtMiddleware::class);
-    Route::post('/posts/{post_id}/comments', [CommunityController::class, 'addComment'])->middleware(JwtMiddleware::class);
-    Route::get('/posts/{post_id}/comments', [CommunityController::class, 'getComments'])->middleware(JwtMiddleware::class);
-    Route::delete('/posts/{post_id}/comments/{comment_id}', [CommunityController::class, 'deleteComment'])->middleware(JwtMiddleware::class);
-});
+    Route::post('/likePost', [CommunityController::class, 'likePost']);
+    Route::get('/getPosts', [CommunityController::class, 'getPosts']);
+    Route::post('/createPost', [CommunityController::class, 'createPost']);
+    Route::delete('/deletePost/{id}', [CommunityController::class, 'deletePost']);
+    Route::post('/posts/{post_id}/comments', [CommunityController::class, 'addComment']);
+    Route::get('/posts/{post_id}/comments', [CommunityController::class, 'getComments']);
+    Route::delete('/posts/{post_id}/comments/{comment_id}', [CommunityController::class, 'deleteComment']);
+})->middleware(JwtMiddleware::class);
 
 route::prefix('cycles')->group(function(){
-    Route::get('/cycles', [CycleController::class, 'index']); // Ambil semua data siklus user
-    Route::post('/cycles', [CycleController::class, 'store']); // Simpan data siklus baru
-    Route::get('/cycles/{id}', [CycleController::class, 'show']); // Ambil detail siklus berdasarkan ID
-    Route::post('/cycles/update', [CycleController::class, 'update']); // Perbarui siklus berdasarkan ID
-    Route::delete('/cycles', [CycleController::class, 'destroy']); // Hapus siklus berdasarkan ID
-});
+    Route::get('/getCycle', [CycleController::class, 'getCycleData']);
+    Route::post('/saveCycle', [CycleController::class, 'saveCycle']);
+    Route::patch('/updateCycle/{cycle_id}', [CycleController::class, 'updateCycle']);
+})->middleware(JwtMiddleware::class);
 
 route::prefix('MedReminder')->group(function(){
     Route::get('/MedReminder', [MedReminderController::class, 'index']); // Ambil semua data siklus user
