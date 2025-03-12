@@ -40,7 +40,6 @@ route::prefix('community')->group(function(){
 route::prefix('cycles')->group(function(){
     Route::get('/getCycle', [CycleController::class, 'getCycleData']);
     Route::post('/saveCycle', [CycleController::class, 'saveCycle']);
-    Route::patch('/updateCycle/{cycle_id}', [CycleController::class, 'updateCycle']);
 })->middleware(JwtMiddleware::class);
 
 route::prefix('MedReminder')->group(function(){

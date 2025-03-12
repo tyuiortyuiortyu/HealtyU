@@ -21,7 +21,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiHelper } from '../helpers/ApiHelper';
 import { ProfileResponse } from '../response/ProfileResponse';
 
-const API_BASE_URL = 'http://10.68.111.137:8000';
+const API_BASE_URL = 'http://192.168.139.141:8000';
 
 const Profile = () => {
   const [profileImage, setProfileImage] = useState<string | null>(null);
@@ -139,81 +139,101 @@ const Profile = () => {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  // Fungsi untuk menyimpan perubahan profil ke API
   const saveProfileData = async () => {
     try {
       setIsLoading(true);
       setError(null);
-
-      const accessToken = await AsyncStorage.getItem('access_token');
-
+  
+      const accessToken = await AsyncStorage.getItem("access_token");
+  
       if (!accessToken) {
-        Alert.alert('Error', 'No access token found. Please log in again.');
+        Alert.alert("Error", "No access token found. Please log in again.");
         return;
       }
-
+  
       const formData = new FormData();
-      formData.append('username', inputUsername);
-      formData.append('name', inputName);
-      formData.append('email', inputEmail);
-      formData.append('dob', inputDob ? inputDob.toISOString().split('T')[0] : '');
-      formData.append('gender', inputGender);
-      formData.append('height', `${inputHeight}`);
-      formData.append('weight', `${inputWeight}`);
-
-      if (profileImage) {
-        const imageFile = {
-          uri: profileImage,
-          name: 'profile.jpg',
-          type: 'image/jpeg',
-        } as any;
-        formData.append('profile_picture', imageFile);
+  
+      // Kirim data meskipun tidak ada perubahan
+      formData.append("username", inputUsername || profileData.username);
+      formData.append("name", inputName || profileData.name);
+      formData.append("email", inputEmail || profileData.email);
+      formData.append("dob", inputDob ? inputDob.toISOString().split("T")[0] : profileData.dob || "");
+      formData.append("gender", inputGender || profileData.gender || "");
+      formData.append("height", inputHeight ? parseFloat(inputHeight).toString() : profileData.height?.toString() || "");
+      formData.append("weight", inputWeight ? parseFloat(inputWeight).toString() : profileData.weight?.toString() || "");
+  
+      if (profileImage && !profileImage.startsWith("http")) {
+        const fileType = profileImage.split(".").pop()?.toLowerCase();
+        const mimeType = fileType === "png" ? "image/png" : "image/jpeg";
+  
+        formData.append("profile_picture", {
+          uri: profileImage.startsWith("file://") ? profileImage : `file://${profileImage}`,
+          name: `photo${Date.now()}.${fileType}`,
+          type: mimeType,
+        });
       }
-
-      const response = await ApiHelper.request<ProfileResponse>(
-        `${API_BASE_URL}/api/auth/updateProfile`,
-        'POST',
-        formData,
-        accessToken,
-        true // isFormData true for multipart/form-data
-      );
-
-      if (response?.error_schema.error_code != "S001") {
-        throw new Error(response.error_schema.error_message);
+  
+      console.log("FormData:", formData); // Debugging
+  
+      const response = await fetch(`${API_BASE_URL}/api/auth/updateProfile`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "multipart/form-data",
+        },
+        body: formData,
+      });
+  
+      const responseData = await response.json();
+      console.log("Response data:", responseData);
+  
+      if (!response.ok || responseData?.error_schema?.error_code !== "S001") {
+        throw new Error(responseData?.error_schema?.error_message || "Failed to update profile.");
       }
-
-      // Simpan data yang baru ke AsyncStorage dan update state dengan data dari response API
+  
+      // Update AsyncStorage dan state
       const updatedUserData = {
-        ...profileData, // Keep existing profileData, then overwrite with updated values from input and API response
-        username: inputUsername,
-        name: inputName,
-        email: inputEmail,
-        dob: inputDob ? inputDob.toISOString().split('T')[0] : '',
-        gender: inputGender,
-        height: parseFloat(inputHeight),
-        weight: parseFloat(inputWeight),
-        profile_picture: response.output_schema.profile_picture || profileImage, // Use backend profile_picture if available, else keep local URI
+        ...profileData,
+        username: responseData.output_schema.username || inputUsername,
+        name: responseData.output_schema.name || inputName,
+        email: responseData.output_schema.email || inputEmail,
+        dob: responseData.output_schema.dob || (inputDob ? inputDob.toISOString().split("T")[0] : ""),
+        gender: responseData.output_schema.sex || inputGender,
+        height: responseData.output_schema.height ? parseFloat(responseData.output_schema.height) : parseFloat(inputHeight),
+        weight: responseData.output_schema.weight ? parseFloat(responseData.output_schema.weight) : parseFloat(inputWeight),
+        profile_picture: responseData.output_schema.profile_picture || profileImage,
       };
-
-      await AsyncStorage.setItem('userData', JSON.stringify(updatedUserData));
-      console.log('Data saved to AsyncStorage:', updatedUserData);
-
-      setProfileData(updatedUserData); // Perbarui state profileData dengan data dari API response
-      if (response.output_schema.profile_picture) {
-        setProfileImage(response.output_schema.profile_picture); // Update profileImage state with backend URL
+  
+      await AsyncStorage.setItem("userData", JSON.stringify(updatedUserData));
+      console.log("Data saved to AsyncStorage:", updatedUserData);
+  
+      setProfileData(updatedUserData);
+      if (responseData.output_schema.profile_picture) {
+        setProfileImage(responseData.output_schema.profile_picture);
       }
+  
       setEditing(false);
       setShowHalloPage(false);
       setIsLoading(false);
-
-      Alert.alert('Success', 'Profile updated successfully!');
+  
+      Alert.alert("Success", "Profile updated successfully!");
     } catch (error) {
-      console.error('Save profile error:', error);
-      setError(error instanceof Error ? error.message : 'Failed to save profile data.');
+      console.error("Save profile error:", error);
+      setError(error instanceof Error ? error.message : "Failed to save profile data.");
       setIsLoading(false);
-      Alert.alert('Error', 'Failed to save profile data. Please try again.');
+      Alert.alert("Error", "Failed to save profile data. Please try again.");
+    } finally {
+      setInputUsername('');
+      setInputName('');
+      setInputEmail('');
+      setInputDob(null);
+      setInputGender('');
+      setInputHeight('');
+      setInputWeight('');
     }
   };
+  
+  
 
 
   // Tampilkan loading indicator jika data sedang dimuat
@@ -240,12 +260,12 @@ const Profile = () => {
   const toggleNotification = () => setNotification((prev) => !prev);
 
   const isFormValid =
-    inputUsername &&
-    inputName &&
-    inputEmail &&
-    inputDob &&
-    inputGender &&
-    inputHeight &&
+    inputUsername ||
+    inputName ||
+    inputEmail ||
+    inputDob ||
+    inputGender ||
+    inputHeight ||
     inputWeight;
 
   const handleSave = async () => {
@@ -357,7 +377,7 @@ const Profile = () => {
   if (showHalloPage) {
     return (
       <ScrollView style={{ flex: 1, padding: 10, marginTop: 10, marginLeft: 10, marginRight: 10 }}>
-        <TouchableOpacity onPress={handleCancel} style={{ marginBottom: 20 }}>
+        <TouchableOpacity onPress={() => setShowHalloPage(false)} style={{ marginBottom: 20 }}>
           <Text style={{ color: 'red', fontSize: 16, fontWeight: 'bold' }}>Cancel</Text>
         </TouchableOpacity>
 
@@ -386,7 +406,7 @@ const Profile = () => {
           </TouchableOpacity>
           {/* Nama di bawah foto profil */}
           <Text style={{ fontSize: 25, fontWeight: 'bold', marginTop: 10 }}>{profileData.name}</Text>
-          <Text style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>{profileData.email}</Text>
+          {/* <Text style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>{profileData.email}</Text> */}
           {/* {profileData.name === 'Guest' ? (
             <Text style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>Guest Account</Text>
           ) : (
@@ -431,7 +451,7 @@ const Profile = () => {
               shadowRadius: 4,
               elevation: 2,
             }}
-            value={inputUsername}
+            value={profileData.username || inputUsername}
             onChangeText={setInputUsername}
             editable={isEditing}
           />
@@ -451,7 +471,7 @@ const Profile = () => {
               shadowRadius: 4,
               elevation: 2,
             }}
-            value={inputName}
+            value={profileData.name || inputName}
             onChangeText={setInputName}
             editable={true}
           />
@@ -471,7 +491,7 @@ const Profile = () => {
               shadowRadius: 4,
               elevation: 2,
             }}
-            value={inputEmail}
+            value={profileData.email || inputEmail}
             onChangeText={setInputEmail}
             editable={true}
           />
@@ -496,13 +516,18 @@ const Profile = () => {
                 }}
                 onPress={() => setShowDatePicker(true)}
               >
-                <Text style={{ color: inputDob ? '#000' : '#888' }}>
-                  {inputDob ? new Date(inputDob).toISOString().split('T')[0] : 'Enter your date of birth'}
+                <Text style={{ color: inputDob || profileData.dob ? '#000' : '#888' }}>
+                  {inputDob
+                    ? new Date(inputDob).toISOString().split('T')[0]
+                    : profileData.dob
+                    ? new Date(profileData.dob).toISOString().split('T')[0]
+                    : 'Enter your birth date'}
                 </Text>
               </TouchableOpacity>
+
               {showDatePicker && (
                 <DateTimePicker
-                  value={inputDob || new Date()}
+                  value={inputDob ? new Date(inputDob) : profileData.dob ? new Date(profileData.dob) : new Date()}
                   mode="date"
                   display="default"
                   onChange={onChangeDate}
@@ -528,18 +553,18 @@ const Profile = () => {
                 }}
               >
                 <Picker
-                  selectedValue={inputGender}
-                  enabled={true}
+                  selectedValue={inputGender || profileData.gender || ""}
                   onValueChange={(itemValue) => setInputGender(itemValue)}
                   mode="dropdown"
-                  style={{ fontSize: 14, width: '100%', color: inputGender ? 'black' : 'gray' }}
+                  style={{ fontSize: 14, width: '100%', color: inputGender || profileData.gender ? 'black' : 'gray' }}
                 >
                   <Picker.Item label="Select Gender" value="" color="gray" style={{ fontSize: 14 }} />
-                  <Picker.Item label="Female" value="Female" style={{ fontSize: 14 }} />
-                  <Picker.Item label="Male" value="Male" style={{ fontSize: 14 }} />
+                  <Picker.Item label="Female" value="female" style={{ fontSize: 14 }} />
+                  <Picker.Item label="Male" value="male" style={{ fontSize: 14 }} />
                 </Picker>
               </View>
             </View>
+
           </View>
 
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%' }}>
@@ -560,7 +585,7 @@ const Profile = () => {
                   elevation: 2,
                   height: 50,
                 }}
-                value={inputHeight}
+                value={profileData.height.toString() || inputHeight}
                 onChangeText={(text) => validateNumberInput(text, setInputHeight)}
                 keyboardType="numeric"
                 editable={true}
@@ -584,7 +609,7 @@ const Profile = () => {
                   elevation: 2,
                   height: 50,
                 }}
-                value={inputWeight}
+                value={profileData.weight.toString() || inputWeight}
                 onChangeText={(text) => validateNumberInput(text, setInputWeight)}
                 keyboardType="numeric"
                 editable={true}
@@ -984,7 +1009,7 @@ const Profile = () => {
           }}
           onPress={() => {
             if (profileData.name !== 'Guest') {
-              setEditing(true);
+              setShowHalloPage(true);
             } else {
               Alert.alert('Info', 'Guest users cannot edit profiles.');
             }

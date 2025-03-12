@@ -70,43 +70,4 @@ class CycleController extends Controller
 
         return ApiResponse::mapResponse($cycle, "S001", "Cycle saved successfully");
     }
-
-    public function updateCycle(Request $request, $cycle_id) {
-        $user = ValidateJwt::validateAndGetUser();
-    
-        if (!$user) {
-            return ApiResponse::mapResponse(null, "E002", "Unauthorized User");
-        }
-
-        $validator = Validator::make($request->all(), [
-            'start_date' => 'sometimes|date|before_or_equal:today',
-            'period_length' => 'sometimes|numeric',
-            'cycle_length' => 'sometimes|numeric'
-        ]);
-
-        if ($validator->fails()) {
-            return ApiResponse::mapResponse(null, "E001", $validator->errors());
-        }
-
-        $cycle = Cycle::where('user_id', $user->id)->where('id', $cycle_id)->first();
-
-        if (!$cycle) {
-            return ApiResponse::mapResponse(null, "E003", "Cycle not found");
-        }
-
-        if ($request->has('period_length')) {
-            $cycle->period_len = $request->period_length;
-        }
-
-        // Update the end date based on start date and cycle length
-        if ($request->has('start_date') || $request->has('cycle_length')) {
-            $startDate = $request->has('start_date') ? $request->start_date : $cycle->start;
-            $cycleLength = $request->has('cycle_length') ? $request->cycle_length : $cycle->cycle_len;
-            $cycle->end = date('Y-m-d', strtotime($startDate . ' + ' . $cycleLength . ' days'));
-        }
-
-        $cycle->save();
-
-        return ApiResponse::mapResponse($cycle, "S001", "Cycle updated successfully");
-    }
 }
