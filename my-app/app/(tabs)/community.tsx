@@ -544,10 +544,10 @@ const Community = () => {
                     <Image
                       source={{ uri: item.postImage }}
                       style={{
-                        width: "100%",
-                        height: 200,
-                        borderRadius: 10,
-                        marginBottom: 10,
+                      width: "100%",
+                      aspectRatio: 1,
+                      borderRadius: 10,
+                      marginBottom: 10,
                       }}
                     />
 
@@ -864,12 +864,12 @@ const Community = () => {
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={handlePost}
-                  disabled={!postText.trim() && !newPostImage}
+                  disabled={!postText.trim() || !newPostImage}
                 >
                   <Text
                     style={{
                       fontSize: 18,
-                      color: postText.trim() || newPostImage ? "#007BFF" : "#ccc",
+                      color: postText.trim() && newPostImage ? "#007BFF" : "#ccc",
                     }}
                   >
                     Post
