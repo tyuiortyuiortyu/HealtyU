@@ -61,5 +61,70 @@ class UserSeeder extends Seeder
                 'profile_picture' => 'This field is profile pic'
             ]);
         }
+
+        User::create([
+            'name' => 'Michael Kurniawan',
+            'email' => 'mchlkk98@gmail.com',
+            'username' => 'mikelaja',
+            'password' => bcrypt('Mikel123'),
+            'dob' => $faker->date('Y-m-d', '2005-12-31'),
+            'sex' => 'male',
+            'weight' => $faker->randomFloat(2, 40, 100),
+            'height' => $faker->randomFloat(2, 150, 200),
+            'last_login' => null,
+            'role' => 'user'
+        ]);
+
+        User::create([
+            'name' => 'Nikita',
+            'email' => 'nikitasmile@gmail.com',
+            'username' => 'smilee',
+            'password' => bcrypt('Niki1234'),
+            'dob' => $faker->date('Y-m-d', '2005-12-31'),
+            'sex' => 'female',
+            'weight' => $faker->randomFloat(2, 40, 100),
+            'height' => $faker->randomFloat(2, 150, 200),
+            'last_login' => null,
+            'role' => 'user'
+        ]);
+
+        User::create([
+            'name' => 'Felis',
+            'email' => 'ffhandoyo@gmail.com',
+            'username' => 'felisnavidad',
+            'password' => bcrypt('Felis123'),
+            'dob' => $faker->date('Y-m-d', '2005-12-31'),
+            'sex' => 'female',
+            'weight' => $faker->randomFloat(2, 40, 100),
+            'height' => $faker->randomFloat(2, 150, 200),
+            'last_login' => null,
+            'role' => 'user'
+        ]);
+
+        User::create([
+            'name' => 'Arya',
+            'email' => 'arya.shodiqi@gmail.com',
+            'username' => 'aryaaaaa',
+            'password' => bcrypt('Arya1234'),
+            'dob' => $faker->date('Y-m-d', '2005-12-31'),
+            'sex' => 'male',
+            'weight' => $faker->randomFloat(2, 40, 100),
+            'height' => $faker->randomFloat(2, 150, 200),
+            'last_login' => null,
+            'role' => 'user'
+        ]);
+
+        User::create([
+            'name' => 'Bodhi',
+            'email' => 'bodhi@gmail.com',
+            'username' => 'bod',
+            'password' => bcrypt('Bodhi123'),
+            'dob' => $faker->date('Y-m-d', '2005-12-31'),
+            'sex' => 'male',
+            'weight' => $faker->randomFloat(2, 40, 100),
+            'height' => $faker->randomFloat(2, 150, 200),
+            'last_login' => null,
+            'role' => 'user'
+        ]);
     }
 }

@@ -16,7 +16,7 @@ import { ApiHelper } from '../helpers/ApiHelper';
 import { LoginResponse } from "../response/LoginResponse";
 
 const Login = () => {
-  const API_BASE_URL = 'http://192.168.66.124:8081';
+  const API_BASE_URL = 'http://10.68.111.137:8000';
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -28,7 +28,6 @@ const Login = () => {
   const fetchUserData = async (accessToken) => { // Take accessToken as argument
     try {
       if (!accessToken) { // accessToken is now passed as argument, no need to get from AsyncStorage here.
-        console.log('No access token provided to fetchUserData.');
         return; // Exit if no token is provided, handle login error upstream if token is missing.
       }
 
@@ -44,7 +43,6 @@ const Login = () => {
         await AsyncStorage.setItem('userData', JSON.stringify(userData));
       // Tidak perlu menyetel profileData dan profileImage di sini dalam komponen Login -> ke login
       // Komponen Login hanya bertanggung jawab untuk login dan mengambil data pengguna ke AsyncStorage
-        console.log('User data fetched and stored in AsyncStorage successfully.');
       } else {
         throw new Error(response.error_schema.error_message);
       }
@@ -80,6 +78,7 @@ const Login = () => {
       await fetchUserData(response.output_schema.access_token);
       
       // Tampilkan pesan sukses dan arahkan ke halaman profile
+      await AsyncStorage.setItem("isGuest", "false");
       Alert.alert(
         'Success',
         'You have successfully logged in.',
@@ -114,7 +113,6 @@ const Login = () => {
         'POST',
         resetData
       );
-      console.log('Reset password response:', response);
     
       // Jika API merespons dengan error, tampilkan pesan error
       if (response?.error_schema.error_code != "S001") {

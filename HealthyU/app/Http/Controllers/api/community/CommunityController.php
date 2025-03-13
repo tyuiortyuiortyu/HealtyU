@@ -32,27 +32,45 @@ class CommunityController extends Controller
             return ApiResponse::mapResponse(null, "E002", $validator->errors());
         }
     
-        // Simpan gambar di storage/app/public/posts
+        // Simpan gambar
         $imagePath = $request->file('content')->store('posts', 'public');
+        $imageUrl = asset("storage/$imagePath"); // Buat URL lengkap
     
-        // Simpan hanya relative path
+        // Simpan post
         $post = Post::create([
             'description' => $request->description,
-            'content' => $imagePath,
+            'content' => $imageUrl, // Simpan URL lengkap ke database
             'user_id' => $user->id,
         ]);
     
-        return ApiResponse::mapResponse($post, "S001", "Post created successfully");
+        // Ambil data post beserta user-nya
+        $postWithUser = $post->load('user');
+    
+        return ApiResponse::mapResponse([
+            'id' => $post->id,
+            'description' => $post->description,
+            'content' => $post->content,
+            'liked' => PostLike::where('user_id', $user->id)->where('post_id', $post->id)->exists(),
+            'like_count' => PostLike::where('post_id', $post->id)->count(),
+            'user' => [
+                'id' => $post->user->id,
+                'name' => $post->user->name,
+                'profilePicture' => $post->user->profile_picture, // URL lengkap foto profil
+            ],
+            'created_at' => $post->created_at,
+        ], "S001", "Post created successfully");
     }
+    
+    
 
-    public function deletePost(Request $request, $id) {
+    public function deletePost(Request $request, $post_id) {
         $user = ValidateJwt::validateAndGetUser();
     
         if (!$user) {
             return ApiResponse::mapResponse(null, "E002", "Unauthorized User");
         }
     
-        $post = Post::where('id', $id)->where('user_id', $user->id)->first();
+        $post = Post::where('id', $post_id)->where('user_id', $user->id)->first();
     
         if (!$post) {
             return ApiResponse::mapResponse(null, "E004", "Post not found or unauthorized");
@@ -60,7 +78,7 @@ class CommunityController extends Controller
     
         // Hapus gambar jika ada
         if (!empty($post->content)) {
-            $imagePath = 'public/' . $post->content; // Sesuaikan path dengan storage
+            $imagePath = str_replace(asset('storage/'), '', $post->content);
             if (Storage::exists($imagePath)) {
                 Storage::delete($imagePath);
             }
@@ -188,12 +206,24 @@ class CommunityController extends Controller
             return ApiResponse::mapResponse(null, "E002", "Unauthorized User");
         }
     
-        $posts = Post::with('user')->inRandomOrder()->take(10)->get()->map(function ($post) use ($user) {
-            $post->liked = PostLike::where('user_id', $user->id)->where('post_id', $post->id)->exists();
-            $post->like_count = PostLike::where('post_id', $post->id)->count(); // Tambahkan jumlah like
-            return $post;
+        $posts = Post::with('user')->inRandomOrder()->take(10)->get();
+        $posts = $posts->map(function ($post) use ($user) {
+            return [
+                'id' => $post->id,
+                'description' => $post->description,
+                'content' => $post->content, // Buat URL lengkap gambar post
+                'liked' => PostLike::where('user_id', $user->id)->where('post_id', $post->id)->exists(),
+                'like_count' => PostLike::where('post_id', $post->id)->count(),
+                'user' => [
+                    'id' => $post->user->id,
+                    'name' => $post->user->name,
+                    'profilePicture' => $post->user->profile_picture // URL lengkap foto profil
+                ],
+                'created_at' => $post->created_at,
+            ];
         });
     
         return ApiResponse::mapResponse($posts, "S001");
     }
+    
 }

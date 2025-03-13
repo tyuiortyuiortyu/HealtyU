@@ -61,6 +61,7 @@ class AuthController extends Controller
             'email' => $request->email,
             'username' => $request->username,
             'password' => bcrypt($request->password),
+            'last_login' => now(),
         ]);
 
         $data = [
@@ -89,11 +90,11 @@ class AuthController extends Controller
 
     public function updateProfile(Request $request) {
         $user = ValidateJwt::validateAndGetUser();
-
+    
         if (!$user) {
             return ApiResponse::mapResponse(null, "E002", "Unauthorized User");
         }
-
+    
         $validator = Validator::make($request->all(), [
             'name' => 'sometimes|required|string',
             'email' => 'sometimes|required|email|unique:users,email,'.$user->id,
@@ -104,11 +105,11 @@ class AuthController extends Controller
             'weight' => 'nullable|numeric|min:10|max:500',
             'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ]);
-
+    
         if ($validator->fails()) {
             return ApiResponse::mapResponse(null, "E002", $validator->errors());
         }
-
+    
         // Jika ada file gambar yang diupload
         if ($request->hasFile('profile_picture')) {
             // Hapus foto lama jika ada
@@ -119,15 +120,16 @@ class AuthController extends Controller
                 }
             }
     
-            // Simpan foto profil baru di folder profile_pic
+            // Simpan gambar baru
             $imagePath = $request->file('profile_picture')->store('profile_pic', 'public');
-            $user->profile_picture = 'storage/' . $imagePath;
+            $imageUrl = asset("storage/$imagePath"); // Buat URL lengkap
+            $user->profile_picture = $imageUrl;
         }
-
+    
         $user->update($request->only([
             'name', 'email', 'username', 'dob', 'sex', 'height', 'weight'
         ]) + ['profile_picture' => $user->profile_picture]);
-
+    
         $data = [
             'name' => $user->name,
             'email' => $user->email,
@@ -136,9 +138,9 @@ class AuthController extends Controller
             'sex' => $user->sex,
             'weight' => $user->weight,
             'height' => $user->height,
-            'profile_picture' => asset($user->profile_picture),
+            'profile_picture' => $user->profile_picture,
         ];
-
+    
         return ApiResponse::mapResponse($data, "S001", "Profile updated");
     }
 

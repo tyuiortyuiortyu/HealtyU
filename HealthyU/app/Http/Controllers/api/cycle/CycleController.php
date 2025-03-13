@@ -1,181 +1,73 @@
 <?php
 
-namespace App\Http\Controllers\User;
+namespace App\Http\Controllers\api\cycle;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Tymon\JWTAuth\Facades\JWTAuth;
+use App\Helpers\ValidateJwt;
+use App\Helpers\ApiResponse;
+use Illuminate\Support\Facades\Validator;
 use App\Models\Cycle;
-use App\Http\Resources\CycleResource;
-use Illuminate\Support\Facades\Auth;
 
 class CycleController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function index()
-    {
-        $cycles = Cycle::where('user_id', Auth::id())->get();
-        return response()->json([
-            'status' => 'success',
-            'data' => $cycles
-        ]);
+    public function getCycleData(Request $request) {
+        $user = ValidateJwt::ValidateAndGetUser();
+
+        if (!$user) {
+            return ApiResponse::mapResponse(null, "E002", "Unauthorized User");
+        }
+
+        $cycles = Cycle::where('user_id', $user->id)->get();
+
+        return ApiResponse::mapResponse($cycles, "S001");
     }
 
-    /**
-     * Show the form for creating a new resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function create()
-    {
-        //
-    }
+    public function saveCycle(Request $request) {
+        $user = ValidateJwt::validateAndGetUser();
+    
+        if (!$user) {
+            return ApiResponse::mapResponse(null, "E002", "Unauthorized User");
+        }
 
-    /**
-     * Store a newly created resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
-     */
-    public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'start' => 'required|date',
-            'end' => 'required|date|after_or_equal:start',
-            'cycle_len' => 'required|integer',
-            'period_len' => 'required|integer',
-            'pain_lv' => 'required|integer',
-            'bleeding_lv' => 'required|integer',
-            'mood_lv' => 'required|integer'
+        $validator = Validator::make($request->all(), [
+            'start_date' => 'required|date|before_or_equal:today',
+            'period_length' => 'required|numeric',
+            'cycle_length' => 'required|numeric'
         ]);
-    
-        $userId = Auth::id();
-    
-        // Cek apakah user sudah memiliki cycle
-        $existingCycle = Cycle::where('user_id', $userId)->first();
-    
+
+        if ($validator->fails()) {
+            return ApiResponse::mapResponse(null, "E001", $validator->errors());
+        }
+
+        $startDate = $request->start_date;
+        $cycleLength = $request->cycle_length;
+        $endDate = date('Y-m-d', strtotime($startDate . ' + ' . $cycleLength . ' days'));
+
+        $existingCycle = Cycle::where('user_id', $user->id)
+            ->where(function($query) use ($startDate, $endDate) {
+                $query->whereBetween('start', [$startDate, $endDate])
+                      ->orWhereBetween('end', [$startDate, $endDate])
+                      ->orWhere(function($query) use ($startDate, $endDate) {
+                          $query->where('start', '<=', $startDate)
+                                ->where('end', '>=', $endDate);
+                      });
+            })
+            ->first();
+
         if ($existingCycle) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'User already has a cycle record. Please update the existing cycle instead.'
-            ], 400);
-        }
-    
-        // Jika belum ada, buat cycle baru
-        $cycle = Cycle::create([
-            'user_id' => $userId,
-            'start' => $validated['start'],
-            'end' => $validated['end'],
-            'cycle_len' => $validated['cycle_len'],
-            'period_len' => $validated['period_len'],
-            'pain_lv' => $validated['pain_lv'],
-            'bleeding_lv' => $validated['bleeding_lv'],
-            'mood_lv' => $validated['mood_lv']
-        ]);
-    
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Cycle created successfully',
-            'data' => $cycle
-        ], 201);
-    }
-
-    /**
-     * Display the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function show($id)
-    {
-        $cycle = Cycle::where('user_id', Auth::id())->findOrFail($id);
-
-        return response()->json([
-            'status' => 'success',
-            'data' => $cycle
-        ]);
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function edit($id)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function update(Request $request)
-    {
-        // Cek user yang sedang login
-        $userId = Auth::id();
-
-        // Cari cycle berdasarkan user_id
-        $cycle = Cycle::where('user_id', $userId)->first();
-
-        if (!$cycle) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'No existing cycle record found. Please create a cycle first.'
-            ], 404);
+            return ApiResponse::mapResponse(null, "E004", "Cycle overlaps with an existing cycle");
         }
 
-        // Validasi request
-        $validated = $request->validate([
-            'start' => 'required|date',
-            'end' => 'required|date|after_or_equal:start',
-            'cycle_len' => 'required|integer',
-            'period_len' => 'required|integer',
-            'pain_lv' => 'required|integer',
-            'bleeding_lv' => 'required|integer',
-            'mood_lv' => 'required|integer'
-        ]);
+        $cycle = new Cycle();
+        $cycle->user_id = $user->id;
+        $cycle->start = $startDate;
+        $cycle->end = $endDate;
+        $cycle->period_len = $request->period_length;
+        $cycle->cycle_len = $cycleLength;
+        $cycle->save();
 
-        // Update data cycle
-        $cycle->update($validated);
-
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Cycle updated successfully',
-            'data' => $cycle
-        ]);
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function destroy()
-    {
-        $cycle = Cycle::where('user_id', Auth::id())->first();
-
-        if (!$cycle) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'No cycle found for this user'
-            ], 404);
-        }
-
-        // Hapus cycle yang ditemukan
-        $cycle->delete();
-
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Cycle deleted successfully'
-        ]);
+        return ApiResponse::mapResponse($cycle, "S001", "Cycle saved successfully");
     }
 }
