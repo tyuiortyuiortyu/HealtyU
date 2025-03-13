@@ -188,6 +188,7 @@ const Cycle = () => {
     // Check if current date is the last day of the period
     const lastPeriodDay = addDays(periodStartDate, periodDays - 1);
     if (isSameDay(currentDate, lastPeriodDay)) {
+
         const difference = differenceInDays(currentDate, periodStartDate);
         return { phase: 'Period', day: difference + 1 };
     }
@@ -197,6 +198,7 @@ const Cycle = () => {
         const difference = differenceInDays(currentDate, periodStartDate);
         return { phase: 'Period', day: difference + 1 };
     }
+
 
     // Check if it's a regular day *after* the actual period
     if (isAfter(currentDate, lastPeriodDay)) {
@@ -679,5 +681,6 @@ const Cycle = () => {
     </ScrollView>
   );
 };
+
 
 export default Cycle;
