@@ -49,7 +49,7 @@ const App = () => {
     const timer = setTimeout(() => {
       setIsSplashVisible(false); // Sembunyikan Splash setelah 4 detik
       router.replace("/(auth)/welcome"); // Navigasi ke halaman Welcome
-    }, 4000);
+    }, 3000);
 
     return () => clearTimeout(timer);
   }, []);

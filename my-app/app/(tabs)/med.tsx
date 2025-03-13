@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   StyleSheet,
   Dimensions,
@@ -8,14 +8,27 @@ import {
   Image,
   TouchableOpacity,
   Modal,
+  Alert,
   TextInput,
   ScrollView,
+  FlatList,
   Platform,
 } from "react-native";
 
+// import * as Notifications from "expo-notifications";
+
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRouter } from "expo-router";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
 import CalendarPicker from "react-native-calendar-picker"; // Import CalendarPicker
+import {
+  getMedications,
+  addMedication,
+  updateMedication,
+  deleteMedication,
+} from "../helpers/medApiHelper";
+import { MedResponse } from "../response/MedResponse";
 
 import images from "../../constants/images";
 import icons from "../../constants/icons";
@@ -24,6 +37,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 const { width, height } = Dimensions.get("window");
 
 const MedReminder = () => {
+  const router = useRouter();
+  const [medications, setMedications] = useState([]);
   const [showImages, setShowImages] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showReminderModal, setShowReminderModal] = useState(false);
@@ -39,57 +54,181 @@ const MedReminder = () => {
   const [isDropdownVisible, setDropdownVisible] = useState(false);
   const [selectedUnit, setSelectedUnit] = useState("mg");
   const [status, setStatus] = useState({}); // Status untuk setiap item
-  const [medList, setMedList] = useState([]);
-
+  const [medList, setMedList] = useState<MedResponse[]>([]);
+  const [selectedItem, setSelectedItem] = useState(null);
   const [skipped, setSkipped] = useState([]);
   const [taken, setTaken] = useState([]);
   const [selectedIndex, setSelectedIndex] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [scheduledReminders, setScheduledReminders] = useState([]);
 
-  const handleEditItem = (index) => {
-    const med = medList[index];
 
-    // Set the values of the selected medication to edit
-    setMedName(med.name);
-    setMedDose(med.dose);
-    setSelectedMedType(med.type);
-    setMedImage(med.image);
+  const days = [
+    { id: 0, label: "S" },
+    { id: 1, label: "M" },
+    { id: 2, label: "T" },
+    { id: 3, label: "W" },
+    { id: 4, label: "T" },
+    { id: 5, label: "F" },
+    { id: 6, label: "S" },
+  ];
 
-    // Waktu: Pastikan formatnya valid
-    if (med.time) {
-      const timeParts = med.time.split(":");
-      const timeDate = new Date();
-      timeDate.setHours(parseInt(timeParts[0], 10));
-      timeDate.setMinutes(parseInt(timeParts[1], 10));
-      setSelectedTime(timeDate);
-    } else {
-      setSelectedTime(new Date()); // Default ke waktu sekarang
+  const [selectedDays, setSelectedDays] = useState({
+    monday: 0,
+    tuesday: 0,
+    wednesday: 0,
+    thursday: 0,
+    friday: 0,
+    saturday: 0,
+    sunday: 0,
+  });
+
+  // State untuk menyimpan data pengguna
+  const [currentUser, setCurrentUser] = useState({ name: "Guest" });
+
+  // Fungsi untuk memeriksa status pengguna (guest atau terdaftar)
+  const checkUserStatus = async () => {
+    try {
+      const isGuest = await AsyncStorage.getItem("isGuest");
+      if (isGuest === "false") {
+        const userData = await AsyncStorage.getItem("userData");
+        if (userData) {
+          const parsedUserData = JSON.parse(userData);
+          setCurrentUser(parsedUserData); // Set data pengguna terdaftar
+        }
+      } else {
+        setCurrentUser({ name: "Guest" }); // Set sebagai guest
+      }
+    } catch (error) {
+      console.error("Gagal memeriksa status pengguna:", error);
+      setCurrentUser({ name: "Guest" }); // Fallback ke guest jika terjadi error
     }
+  };
 
-    setSelectedIndex(index); // Set the selected index for editing
+  // Panggil checkUserStatus saat komponen pertama kali di-render
+  useEffect(() => {
+    const fetchData = async () => {
+      await checkUserStatus();
+    };
 
-    // Open the details modal
-    setShowDetailsModal(true);
+    fetchData();
+  }, []);
+
+  const fetchMedications = async () => {
+    try {
+      const medications = await getMedications();
+      console.log("Fetched medications:", medications);
+      setMedList(medications || []);
+    } catch (error) {
+      console.error("Error fetching medications:", error);
+      setMedList([]);
+    }
+  };
+
+  // const fetchMedications = async () => {
+  //   try {
+  //     const medications = await getMedications();
+  //     console.log("Fetched medications:", medications);
+  //     setMedList(medications); 
+  //   } catch (error) {
+  //     console.error("Error fetching medications:", error);
+  //     setMedList([]); 
+  //   }
+  // };
+
+  useEffect(() => {
+    fetchMedications();
+  }, []);
+
+  const toggleDaySelection = (day) => {
+    setSelectedDays((prevDays) => ({
+      ...prevDays,
+      [day]: prevDays[day] === 1 ? 0 : 1, // Toggle antara 1 dan 0
+    }));
+  };
+
+  const handleIconPress = () => {
+    setDropdownVisible(!isDropdownVisible);
+  };
+
+  const handleSelectUnit = (unit) => {
+    setSelectedUnit(unit);
+    setDropdownVisible(false);
+  };
+
+  // const handleEditReminder = (index) => {
+  //   const medToEdit = medList[index];
+  //   setMedName(medToEdit.med_name);
+  //   // setSelectedUnit(medToEdit.unit);
+  //   setMedDose(medToEdit.med_dose);
+  //   setSelectedMedType(medToEdit.type);
+  //   setSelectedTime(new Date(`1970-01-01T${medToEdit.time_to_take}`));
+  //   setSelectedDays({
+  //     monday: medToEdit.monday,
+  //     tuesday: medToEdit.tuesday,
+  //     wednesday: medToEdit.wednesday,
+  //     thursday: medToEdit.thursday,
+  //     friday: medToEdit.friday,
+  //     saturday: medToEdit.saturday,
+  //     sunday: medToEdit.sunday,
+  //   });
+  //   setSelectedIndex(index); // Tandai item yang sedang diedit
+  //   setShowImages(!showImages);
+  // };
+  
+
+  const handleEditReminder = (index) => {
+    const medToEdit = medList[index];
+    if (!medToEdit) return; // Ensure medToEdit is defined
+  
+    setMedName(medToEdit.med_name);
+    setMedDose(medToEdit.med_dose);
+    setSelectedMedType(medToEdit.type);
+    setSelectedTime(new Date(`1970-01-01T${medToEdit.time_to_take}`));
+    setSelectedDays({
+      monday: medToEdit.monday,
+      tuesday: medToEdit.tuesday,
+      wednesday: medToEdit.wednesday,
+      thursday: medToEdit.thursday,
+      friday: medToEdit.friday,
+      saturday: medToEdit.saturday,
+      sunday: medToEdit.sunday,
+    });
+    setSelectedIndex(index);
+    setShowImages(!showImages);
   };
 
   const handlePressItem = (index) => {
     setSelectedIndex(index === selectedIndex ? null : index);
   };
 
-  const handleSkipItem = (index) => {
+  const handleSkipItem = async (index) => {
     const skippedMed = medList[index];
-    setSkipped([...skipped, skippedMed]);
-    setMedList(medList.filter((_, i) => i !== index));
-    setSelectedIndex(null);
+    if (!skippedMed) return; 
+    try {
+      await deleteMedication(skippedMed.id);
+      setMedList(medList.filter((_, i) => i !== index));
+      fetchMedications();
+      setSelectedIndex(null);
+    } catch (error) {
+      console.error("Error skipping medication:", error);
+    }
   };
 
-  const handleTakenItem = (index) => {
-    const takenMed = medList[index];
-    setTaken([...taken, takenMed]);
-    setMedList(medList.filter((_, i) => i !== index));
-    setSelectedIndex(null);
-  };
+  // const handleTakenItem = async (index) => {
+  //   const takenMed = medList[index];
+  //   try {
+  //     await deleteMedication(takenMed.id);
+  //     // setMedList(medList.filter((_, i) => i !== index));
+  //     fetchMedications();
+  //     setSelectedIndex(null);
+  //   } catch (error) {
+  //     console.error("Error marking medication as taken:", error);
+  //   }
+  // };
 
-  const handleAddMedPress = () => {
+  const handleAddMedPress = (index) => {
+    // setSelectedIndex(index);
     setShowImages(!showImages);
   };
 
@@ -126,6 +265,23 @@ const MedReminder = () => {
     setTimeout(() => setShowDetailsModal(true), 300);
   };
 
+  const showType = (medType) => {
+    switch (medType) {
+      case "Pil":
+        return require("../../assets/images/Pil.png");
+      case "Sirup":
+        return require("../../assets/images/Sirup.png");
+      case "Tetes":
+        return require("../../assets/images/Tetes.png");
+      case "Krim":
+        return require("../../assets/images/Krim.png");
+      case "Tablet":
+        return require("../../assets/images/Tablet.png");
+      default:
+        return null; // Jika tidak cocok, kembalikan null
+    }
+  };  
+
   const handleNextPress = () => {
     if (!medName || !medDose) {
       alert("Please fill in all the medication details before proceeding!");
@@ -136,53 +292,162 @@ const MedReminder = () => {
     setShowReminderModal(true);
   };
 
-  const handleSetReminderPress = () => {
-    if (!selectedStartDate || !selectedTime || !medName || !medDose) {
+  const handleSetReminderPress = async () => {
+    if (!selectedDays || !selectedTime || !medName || !medDose) {
       alert("Please fill in all details for the reminder!");
       return;
     }
+    // Konversi waktu ke format H:i:s
+    const formatTime = (date: Date): string => {
+      const hours = String(date.getHours()).padStart(2, "0");
+      const minutes = String(date.getMinutes()).padStart(2, "0");
+      const seconds = String(date.getSeconds()).padStart(2, "0");
+      return `${hours}:${minutes}:${seconds}`;
+    };
 
-    if (selectedIndex !== null) {
-      // Update existing medication in the list
-      const updatedMedList = [...medList];
-      updatedMedList[selectedIndex] = {
-        ...updatedMedList[selectedIndex],
-        name: medName,
-        dose: medDose,
-        type: selectedMedType,
-        date: selectedStartDate.toDateString(), // Simpan tanggal
-        time: selectedTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit",second: "2-digit",}), 
-        image: medImage,
-      };
-      setMedList(updatedMedList); // Update the list with the new values
-    } else {
-      // Add new medication if it's a new entry
-      const newMed = {
-        name: medName,
-        dose: medDose,
-        type: selectedMedType,
-        date: selectedStartDate.toDateString(), 
-        time: selectedTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit",second: "2-digit",}), 
-        image: medImage,
-      };
-      setMedList([...medList, newMed]); // Add the new item to the list
+    const newMed = {
+      med_name: medName,
+      unit: selectedUnit,
+      med_dose: medDose,
+      type: selectedMedType,
+      time_to_take: formatTime(new Date(selectedTime)), // Format waktu yang benar
+      monday: selectedDays.monday || 0,
+      tuesday: selectedDays.tuesday || 0,
+      wednesday: selectedDays.wednesday || 0,
+      thursday: selectedDays.thursday || 0,
+      friday: selectedDays.friday || 0,
+      saturday: selectedDays.saturday || 0,
+      sunday: selectedDays.sunday || 0
+    };
+
+    try {
+      const isGuest = await AsyncStorage.getItem("isGuest");
+      let updatedMedList = [...medList];
+      if (isGuest === "true") {
+        updatedMedList.push(newMed);
+      } else {
+        if (selectedIndex !== null) {
+          const updatedMed = await updateMedication(
+            medList[selectedIndex].schedules[0].id,
+            newMed
+          );
+          updatedMedList = medList.map((med, index) =>
+            index === selectedIndex ? updatedMed : med
+        );
+        alert("Medication reminder successfully updated!");
+      } else {
+          // console.log("Fetched medications:", medications);
+          console.log("Payload sent to backend:", newMed);
+          const addedMed = await addMedication(newMed);
+          updatedMedList.push(addedMed);
+          alert("Medication reminder successfully saved!");
+        }
+      }
+      setMedList(updatedMedList);
+      resetForm();
+      setShowReminderModal(false);
+      fetchMedications();
+
+      // await scheduleMedReminder(newMed);
+
+      // setScheduledReminders((prevReminders) => [
+      //   ...prevReminders,
+      //   {
+      //     name: newMed.med_name,
+      //     dose: newMed.med_dose,
+      //     time: newMed.time_to_take,
+      //     days: convertScheduleToString(newMed),
+      //   }
+      // ]);
+
+  
+    } catch (error) {
+      console.error("Error saving medication:", error);
     }
-
-    // Reset form fields
+  };
+  
+  const resetForm = () => {
     setMedName("");
     setMedDose("");
     setSelectedMedType(null);
-    setMedImage(null);
-    setSelectedStartDate(null);
+    setSelectedDays({
+      monday: 0,
+      tuesday: 0,
+      wednesday: 0,
+      thursday: 0,
+      friday: 0,
+      saturday: 0,
+      sunday: 0,
+    });
     setSelectedTime(new Date());
+    setSelectedUnit("mg");
     setSelectedIndex(null);
-
-    setShowReminderModal(false);
   };
+  
+  // useEffect(() => {
+  //   // Pastikan medList terisi sebelum mengatur pengingat
+  //   if (medList.length > 0) {
+  //     medList.forEach(med => {
+  //       // Pastikan med memiliki data yang benar
+  //       if (med.med_name && med.schedules[0].time_to_take) {
+  //         console.log("Scheduling reminder for:", med.med_name);
+  //         scheduleMedReminder(med);
+  //       }
+  //     });
+  //   }
+  // }, [medList]); // Menjalankan useEffect setiap kali medList berubah
+  
+  // const scheduleMedReminder = async (medication) => {
+  //   const now = new Date();
+    
+  //   // Pastikan waktu pengingat sudah valid
+  //   const medTime = new Date(1970-01-01T${medication.schedules[0].time_to_take});
+  
+  //   // Jika time_to_take tidak valid, keluar dari fungsi
+  //   if (isNaN(medTime.getTime())) {
+  //     console.warn("Invalid time format for medication:", medication);
+  //     return;
+  //   }
 
-  const toggleCalendar = () => {
-    setCalendarVisible(!isCalendarVisible);
-  };
+  //   console.log("Now:", now);
+  //   console.log("Medication Time:", medTime);
+  
+  //   // Set waktu reminder sesuai dengan waktu yang ada di medTime
+  //   const notificationTime = new Date(now);
+  //   notificationTime.setHours(medTime.getHours());
+  //   notificationTime.setMinutes(medTime.getMinutes());
+  //   notificationTime.setSeconds(0);
+  
+  //   // Jika waktu sekarang sudah lewat untuk hari ini, set waktu notifikasi untuk besok
+  //   if (notificationTime.getTime() <= now.getTime()) {
+  //     notificationTime.setDate(now.getDate() + 1); // Set ke hari berikutnya
+  //   }
+  
+  //   // Jadwalkan notifikasi menggunakan Expo Notifications
+  //   await Notifications.scheduleNotificationAsync({
+  //     content: {
+  //       title: Time to take your medication: ${medication.med_name},
+  //       body: ${medication.med_dose} ${medication.unit} of ${medication.med_name},
+  //     },
+  //     trigger: {
+  //       year: notificationTime.getFullYear(),
+  //       month: notificationTime.getMonth(),
+  //       day: notificationTime.getDate(),
+  //       hour: notificationTime.getHours(),
+  //       minute: notificationTime.getMinutes(),
+  //       repeats: true, // Berulang setiap hari pada jam yang sama
+  //     },
+  //   });
+  
+  //   // Tampilkan alert ketika reminder dijadwalkan
+  //   Alert.alert(
+  //     'Medication Reminder Scheduled',
+  //     Reminder for ${medication.med_name} scheduled at ${medication.time_to_take}.
+  //   );
+  
+  //   console.log(Scheduled reminder for ${medication.med_name} at ${medication.time_to_take});
+  // };
+  
 
   const toggleTimePicker = () => {
     setIsTimePickerVisible(!isTimePickerVisible);
@@ -195,43 +460,56 @@ const MedReminder = () => {
     setIsTimePickerVisible(false);
   };
 
-  const handleIconPress = () => {
-    setDropdownVisible(!isDropdownVisible);
+  // Fungsi untuk mengonversi biner ke string nama hari
+const convertScheduleToString = (schedule) => {
+  if (!schedule || typeof schedule !== "object") {
+    return "No Schedule";
+  }
+
+  const daysMap = {
+    monday: "Monday",
+    tuesday: "Tuesday",
+    wednesday: "Wednesday",
+    thursday: "Thursday",
+    friday: "Friday",
+    saturday: "Saturday",
+    sunday: "Sunday",
   };
+
+  const activeDays = Object.keys(schedule)
+    .filter((day) => schedule[day] === 1 || schedule[day] === true) // Tangani 1 atau true
+    .map((day) => daysMap[day as keyof typeof daysMap] || day); // Gunakan default jika tidak ada di daysMap
+
+  return activeDays.length > 0 ? activeDays.join(", ") : "No Schedule";
+};
 
   const closeDropdown = () => {
     setDropdownVisible(false); // Menutup dropdown
   };
 
-  const handleSelectUnit = (unit) => {
-    setSelectedUnit(unit);
-    closeDropdown();
-  };
+  const availableUnits = ["mg", "ml"].filter((unit) => unit !== selectedUnit); // Menyaring opsi
 
-  const availableUnits = ["mg", "mL"].filter((unit) => unit !== selectedUnit); // Menyaring opsi
+  const units = {
+    1: 'mg',
+    2: 'ml'
+  };
 
   return (
     // <SafeAreaView>
     <View style={styles.container}>
       <View style={styles.topContainer}>
-        <Text style={styles.title}>Halo, </Text>
-        <Text style={styles.subtitle}>Nikita</Text>
+        <Text style={styles.title}>Hello, </Text>
+        <Text style={styles.subtitle}>{currentUser.name ? currentUser.name : "Guest"}</Text>
       </View>
       <View style={styles.box}>
         <View style={styles.textContainer}>
           <View style={styles.layout1}>
-            <Text style={styles.text1Box}>Rencana Anda{"\n"}hari ini</Text>
-          </View>
-          <View style={styles.layout2}>
-            <Text style={styles.text2Box}>1 dari 4 selesai</Text>
-          </View>
-          <View style={styles.layout3}>
-            <Text style={styles.text3Box}>Tampilkan lebih banyak</Text>
+            <Text style={styles.text1Box}>What are your plans for today</Text>
           </View>
         </View>
         <Image source={images.reminder1} style={styles.reminder1} />
       </View>
-      <Text style={styles.midText}>Obat Hari Ini</Text>
+      <Text style={styles.midText}>Medicine List</Text>
 
       {/* ScrollView untuk daftar obat */}
       <ScrollView
@@ -241,28 +519,41 @@ const MedReminder = () => {
           justifyContent: "flex-start",
         }}
       >
-        {medList.length === 0 ? (
-          <Text style={styles.noMedText}>Belum ada obat ditambahkan</Text>
+
+        {!medList.length || (currentUser.name == "Guest") ? (
+          <Text style={styles.noMedText}>No medication added yet</Text>
         ) : (
           medList.map((med, index) => (
             <TouchableOpacity
-              key={index}
-              style={[styles.medItem, { backgroundColor: "#FFF9C4" }]}
+              key={med.id || index} // Gunakan ID jika ada, fallback ke index
+              style={[styles.medItem, { backgroundColor: "#F3F6C8" }]}
               onPress={() => handlePressItem(index)}
             >
-              {med.image && <Image source={med.image} style={styles.medIcon} />}
+              {med.image && (
+                <Image
+                  source={typeof med.image === "string" ? { uri: med.image } : med.image}
+                  style={styles.medIcon}
+                />
+              )}
+              {showType(med.type) && (<Image source={showType(med.type)} style={styles.medIcon} />)}
               <View style={styles.medDetails}>
-                <Text style={styles.medName}>{med.name}</Text>
+                <Text style={styles.medName}>{med.med_name}</Text>
                 <Text style={styles.medType}>
-                  {med.type}, {med.dose}
+                  {med.med_dose} {med.unit_id && units[med.unit_id] ? units[med.unit_id] : "No Unit"}
                 </Text>
-                <Text style={styles.medDate}>{med.date}</Text>
-                <Text style={styles.medTime}>{med.time}</Text>
-              </View>
+                
+                <Text style={styles.medDate}>
+                {med.schedules && med.schedules.length > 0? convertScheduleToString(med.schedules[0]): "No Schedule"}
+                </Text>
+                <Text style={styles.medTime}>
+                {med.schedules && med.schedules.length > 0? med.schedules[0].time_to_take.slice(0, 5): "No Time"}
+                </Text>
+
+              </View>  
 
               <TouchableOpacity
                 style={styles.editIconWrapper}
-                onPress={() => handleEditItem(index)} // Edit action logic
+                onPress={() => handleEditReminder(index)} // Edit action logic
               >
                 <Image source={icons.edit} style={styles.icon} />
               </TouchableOpacity>
@@ -270,15 +561,9 @@ const MedReminder = () => {
               {selectedIndex === index && (
                 <View style={styles.statusContainer}>
                   <TouchableOpacity onPress={() => handleSkipItem(index)}>
-                    <View style={styles.statusItemLeft}>
-                      <Image source={icons.skipped} style={styles.statusIcon} />
-                      <Text style={styles.statusText}>Skipped</Text>
-                    </View>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => handleTakenItem(index)}>
                     <View style={styles.statusItemRight}>
-                      <Image source={icons.taken} style={styles.statusIcon} />
-                      <Text style={styles.statusText}>Taken</Text>
+                      <Image source={icons.skipped} style={styles.statusIcon} />
+                      <Text style={styles.statusText}>Delete</Text>
                     </View>
                   </TouchableOpacity>
                 </View>
@@ -309,7 +594,7 @@ const MedReminder = () => {
         >
           <View style={styles.modalContainer}>
             <View style={styles.backgroundBox}>
-              <Text style={styles.chooseText}>Pilih Jenis Obat</Text>
+              <Text style={styles.chooseText}>Choose Med Type</Text>
               <View style={styles.imagesRow}>
                 <TouchableOpacity
                   onPress={() => handleMedTypeSelect("Pil")}
@@ -427,41 +712,31 @@ const MedReminder = () => {
       >
         <View style={styles.dimmedBackground}>
           <View style={styles.reminderModalContainer}>
-            <Text style={styles.reminderTitle}>Atur Pengingat</Text>
+            <Text style={styles.reminderTitle}>Set Reminder</Text>
 
-            <TouchableOpacity onPress={toggleCalendar} style={styles.dateBox}>
-              <Text style={styles.placeholderText}>
-                {selectedStartDate
-                  ? selectedStartDate.toDateString()
-                  : "Select Date"}
-              </Text>
-              <View style={styles.iconWrapper}>
-                <Image source={icons.arrowDown} style={styles.icon} />
+            {/* /* Pilihan Hari */}
+            <View style={styles.containerDay}>
+                {Object.keys(selectedDays).map((day) => (
+                  <TouchableOpacity
+                    key={day}
+                    style={[
+                      styles.dayButton,
+                      selectedDays[day] === 1 && styles.selectedDayButton,
+                    ]}
+                    onPress={() => toggleDaySelection(day)}
+                  >
+                    <Text
+                      style={[
+                        styles.dayText,
+                        selectedDays[day] === 1 && styles.selectedDayText,
+                      ]}
+                    >
+                      {day.charAt(0).toUpperCase()}{" "}
+                      {/* Menampilkan huruf pertama dari nama hari */}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
               </View>
-            </TouchableOpacity>
-
-            {/* Modal untuk Calendar */}
-            <Modal
-              transparent={true}
-              visible={isCalendarVisible} // Menampilkan kalender
-              animationType="slide"
-              onRequestClose={toggleCalendar} // Menutup kalender
-            >
-              <View style={styles.modalBackground}>
-                <View style={styles.calendarContainer}>
-                  <CalendarPicker
-                    onDateChange={(date) => {
-                      setSelectedStartDate(date); // Set tanggal yang dipilih
-                      toggleCalendar(); // Menutup modal kalender setelah memilih tanggal
-                    }}
-                    width={300}
-                    height={300}
-                    selectedDayColor="#000000"
-                    selectedDayTextColor="#FFFFFF"
-                  />
-                </View>
-              </View>
-            </Modal>
 
             {/* Picker untuk Memilih Waktu */}
             <TouchableOpacity onPress={toggleTimePicker} style={styles.timeBox}>
@@ -474,7 +749,6 @@ const MedReminder = () => {
                 <Image source={icons.arrowDown} style={styles.icon} />
               </View>
             </TouchableOpacity>
-
             {isTimePickerVisible && (
               <Modal transparent={true} visible={isTimePickerVisible}>
                 <View style={styles.modalBackground}>
@@ -488,13 +762,14 @@ const MedReminder = () => {
                 </View>
               </Modal>
             )}
-
             {/* Tombol untuk Menyimpan Pengingat */}
             <TouchableOpacity
               style={styles.nextButton}
               onPress={handleSetReminderPress} // Fungsi untuk menyimpan pengingat
+
             >
-              <Text style={styles.nextButtonText}>Simpan Pengingat</Text>
+              <Text style={styles.nextButtonText}>Save Reminder</Text>
+              
             </TouchableOpacity>
           </View>
         </View>
@@ -522,22 +797,22 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   reminderModalContainer: {
-    justifyContent: "center",
-    backgroundColor: "#FFF",
-    borderRadius: 20,
-    padding: 20,
-    alignItems: "center",
-    width: "100%",
-    height: "35%",
-    elevation: 5,
-    shadowColor: "#000",
+    justifyContent: "flex-start", // Posisikan ke bawah layar
+    backgroundColor: "#FFF", // Warna latar modal
+    borderRadius: 20, // Membuat sudut membulat
+    padding: 20, // Ruang dalam modal
+    alignItems: "center", // Elemen di tengah horizontal
+    width: "100%", // Sesuaikan lebar modal
+    height: "33%", // Tinggi modal (atur sesuai kebutuhan)
+    elevation: 5, // Bayangan di Android
+    shadowColor: "#000", // Bayangan di iOS
     shadowOpacity: 0.2,
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 4,
-    marginBottom: -500,
+    top: 200,
   },
   detailModalContainer: {
-    justifyContent: "center", // Posisikan ke bawah layar
+    justifyContent: "flex-start", // Posisikan ke bawah layar
     backgroundColor: "#FFF", // Warna latar modal
     borderRadius: 20, // Membuat sudut membulat
     padding: 20, // Ruang dalam modal
@@ -571,7 +846,7 @@ const styles = StyleSheet.create({
     borderColor: "#ccc",
     borderRadius: 10,
     padding: 10,
-    marginVertical: 10,
+    marginVertical: 5,
     backgroundColor: "#EAEAEA",
     // borderWidth: 1, // Debugging border
     // borderColor: "blue",
@@ -595,7 +870,7 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     padding: 16,
     marginTop: 20,
-    marginLeft: 40,
+    marginLeft: 20,
   },
   title: {
     fontSize: 40,
@@ -624,15 +899,13 @@ const styles = StyleSheet.create({
     width: "100%",
     // height: 10,
     marginLeft: 10,
-    // marginTop: 20,
+    marginTop: 30,
     // marginBottom: 20
+    alignItems: "center",
   },
   text1Box: {
     fontSize: 25,
     fontWeight: "bold",
-    // marginTop:
-    // marginTop: -5,
-    marginBottom: -5,
   },
   layout2: {
     flex: 1,
@@ -660,8 +933,8 @@ const styles = StyleSheet.create({
   reminder1: {
     width: 200,
     height: 200,
-    marginRight: -70,
-    marginTop: -120,
+    marginRight: -50,
+    marginTop: -100,
   },
   midText: {
     marginTop: 20,
@@ -672,7 +945,7 @@ const styles = StyleSheet.create({
   },
   iconAdd: {
     position: "absolute",
-    bottom: 5,
+    bottom: 25,
     left: "50%",
     transform: [{ translateX: -25 }],
   },
@@ -773,16 +1046,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "rgba(0, 0, 0, 0.5)",
-  },
-  calendarContainer: {
-    backgroundColor: "#FFFFFF",
-    padding: 20,
-    borderRadius: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
   },
   medListContainer: {
     flex: 1,
@@ -901,20 +1164,20 @@ const styles = StyleSheet.create({
   },
   statusContainer: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    alignItems: "center",
     width: "100%",
     marginTop: 10,
+    // borderWidth: 1, // Debugging border
+    // borderColor: "green",
+    position: "relative", // Pastikan posisi relatif untuk absolute child
   },
-  statusItemLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginLeft: 10,
-  },
+  
   statusItemRight: {
     flexDirection: "row",
-    alignItems: "center",
-    marginRight: 10,
+    marginLeft: "76%", // Mendorong ke pojok kanan
   },
+  
+  
   statusIcon: {
     width: 25,
     height: 25,
@@ -929,6 +1192,39 @@ const styles = StyleSheet.create({
     top: 10,
     right: 10,
     zIndex: 2,
+  },
+  containerDay: {
+    flexDirection: "row", // Menyusun elemen secara horizontal
+    justifyContent: "center", // Posisikan ke tengah
+    alignItems: "center",
+    marginVertical: 10,
+    gap: 10,
+  },
+  dayButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "black",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  selectedDayButton: {
+    backgroundColor: "#2B4763",
+  },
+  dayText: {
+    fontSize: 18,
+    color: "black",
+  },
+  selectedDayText: {
+    color: "white",
+    fontWeight: "bold",
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginTop: 6,
+    color: "#333",
   },
 });
 

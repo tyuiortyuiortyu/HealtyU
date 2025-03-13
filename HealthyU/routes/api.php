@@ -43,9 +43,9 @@ route::prefix('cycles')->group(function(){
 })->middleware(JwtMiddleware::class);
 
 route::prefix('MedReminder')->group(function(){
-    Route::get('/MedReminder', [MedReminderController::class, 'index']); // Ambil semua data siklus user
-    Route::post('/MedReminder', [MedReminderController::class, 'store']); // Simpan data siklus baru
-    Route::get('/MedReminder/{id}', [MedReminderController::class, 'show']); // Ambil detail siklus berdasarkan ID
-    Route::post('/MedReminder/update/{id}', [MedReminderController::class, 'update']); // Perbarui siklus berdasarkan ID
-    Route::delete('/MedReminder/{id}', [MedReminderController::class, 'destroy']); // Hapus siklus berdasarkan ID
+    Route::get('/', [MedReminderController::class, 'index']); // Ambil semua data siklus user
+    Route::post('/', [MedReminderController::class, 'store']); // Simpan data siklus baru
+    Route::get('/{id}', [MedReminderController::class, 'show']); // Ambil detail siklus berdasarkan ID
+    Route::post('/update/{id}', [MedReminderController::class, 'update']); // Perbarui siklus berdasarkan ID
+    Route::delete('/{id}', [MedReminderController::class, 'destroy']); // Hapus siklus berdasarkan ID
 });

@@ -22,7 +22,7 @@ import icons from "../../constants/icons";
 import images from "../../constants/images";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_BASE_URL = 'http://10.68.111.137:8000'; // disini bang
+const API_BASE_URL = 'http://192.168.50.141:8000'; // disini bang
 
 interface Post {
   id: number;

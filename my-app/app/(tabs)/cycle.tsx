@@ -24,6 +24,12 @@ import {
   isSameDay
 } from 'date-fns';
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ApiHelper } from "../helpers/ApiHelper";
+import CycleResponse from '../response/CycleResponse';
+
+const API_BASE_URL = 'http://192.168.50.141:8000'; // disini bang
+
 const Cycle = () => {
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(today);
@@ -47,6 +53,37 @@ const Cycle = () => {
   const moodAnims = useState(Array(5).fill(null).map(() => new Animated.Value(0)))[0];
 
   const screenWidth = Dimensions.get('window').width;
+
+  // State untuk menyimpan data pengguna
+  const [currentUser, setCurrentUser] = useState({ name: "Guest" });
+
+  // Fungsi untuk memeriksa status pengguna (guest atau terdaftar)
+  const checkUserStatus = async () => {
+    try {
+      const isGuest = await AsyncStorage.getItem("isGuest");
+      if (isGuest === "false") {
+        const userData = await AsyncStorage.getItem("userData");
+        if (userData) {
+          const parsedUserData = JSON.parse(userData);
+          setCurrentUser(parsedUserData); // Set data pengguna terdaftar
+        }
+      } else {
+        setCurrentUser({ name: "Guest" }); // Set sebagai guest
+      }
+    } catch (error) {
+      console.error("Gagal memeriksa status pengguna:", error);
+      setCurrentUser({ name: "Guest" }); // Fallback ke guest jika terjadi error
+    }
+  };
+
+  // Panggil checkUserStatus saat komponen pertama kali di-render
+  useEffect(() => {
+    const fetchData = async () => {
+      await checkUserStatus();
+    };
+
+    fetchData();
+  }, []);
 
   const animateIconChange = (animationValue) => {
     Animated.timing(animationValue, {
@@ -179,7 +216,7 @@ const Cycle = () => {
         return { phase: 'Predicted Period', day: predictedDifference + 1 };
     }
 
-    // Check if it's a regular day *after* the predicted period
+    // Check if it's a regular day after the predicted period
     if (lastPredictedDay && isAfter(currentDate, lastPredictedDay)) {
       const daysAfterPredictedPeriod = differenceInDays(currentDate, lastPredictedDay);
       return { phase: 'Regular Day', day: daysAfterPredictedPeriod };  // Regular Day starts from 1
@@ -188,6 +225,7 @@ const Cycle = () => {
     // Check if current date is the last day of the period
     const lastPeriodDay = addDays(periodStartDate, periodDays - 1);
     if (isSameDay(currentDate, lastPeriodDay)) {
+
         const difference = differenceInDays(currentDate, periodStartDate);
         return { phase: 'Period', day: difference + 1 };
     }
@@ -198,7 +236,7 @@ const Cycle = () => {
         return { phase: 'Period', day: difference + 1 };
     }
 
-    // Check if it's a regular day *after* the actual period
+    // Check if it's a regular day after the actual period
     if (isAfter(currentDate, lastPeriodDay)) {
         const daysAfterPeriod = differenceInDays(currentDate, lastPeriodDay);
         return { phase: 'Regular Day', day: daysAfterPeriod };
@@ -265,8 +303,6 @@ const Cycle = () => {
     if (hour < 18) return 'Good Afternoon';
     return 'Good Evening';
   };
-
-  const userName = 'Nikita';
 
   const cycleOptions = Array.from({ length: 60 }, (_, i) => 1 + i);
   const periodOptions = Array.from({ length: 60 }, (_, i) => 1 + i);
@@ -446,7 +482,7 @@ const Cycle = () => {
     <ScrollView style={{ flex: 1 }}>
       <View style={{ flexGrow: 1, padding: 20, backgroundColor: '#f5f5f5' }}>
         <Text style={{ fontSize: 30, fontWeight: 'bold', marginBottom: 5 }}>{getGreeting()},</Text>
-        <Text style={{ fontSize: 30, color: '#333', marginBottom: 20 }}>{userName}</Text>
+        <Text style={{ fontSize: 30, color: '#333', marginBottom: 20 }}>{currentUser.name}</Text>
 
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, marginHorizontal: 8 }}>
           <TouchableOpacity disabled={!viewFullCalendar} onPress={handlePrevMonth}>
@@ -532,7 +568,7 @@ const Cycle = () => {
                 <TouchableOpacity key={level} onPress={() => handleSelectPainLevel(level)}>
                   <Animated.View style={getAnimatedStyle(painAnims[level])}>
                     <Text style={painLevel[level] ? { fontSize: 24, padding: 5, color: 'black' } : { fontSize: 24, padding: 5 }}>
-                      {painLevel[level] ? '❤️' : '🤍'}
+                      {painLevel[level] ? '❤' : '🤍'}
                     </Text>
                   </Animated.View>
                 </TouchableOpacity>
@@ -679,5 +715,6 @@ const Cycle = () => {
     </ScrollView>
   );
 };
+
 
 export default Cycle;
