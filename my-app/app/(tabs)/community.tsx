@@ -1,6 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
-  StyleSheet,
   View,
   Text,
   TextInput,
@@ -9,12 +8,43 @@ import {
   Image,
   Modal,
   ScrollView,
+  ActivityIndicator,
+  Alert,
+  SafeAreaView,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
-import * as ImagePicker from "expo-image-picker"; // Untuk memilih gambar dari perangkat
-
-// Pastikan Anda memiliki file icons.js dan images.js yang sesuai
+import * as ImagePicker from "expo-image-picker";
+import { MaterialIcons } from "@expo/vector-icons";
+import { ApiHelper } from "../helpers/ApiHelper";
+import { CommunityResponse } from "../response/CommunityResponse";
 import icons from "../../constants/icons";
 import images from "../../constants/images";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const API_BASE_URL = 'http://10.68.111.137:8000'; // disini bang
+
+interface Post {
+  id: number;
+  name: string;
+  profilePicture: string;
+  postImage: string;
+  caption: string;
+  fullCaption: string;
+  isCaptionExpanded: boolean;
+  isLiked: boolean;
+  likes: number;
+  time: string;
+}
+
+
+interface Comment {
+  id: number;
+  text: string;
+  username: string;
+  time: string;
+  user_id: number;
+}
 
 const Community = () => {
   const [searchText, setSearchText] = useState("");
@@ -22,152 +52,186 @@ const Community = () => {
   const [shareModalVisible, setShareModalVisible] = useState(false);
   const [commentModalVisible, setCommentModalVisible] = useState(false);
   const [popupVisible, setPopupVisible] = useState(false);
-  const [selectedPost, setSelectedPost] = useState(null); // Untuk menyimpan postingan yang dipilih
-  const [posts, setPosts] = useState([
-    {
-      id: "1",
-      name: "Nikita",
-      profilePicture: "https://via.placeholder.com/100",
-      postImage: "https://via.placeholder.com/300",
-      caption: "This is a sample caption.",
-      fullCaption:
-        "This is a sample caption. Tap 'see more' to expand. Here is the full caption that gets displayed when expanded.",
-      time: new Date(Date.now() - 3600 * 1000).toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-      isCaptionExpanded: false,
-      isLiked: false,
-      likes: 10,
-      comments: 5,
-    },
-  ]);
+  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [isNewPostScreenVisible, setIsNewPostScreenVisible] = useState(false);
   const [postText, setPostText] = useState("");
-  const [newPostImage, setNewPostImage] = useState(null);
+  const [newPostImage, setNewPostImage] = useState<string | null>(null);
   const [isLeaveModalVisible, setIsLeaveModalVisible] = useState(false);
   const [commentText, setCommentText] = useState("");
 
-  const [currentUser, setCurrentUser] = useState({
-    name: "Nikita", // Nama pengguna yang sedang login
-    profilePicture: "https://via.placeholder.com/100", // Foto profil pengguna
-  });
+  const [comments, setComments] = useState<{ [key: number]: Comment[] }>({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Fungsi untuk memperluas/menyembunyikan caption
-  const toggleCaption = (id) => {
-    setPosts((prevPosts) =>
-      prevPosts.map((post) =>
-        post.id === id
-          ? { ...post, isCaptionExpanded: !post.isCaptionExpanded }
-          : post
-      )
-    );
-  };
+  const [currentUser, setCurrentUser] = useState({ name: "", profilePicture: "" });
 
-  // Fungsi untuk menangani pencarian
-  const handleSearchPress = () => {
-    setIsSearching(true);
-  };
+  useEffect(() => {
+    const fetchUserData = async () => {
+      const userData = await AsyncStorage.getItem("userData");
+      const parsedUserData = userData ? JSON.parse(userData) : { name: "Guest", profilePicture: "" };
+      setCurrentUser({ name: parsedUserData.name, profilePicture: parsedUserData.profilePicture });
+    };
 
-  // Fungsi untuk membatalkan pencarian
-  const handleCancelSearch = () => {
-    setSearchText("");
-    setIsSearching(false);
-  };
+    fetchUserData();
+  }, []);
 
-  // Fungsi untuk menyukai postingan
-  const handleLike = (id) => {
-    setPosts((prevPosts) =>
-      prevPosts.map((post) =>
-        post.id === id
-          ? {
-              ...post,
-              isLiked: !post.isLiked,
-              likes: post.isLiked ? post.likes - 1 : post.likes + 1,
-            }
-          : post
-      )
-    );
-  };
+  const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
 
-  // Fungsi untuk menampilkan modal komentar
-  const handleComment = () => {
-    setCommentModalVisible(true);
-  };
+  useEffect(() => {
+    fetchPosts();
+  }, []);
 
-  // Fungsi untuk menampilkan modal share
-  const handleShare = () => {
-    setShareModalVisible(true);
-  };
+  // getpost
+  const fetchPosts = async () => {
+    try {
+      setIsLoading(true);
+      const token = await AsyncStorage.getItem("access_token");
+      if (!token) {
+        throw new Error("Token not found");
+      }
+  
+      const response = await fetch(`${API_BASE_URL}/api/community/getPosts`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+        },
+      });
 
-  // Fungsi untuk menampilkan popup menu
-  const handleThreeDots = (post) => {
-    setSelectedPost(post); // Simpan postingan yang dipilih
-    setPopupVisible(true); // Tampilkan popup menu
-  };
+      
+      const responseData = await response.json();
+      if (responseData?.error_schema.error_code != "S001") {
+        throw new Error(responseData?.error_schema.error_message || "Failed to fetch posts.");
+      }
 
-  // Fungsi untuk menampilkan layar posting baru
-  const handlePlusButtonPress = () => {
-    setIsNewPostScreenVisible(true);
-  };
+      const transformedPosts: Post[] = responseData.output_schema.map((post) => ({
+        id: post.id,
+        name: post.user.name,
+        profilePicture: post.user.profilePicture || "", // Jika null, default ke string kosong
+        postImage: post.content, // Content adalah URL gambar
+        caption: post.description?.length > 15 ? post.description.slice(0, 15) + "..." : post.description || "",
+        fullCaption: post.description || "",
+        isCaptionExpanded: false,
+        isLiked: post.liked,
+        likes: post.like_count,
+        time: post.created_at, // Bisa diformat ulang jika perlu
+      }));
 
-  // Fungsi untuk menutup layar posting baru
-  const handleCloseNewPostScreen = () => {
-    if (postText.trim() || newPostImage) {
-      setIsLeaveModalVisible(true); // Tampilkan modal konfirmasi
-    } else {
-      setIsNewPostScreenVisible(false); // Langsung tutup jika tidak ada perubahan
+      setPosts(transformedPosts);
+      console.log(transformedPosts);
+    } catch (error) {
+      console.error("Fetch error:", error);
+      setError(error.message || "Failed to fetch posts.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Fungsi untuk meninggalkan layar posting baru tanpa menyimpan
-  const handleLeaveWithoutSaving = () => {
-    setIsNewPostScreenVisible(false);
-    setPostText("");
-    setNewPostImage(null);
-    setIsLeaveModalVisible(false);
-  };
 
-  // Fungsi untuk membatalkan meninggalkan layar posting baru
-  const handleCancelLeave = () => {
-    setIsLeaveModalVisible(false);
-  };
+  
+  // likepost
+  const handleLike = async (postId: number) => {
+    try {
+      const responseData = await ApiHelper.request(
+        `${API_BASE_URL}/api/community/likePost`,
+        "POST",
+        { post_id: postId }
+      ); // Jangan panggil .json() jika sudah berupa object
 
-  // Fungsi untuk memposting konten baru
-  const handlePost = () => {
-    if (postText.trim() || newPostImage) {
-      const newPost = {
-        id: Date.now().toString(),
-        name: currentUser.name, // Gunakan nama pengguna yang sedang login
-        profilePicture: currentUser.profilePicture, // Gunakan foto profil pengguna
-        postImage: newPostImage || "https://via.placeholder.com/300", // Gunakan gambar yang dipilih atau placeholder
-        caption: postText, // Caption yang dimasukkan
-        fullCaption: postText, // Caption lengkap (sama dengan caption)
-        time: new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }), // Waktu posting
-        isCaptionExpanded: false, // Caption belum diperluas
-        isLiked: false, // Postingan belum disukai
-        likes: 0, // Jumlah likes awal
-        comments: 0, // Jumlah komentar awal
-      };
+      if (responseData?.error_schema?.error_code !== "S001") {
+        throw new Error(responseData?.error_schema?.error_message);
+      }
 
-      // Tambahkan postingan baru ke daftar postingan
-      setPosts([newPost, ...posts]);
+      setPosts((prevPosts) =>
+        prevPosts.map((post) =>
+          post.id === postId
+            ? {
+                ...post,
+                isLiked: responseData.output_schema.isLiked,
+                likes: responseData.output_schema.likes,
+              }
+            : post
+        )
+      );
 
-      // Reset state setelah posting
-      setPostText("");
-      setNewPostImage(null);
-      setIsNewPostScreenVisible(false); // Tutup modal posting baru
+    } catch (error) {
+      Alert.alert("Error", error.message || "Failed to like post.");
     }
-  };
+};
 
-  // Fungsi untuk menambahkan gambar dari perangkat
-  const handleAddImage = async () => {
+  
+
+  // createpost
+  const handlePost = async () => {
+    try {
+        const formData = new FormData();
+        formData.append("description", postText || "");
+
+        if (newPostImage) {
+            const fileType = newPostImage.split('.').pop()?.toLowerCase();
+            const mimeType = fileType === "png" ? "image/png" :
+                            fileType === "gif" ? "image/gif" :
+                            "image/jpeg"; 
+
+            formData.append("content", {
+                uri: newPostImage.startsWith("file://") ? newPostImage : `file://${newPostImage}`, 
+                name: `photo${Date.now()}.${fileType}`,
+                type: mimeType,
+            });
+        }
+
+        const accessToken = await AsyncStorage.getItem("access_token");
+
+        const response = await fetch(`${API_BASE_URL}/api/community/createPost`, {
+            method: "POST",
+            body: formData,
+            headers: {
+                "Authorization": `Bearer ${accessToken}`,
+            },
+        });
+
+        const responseData = await response.json();
+
+        if (responseData?.error_schema?.error_code !== "S001") {
+            throw new Error(responseData?.error_schema?.additional_message || "Failed to create post.");
+        }
+
+        if (responseData.output_schema) {
+            const newPost = {
+                id: responseData.output_schema.id,
+                name: responseData.output_schema.user.name,
+                profilePicture: responseData.output_schema.user.profilePicture, 
+                postImage: responseData.output_schema.content,
+                caption: responseData.output_schema.description,
+                fullCaption: responseData.output_schema.description,
+                isCaptionExpanded: false,
+                isLiked: responseData.output_schema.liked,
+                likes: responseData.output_schema.like_count,
+                time: responseData.output_schema.created_at,
+                user: {
+                    id: responseData.output_schema.user.id,
+                    name: responseData.output_schema.user.name,
+                    profilePicture: responseData.output_schema.user.profilePicture,
+                },
+            };
+
+            setPosts((prevPosts) => [newPost, ...prevPosts]); // Tambah post baru ke atas
+            setPostText("");
+            setNewPostImage(null);
+            setIsNewPostScreenVisible(false);
+        }
+    } catch (error) {
+        console.error("Error posting:", error);
+        Alert.alert("Error", error.message || "Failed to create post", [{ text: "OK" }]);
+    }
+};
+
+
+
+  const handleAddImage = useCallback(async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      alert("Sorry, we need camera roll permissions to make this work!");
+      Alert.alert("Permission Denied", "We need gallery access to set profile picture.");
       return;
     }
 
@@ -178,350 +242,714 @@ const Community = () => {
       quality: 1,
     });
 
-    if (!result.canceled) {
-      setNewPostImage(result.uri); // Set URI gambar yang dipilih
+    if (!result.canceled && result.assets.length > 0) {
+      setNewPostImage(result.assets[0].uri);
+    }
+  }, []);
+
+  // deletepost
+  const handleDeletePost = async (postId: number) => {
+    try {
+        const response = await ApiHelper.request(
+            `${API_BASE_URL}/api/community/deletePost/${postId}`,
+            "DELETE"
+        );
+
+        if (response?.error_schema.error_code !== "S001") {
+            throw new Error(response?.error_schema.additional_message);
+        }
+
+        // Pastikan post dihapus dari state
+        setPosts((prevPosts) => prevPosts.filter((post) => post.id !== postId));
+    } catch (error) {
+        Alert.alert("Error", error.message || "Failed to delete post", [{ text: "OK" }]);
+    } finally {
+        setPopupVisible(false);
+    }
+};
+
+
+  const fetchComments = async (postId: number) => {
+    try {
+      const response = await ApiHelper.request(
+        `${API_BASE_URL}/api/community/posts/${postId}/comments`,
+        "GET"
+      );
+      
+
+      if (response.output_schema) {
+        const formattedComments: Comment[] = response.output_schema.map((item: any) => ({
+          id: item.id,
+          text: item.content, // Sesuaikan dengan `content` dari API
+          username: item.user.name, // Ambil dari `user.name`
+          time: new Date(item.created_at).toLocaleString(), // Format waktu
+        }));
+  
+        setComments((prevComments) => ({
+          ...prevComments,
+          [postId]: formattedComments, // Simpan berdasarkan `postId`
+        }));
+      }
+    } catch (error) {
+      setError(error.message || "Failed to fetch comments.");
+    }
+  };
+  
+
+  // addcomment
+  const handleSendComment = async () => {
+    if (commentText.trim() && selectedPostId !== null) {
+      try {
+        const userData = await AsyncStorage.getItem("userData");
+        const currentUser = userData ? JSON.parse(userData) : { name: "Guest" };
+
+        const response = await ApiHelper.request(
+          `${API_BASE_URL}/api/community/posts/${selectedPostId}/comments`,
+          "POST",
+          {
+            content: commentText, // Format sesuai API
+          }
+        );
+  
+        if (response.output_schema) {
+          const newComment: Comment = {
+            id: response.output_schema.id,
+            text: response.output_schema.content,
+            username: currentUser.name, // Gunakan nama dari user yang sedang login
+            time: new Date(response.output_schema.created_at).toLocaleString(),
+            user_id: response.output_schema.user_id,
+          };
+  
+          setComments((prevComments) => ({
+            ...prevComments,
+            [selectedPostId]: [...(prevComments[selectedPostId] || []), newComment],
+          }));
+  
+          setCommentText("");
+        }
+      } catch (error) {
+        setError(error.message || "Failed to create comment.");
+      }
+    }
+  };
+  
+  
+
+  // deletecomment
+  const handleDeleteComment = async (postId: number | null, commentId: number) => {
+    if (postId === null) return;
+
+    try {
+      const response = await ApiHelper.request(
+        `${API_BASE_URL}/api/community/posts/${postId}/comments/${commentId}`,
+        "DELETE"
+      );
+
+      if (response?.error_schema.error_code === "S001") { // Pastikan API berhasil
+        setComments((prevComments) => ({
+          ...prevComments,
+          [postId]: prevComments[postId].filter((comment) => comment.id !== commentId),
+        }));
+      }
+    } catch (error) {
+      setError(error.message || "Failed to delete comment.");
+    }
+  };
+  
+
+  const toggleCaption = (id: number) => {
+    setPosts((prevPosts) =>
+      prevPosts.map((post) =>
+        post.id === id
+          ? { ...post, isCaptionExpanded: !post.isCaptionExpanded }
+          : post
+      )
+    );
+  };
+
+  const handleSearchPress = () => {
+    setIsSearching(true);
+  };
+
+  const handleCancelSearch = () => {
+    setSearchText("");
+    setIsSearching(false);
+  };
+
+  const handleComment = (postId: number) => {
+    setSelectedPostId(postId);
+    fetchComments(postId);
+    setCommentModalVisible(true);
+  };
+
+  const handleShare = () => {
+    setShareModalVisible(true);
+  };
+
+  const handleThreeDots = (post: Post) => {
+    setSelectedPost(post);
+    setSelectedPostId(post.id);
+    setPopupVisible(true);
+  };
+
+  const handlePlusButtonPress = () => {
+    setIsNewPostScreenVisible(true);
+  };
+
+  const handleCloseNewPostScreen = () => {
+    if (postText.trim() || newPostImage) {
+      setIsLeaveModalVisible(true);
+    } else {
+      setIsNewPostScreenVisible(false);
     }
   };
 
-  // Fungsi untuk menyembunyikan semua postingan dari pengguna tertentu
-  const hideAllUpdatesFrom = (name) => {
-    setPosts((prevPosts) => prevPosts.filter((post) => post.name !== name));
-    setPopupVisible(false); // Tutup popup setelah menyembunyikan postingan
+  const handleLeaveWithoutSaving = () => {
+    setIsNewPostScreenVisible(false);
+    setPostText("");
+    setNewPostImage(null);
+    setIsLeaveModalVisible(false);
   };
 
-  return (
-    <View style={{ flex: 1, padding: 20, backgroundColor: "#f8f8f8" }}>
-      {/* Search Bar */}
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          backgroundColor: "#fff",
-          borderRadius: 20,
-          padding: 10,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 5,
-          elevation: 3,
-          marginBottom: 20,
-        }}
-      >
-        <TextInput
-          style={{ flex: 1, fontSize: 16 }}
-          placeholder="Search"
-          value={searchText}
-          onChangeText={setSearchText}
-        />
-        {isSearching ? (
-          <TouchableOpacity onPress={handleCancelSearch}>
-            <Text style={{ color: "#007BFF", fontSize: 16 }}>Cancel</Text>
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity onPress={handleSearchPress}>
-            <Image
-              source={icons.search}
-              style={{ width: 20, height: 20, marginLeft: 20 }}
-            />
-          </TouchableOpacity>
-        )}
+  const handleCancelLeave = () => {
+    setIsLeaveModalVisible(false);
+  };
+
+  const hideAllUpdatesFrom = (name: string) => {
+    setPosts((prevPosts) => prevPosts.filter((post) => post.name !== name));
+    setPopupVisible(false);
+  };
+
+  const onClose = () => {
+    setCommentModalVisible(false);
+  };
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#fff" }}>
+        <ActivityIndicator size="large" color="#0000ff" />
       </View>
+    );
+  }
 
-      {/* Conditional: Searching or Default View */}
-      {isSearching ? (
-        <View>
-          <Text style={{ fontSize: 16, color: "#666", marginBottom: 10 }}>
-            Showing search results for: "{searchText}"
-          </Text>
-        </View>
-      ) : (
-        <>
-          {/* Greeting */}
-          <Text style={{ fontSize: 18, fontWeight: "bold", marginBottom: 20 }}>
-            Hi {currentUser.name}, <Text style={{ fontSize: 20 }}>👋</Text>
-          </Text>
+  if (error) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#fff" }}>
+        <Text style={{ color: "red", fontSize: 18 }}>{error}</Text>
+        <TouchableOpacity onPress={fetchPosts} style={{ marginTop: 10 }}>
+          <Text style={{ color: "blue", fontSize: 16 }}>Try Again</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
-          {/* Posts */}
-          <FlatList
-            data={posts}
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={({ item }) => (
-              <View
-                style={{
-                  backgroundColor: "#fff",
-                  borderRadius: 10,
-                  padding: 10,
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 5,
-                  elevation: 3,
-                  marginBottom: 20,
-                }}
-              >
-                {/* Profile Info */}
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    marginBottom: 10,
-                  }}
-                >
-                  <Image
-                    source={{ uri: item.profilePicture }}
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+      >
+        <View style={{ flex: 1, padding: 20 }}>
+          {/* Search Bar */}
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              backgroundColor: "#fff",
+              borderRadius: 20,
+              padding: 10,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.1,
+              shadowRadius: 5,
+              elevation: 3,
+              marginBottom: 20,
+            }}
+          >
+            <TextInput
+              style={{ flex: 1, fontSize: 16 }}
+              placeholder="Search"
+              value={searchText}
+              onChangeText={setSearchText}
+            />
+            {isSearching ? (
+              <TouchableOpacity onPress={handleCancelSearch}>
+                <Text style={{ color: "#007BFF", fontSize: 16 }}>Cancel</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity onPress={handleSearchPress}>
+                <MaterialIcons name="search" size={24} color="black" />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Conditional: Searching or Default View */}
+          {isSearching ? (
+            <View>
+              <Text style={{ fontSize: 16, color: "#666", marginBottom: 10 }}>
+                Showing search results for: "{searchText}"
+              </Text>
+            </View>
+          ) : (
+            <>
+              {/* Greeting */}
+              <Text style={{ fontSize: 18, fontWeight: "bold", marginBottom: 20 }}>
+                Hi {currentUser.name}, <Text style={{ fontSize: 20 }}>👋</Text>
+              </Text>
+
+              {/* Posts */}
+              <FlatList
+                data={posts}
+                keyExtractor={(item) => item.id.toString()}
+                renderItem={({ item }) => (
+                  <View
                     style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 20,
-                      marginRight: 10,
+                      backgroundColor: "#fff",
+                      borderRadius: 10,
+                      padding: 10,
+                      shadowColor: "#000",
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.1,
+                      shadowRadius: 5,
+                      elevation: 3,
+                      marginBottom: 20,
                     }}
-                  />
-                  <Text style={{ fontSize: 16, fontWeight: "bold", flex: 1 }}>
-                    {item.name}
-                  </Text>
-
-                  <TouchableOpacity onPress={() => handleThreeDots(item)}>
-                    <Image
-                      source={icons.three_dots}
-                      style={{ width: 20, height: 20, resizeMode: "contain" }}
-                    />
-                  </TouchableOpacity>
-                </View>
-
-                {/* Post Image */}
-                <Image
-                  source={{ uri: item.postImage }}
-                  style={{
-                    width: "100%",
-                    height: 200,
-                    borderRadius: 10,
-                    marginBottom: 10,
-                  }}
-                />
-
-                {/* Caption */}
-                <Text style={{ fontSize: 14, color: "#333", marginBottom: 10 }}>
-                  {item.isCaptionExpanded ? item.fullCaption : item.caption}{" "}
-                  <Text
-                    style={{ color: "#007BFF" }}
-                    onPress={() => toggleCaption(item.id)}
                   >
-                    {item.isCaptionExpanded ? "see less" : "...see more"}
-                  </Text>
-                </Text>
-
-                {/* Actions */}
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                  }}
-                >
-                  <TouchableOpacity
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      marginRight: 15,
-                    }}
-                    onPress={() => handleLike(item.id)}
-                  >
-                    <Image
-                      source={item.isLiked ? icons.fill_heart : icons.heart}
+                    {/* Profile Info */}
+                    <View
                       style={{
-                        width: 20,
-                        height: 20,
-                        tintColor: item.isLiked ? "red" : "gray",
-                        marginRight: 5,
+                        flexDirection: "row",
+                        alignItems: "center",
+                        marginBottom: 10,
+                      }}
+                    >
+                      <Image
+                        source={{ uri: item.profilePicture }}
+                        style={{
+                          width: 40,
+                          height: 40,
+                          borderRadius: 20,
+                          marginRight: 10,
+                        }}
+                      />
+                      <Text style={{ fontSize: 16, fontWeight: "bold", flex: 1 }}>
+                        {item.name}
+                      </Text>
+
+                      <TouchableOpacity onPress={() => handleThreeDots(item)}>
+                        <MaterialIcons name="more-vert" size={24} color="black" />
+                      </TouchableOpacity>
+                    </View>
+
+                    {/* Post Image */}
+                    <Image
+                      source={{ uri: item.postImage }}
+                      style={{
+                      width: "100%",
+                      aspectRatio: 1,
+                      borderRadius: 10,
+                      marginBottom: 10,
                       }}
                     />
-                    <Text>{item.likes}</Text>
-                  </TouchableOpacity>
 
-                  <TouchableOpacity
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      marginRight: 15,
-                    }}
-                    onPress={handleComment}
-                  >
-                    <Image
-                      source={icons.comment}
-                      style={{ width: 20, height: 20, marginRight: 5 }}
-                    />
-                    <Text>{item.comments}</Text>
-                  </TouchableOpacity>
+                    {/* Caption */}
+                    {item.fullCaption.length > 15 && (
+                      <Text style={{ fontSize: 14, color: "#333", marginBottom: 10 }}>
+                      {item.isCaptionExpanded ? item.fullCaption : item.caption}{" "}
+                      <Text
+                        style={{ color: "#007BFF" }}
+                        onPress={() => toggleCaption(item.id)}
+                      >
+                        {item.isCaptionExpanded ? "see less" : "see more"}
+                      </Text>
+                      </Text>
+                    )}
 
-                  <TouchableOpacity
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      marginRight: 15,
-                    }}
-                    onPress={handleShare}
-                  >
-                    <Image
-                      source={icons.share}
-                      style={{ width: 20, height: 20, marginRight: 5 }}
-                    />
-                  </TouchableOpacity>
-                  <Text
-                    style={{
-                      marginLeft: "auto",
-                      fontSize: 12,
-                      color: "#888",
-                    }}
-                  >
-                    {item.time}
-                  </Text>
-                </View>
-              </View>
-            )}
-          />
+                    {/* Actions */}
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                      }}
+                    >
+                      <TouchableOpacity
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          marginRight: 15,
+                        }}
+                        onPress={() => handleLike(item.id)}
+                      >
+                        <MaterialIcons
+                          name={item.isLiked ? "favorite" : "favorite-border"}
+                          size={24}
+                          color={item.isLiked ? "red" : "gray"}
+                        />
+                        <Text>{item.likes}</Text>
+                      </TouchableOpacity>
 
-          {/* Share Modal */}
-          <Modal
-            visible={shareModalVisible}
-            transparent={true}
-            animationType="slide"
-            onRequestClose={() => setShareModalVisible(false)}
-          >
-            <View
-              style={{
-                backgroundColor: "#fff",
-                padding: 20,
-                borderTopLeftRadius: 20,
-                borderTopRightRadius: 20,
-                position: "absolute",
-                bottom: 0,
-                width: "100%",
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: -2 },
-                shadowOpacity: 0.1,
-                shadowRadius: 5,
-                elevation: 5,
-              }}
-            >
-              <Text style={{ fontSize: 18, fontWeight: "bold" }}>
-                Share this post
-              </Text>
-              <TouchableOpacity
-                onPress={() => {
-                  // Handle share on Facebook
-                  setShareModalVisible(false);
-                }}
-                style={{
-                  backgroundColor: "#1877F2",
-                  paddingVertical: 10,
-                  paddingHorizontal: 20,
-                  borderRadius: 5,
-                  marginBottom: 10,
-                }}
-              >
-                <Text style={{ color: "#fff" }}>Share on Facebook</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => {
-                  // Handle share on WhatsApp
-                  setShareModalVisible(false);
-                }}
-                style={{
-                  backgroundColor: "#25D366",
-                  paddingVertical: 10,
-                  paddingHorizontal: 20,
-                  borderRadius: 5,
-                  marginBottom: 10,
-                }}
-              >
-                <Text style={{ color: "#fff" }}>Share on WhatsApp</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => {
-                  // Handle copy link
-                  setShareModalVisible(false);
-                }}
-                style={{
-                  backgroundColor: "#007BFF",
-                  paddingVertical: 10,
-                  paddingHorizontal: 20,
-                  borderRadius: 5,
-                  marginBottom: 10,
-                }}
-              >
-                <Text style={{ color: "#fff" }}>Copy Link</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => setShareModalVisible(false)}
-                style={{
-                  backgroundColor: "#ccc",
-                  paddingVertical: 10,
-                  paddingHorizontal: 20,
-                  borderRadius: 5,
-                }}
-              >
-                <Text style={{ color: "#007BFF" }}>Close</Text>
-              </TouchableOpacity>
-            </View>
-          </Modal>
+                      <TouchableOpacity
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          marginRight: 15,
+                        }}
+                        onPress={() => handleComment(item.id)}
+                      >
+                        <MaterialIcons name="comment" size={24} color="gray" />
+                      </TouchableOpacity>
 
-          {/* Comment Modal */}
-          <Modal
-            visible={commentModalVisible}
-            transparent={true}
-            animationType="slide"
-            onRequestClose={() => setCommentModalVisible(false)}
-          >
-            <View
-              style={{
-                backgroundColor: "#fff",
-                padding: 20,
-                borderTopLeftRadius: 20,
-                borderTopRightRadius: 20,
-                position: "absolute",
-                bottom: 0,
-                width: "100%",
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: -2 },
-                shadowOpacity: 0.1,
-                shadowRadius: 5,
-                elevation: 5,
-              }}
-            >
-              <Text style={{ fontSize: 18, fontWeight: "bold" }}>
-                Add a comment
-              </Text>
-              <TextInput
-                style={{
-                  height: 40,
-                  borderColor: "#ccc",
-                  borderWidth: 1,
-                  borderRadius: 5,
-                  marginTop: 10,
-                  paddingLeft: 10,
-                }}
-                placeholder="Write a comment..."
-                value={commentText}
-                onChangeText={setCommentText}
+                      <TouchableOpacity
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          marginRight: 15,
+                        }}
+                        onPress={handleShare}
+                      >
+                        <MaterialIcons name="share" size={24} color="gray" />
+                      </TouchableOpacity>
+                      <Text
+                        style={{
+                          marginLeft: "auto",
+                          fontSize: 12,
+                          color: "#888",
+                        }}
+                      >
+                        {new Date(item.time).toLocaleString()}
+                      </Text>
+                    </View>
+                  </View>
+                )}
               />
-              <TouchableOpacity
-                onPress={() => setCommentModalVisible(false)}
+
+
+              {/* Share Modal */}
+              <Modal
+                visible={shareModalVisible}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={() => setShareModalVisible(false)}
+            >
+                <View
+                    style={{
+                        backgroundColor: "#fff",
+                        padding: 20,
+                        borderTopLeftRadius: 20,
+                        borderTopRightRadius: 20,
+                        position: "absolute",
+                        bottom: 0,
+                        width: "100%",
+                        shadowColor: "#000",
+                        shadowOffset: { width: 0, height: -2 },
+                        shadowOpacity: 0.1,
+                        shadowRadius: 5,
+                        elevation: 5,
+                    }}
+                >
+                    <Text style={{ fontSize: 18, fontWeight: "bold" }}>
+                        Share this post
+                    </Text>
+                    <TouchableOpacity
+                        onPress={() => {
+                            // Fungsi untuk share di Facebook
+                            setShareModalVisible(false);
+                        }}
+                        style={{
+                            backgroundColor: "#1877F2",
+                            paddingVertical: 10,
+                            paddingHorizontal: 20,
+                            borderRadius: 5,
+                            marginBottom: 10,
+                        }}
+                    >
+                        <Text style={{ color: "#fff" }}>Share on Facebook</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={() => {
+                            // Fungsi untuk share di Instagram
+                            setShareModalVisible(false);
+                        }}
+                        style={{
+                            backgroundColor: "#E4405F",
+                            paddingVertical: 10,
+                            paddingHorizontal: 20,
+                            borderRadius: 5,
+                            marginBottom: 10,
+                        }}
+                    >
+                        <Text style={{ color: "#fff" }}>Share on Instagram</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={() => {
+                            // Fungsi untuk share di WhatsApp
+                            setShareModalVisible(false);
+                        }}
+                        style={{
+                            backgroundColor: "#25D366",
+                            paddingVertical: 10,
+                            paddingHorizontal: 20,
+                            borderRadius: 5,
+                            marginBottom: 10,
+                        }}
+                    >
+                        <Text style={{ color: "#fff" }}>Share on WhatsApp</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={() => {
+                            // Fungsi untuk copy link
+                            setShareModalVisible(false);
+                        }}
+                        style={{
+                            backgroundColor: "#007BFF",
+                            paddingVertical: 10,
+                            paddingHorizontal: 20,
+                            borderRadius: 5,
+                            marginBottom: 10,
+                        }}
+                    >
+                        <Text style={{ color: "#fff" }}>Copy Link</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={() => setShareModalVisible(false)}
+                        style={{
+                            backgroundColor: "#ccc",
+                            paddingVertical: 10,
+                            paddingHorizontal: 20,
+                            borderRadius: 5,
+                        }}
+                    >
+                        <Text style={{ color: "#007BFF" }}>Close</Text>
+                    </TouchableOpacity>
+                </View>
+            </Modal>
+
+              {/* Comment Modal */}
+              <Modal
+                visible={commentModalVisible}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={onClose}
+              >
+                <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+                  <View style={{ backgroundColor: '#fff', padding: 20, borderTopLeftRadius: 20, borderTopRightRadius: 20 }}>
+                    {/* Header */}
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                      <Text style={{ fontSize: 18, fontWeight: 'bold' }}>Comments</Text>
+                      <TouchableOpacity onPress={onClose}>
+                        <MaterialIcons name="close" size={24} color="black" />
+                      </TouchableOpacity>
+                    </View>
+
+                    {/* Daftar komentar */}
+                    <FlatList
+                      data={comments[selectedPostId] || []} // Ambil komentar dari state `comments`
+                      keyExtractor={(item) => item.id.toString()}
+                      renderItem={({ item }) => (
+                        <View style={{ padding: 10, borderBottomWidth: 1, borderBottomColor: "#ccc" }}>
+                          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                            <Text style={{ fontWeight: "bold" }}>{item.username}</Text>
+                            <Text style={{ fontSize: 12, color: "#888" }}>{item.time}</Text>
+                            {/* Tombol Hapus */}
+                            <TouchableOpacity onPress={() => selectedPostId !== null && handleDeleteComment(selectedPostId, item.id)}>
+                              <MaterialIcons name="delete" size={20} color="red" />
+                            </TouchableOpacity>
+                          </View>
+                          <Text>{item.text}</Text>
+                        </View>
+                      )}
+                      style={{ maxHeight: 300 }}
+                    />
+
+
+
+                    {/* Input untuk menulis komentar */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10 }}>
+                      <TextInput
+                        style={{ 
+                          flex: 1, 
+                          height: 40, 
+                          borderColor: '#ccc', 
+                          borderWidth: 1, 
+                          borderRadius: 20, 
+                          paddingLeft: 10, 
+                          marginRight: 10 
+                        }}
+                        placeholder="Write a comment..."
+                        value={commentText}
+                        onChangeText={setCommentText}
+                      />
+                      <TouchableOpacity
+                        style={{ 
+                          backgroundColor: '#007BFF', 
+                          padding: 10, 
+                          borderRadius: 20, 
+                          alignItems: 'center', 
+                          justifyContent: 'center' 
+                        }}
+                        onPress={handleSendComment} // Kirim komentar untuk postingan yang dipilih
+                      >
+                        <MaterialIcons name="send" size={20} color="#fff" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
+              </Modal>
+
+              {/* Popup Menu */}
+              <Modal
+                visible={popupVisible}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setPopupVisible(false)}
+              >
+                <View
+                  style={{
+                    flex: 1,
+                    justifyContent: "center",
+                    alignItems: "center",
+                    backgroundColor: "rgba(0, 0, 0, 0.5)",
+                  }}
+                >
+                  <View
+                    style={{
+                      backgroundColor: "#fff",
+                      padding: 20,
+                      borderRadius: 10,
+                      width: 200,
+                      shadowColor: "#000",
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.1,
+                      shadowRadius: 5,
+                      elevation: 5,
+                    }}
+                  >
+                    <TouchableOpacity
+                      onPress={() => handleDeletePost(selectedPostId)}
+                      style={{ paddingVertical: 10 }}
+                    >
+                      <Text>Delete Post</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      onPress={() => setPopupVisible(false)}
+                      style={{ paddingVertical: 10 }}
+                    >
+                      <Text>Close</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </Modal>
+            </>
+          )}
+
+          {/* New Post Modal */}
+          <Modal visible={isNewPostScreenVisible} animationType="slide">
+            <ScrollView
+              contentContainerStyle={{
+                flexGrow: 1,
+                padding: 20,
+                backgroundColor: "#fff",
+              }}
+            >
+              {/* Header with Close and Post buttons */}
+              <View
                 style={{
-                  marginTop: 20,
-                  padding: 10,
+                  flexDirection: "row",
+                  justifyContent: "space-between",
                   alignItems: "center",
                 }}
               >
-                <Text style={{ color: "#007BFF" }}>Close</Text>
-              </TouchableOpacity>
-            </View>
+                <TouchableOpacity onPress={handleCloseNewPostScreen}>
+                  <MaterialIcons name="close" size={24} color="black" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handlePost}
+                  disabled={!postText.trim() || !newPostImage}
+                >
+                  <Text
+                    style={{
+                      fontSize: 18,
+                      color: postText.trim() && newPostImage ? "#007BFF" : "#ccc",
+                    }}
+                  >
+                    Post
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Image added */}
+              {newPostImage && (
+                <View style={{ position: "relative", marginTop: 10 }}>
+                  <Image
+                    source={{ uri: newPostImage }}
+                    style={{
+                      width: "100%",
+                      height: 200,
+                      borderRadius: 10,
+                    }}
+                  />
+                  <TouchableOpacity
+                    onPress={() => setNewPostImage(null)}
+                    style={{
+                      position: "absolute",
+                      top: 10,
+                      right: 10,
+                      backgroundColor: "rgba(0, 0, 0, 0.6)",
+                      borderRadius: 15,
+                      padding: 5,
+                    }}
+                  >
+                    <MaterialIcons name="close" size={20} color="#fff" />
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* Text input */}
+              <TextInput
+                style={{
+                  height: 120,
+                  marginTop: 10,
+                  padding: 10,
+                  fontSize: 16,
+                  textAlignVertical: "top",
+                }}
+                placeholder="What's new"
+                placeholderTextColor="#888"
+                multiline
+                value={postText}
+                onChangeText={setPostText}
+              />
+            </ScrollView>
+
+            {/* Add Image Button */}
+            <TouchableOpacity
+              onPress={handleAddImage}
+              style={{
+                position: "absolute",
+                bottom: 20,
+                right: 20,
+                width: 50,
+                height: 50,
+                justifyContent: "center",
+                alignItems: "center",
+                backgroundColor: "#2B4763",
+                borderRadius: 25,
+                shadowColor: "#000",
+                shadowOpacity: 0.2,
+                shadowRadius: 5,
+                elevation: 5,
+              }}
+            >
+              <MaterialIcons name="add-a-photo" size={24} color="#fff" />
+            </TouchableOpacity>
           </Modal>
 
-          {/* Popup Menu */}
+          {/* Leave without saving popup */}
           <Modal
-            visible={popupVisible}
+            visible={isLeaveModalVisible}
             transparent={true}
             animationType="fade"
-            onRequestClose={() => setPopupVisible(false)}
+            onRequestClose={handleCancelLeave}
           >
             <View
               style={{
@@ -536,7 +964,7 @@ const Community = () => {
                   backgroundColor: "#fff",
                   padding: 20,
                   borderRadius: 10,
-                  width: 200,
+                  width: 300,
                   shadowColor: "#000",
                   shadowOffset: { width: 0, height: 2 },
                   shadowOpacity: 0.1,
@@ -544,248 +972,70 @@ const Community = () => {
                   elevation: 5,
                 }}
               >
-                <TouchableOpacity
-                  onPress={() => console.log("Hide this post")}
-                  style={{ paddingVertical: 10 }}
-                >
-                  <Text>Hide this post</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => {
-                    if (selectedPost) {
-                      hideAllUpdatesFrom(selectedPost.name);
-                    }
+                <Text
+                  style={{
+                    fontSize: 15,
+                    marginBottom: 20,
+                    textAlign: "center",
+                    color: "#666",
                   }}
-                  style={{ paddingVertical: 10 }}
                 >
-                  <Text>Hide all updates from {selectedPost?.name}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => setPopupVisible(false)}
-                  style={{ paddingVertical: 10 }}
+                  Leave without saving your post? Your changes won’t be saved.
+                </Text>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                  }}
                 >
-                  <Text>Close</Text>
-                </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={handleCancelLeave}
+                    style={{
+                      paddingVertical: 10,
+                      paddingHorizontal: 20,
+                      borderRadius: 20,
+                      borderWidth: 1,
+                      borderColor: "#ccc",
+                    }}
+                  >
+                    <Text style={{ fontWeight: "bold", color: "black" }}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={handleLeaveWithoutSaving}
+                    style={{
+                      paddingVertical: 10,
+                      paddingHorizontal: 20,
+                      borderRadius: 20,
+                      backgroundColor: "#ff4444",
+                    }}
+                  >
+                    <Text style={{ fontWeight: "bold", color: "white" }}>Leave</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
           </Modal>
-        </>
-      )}
 
-      {/* New Post Modal */}
-      <Modal visible={isNewPostScreenVisible} animationType="slide">
-        <ScrollView
-          contentContainerStyle={{
-            flexGrow: 1,
-            padding: 20,
-            backgroundColor: "#fff",
-          }}
-        >
-          {/* Header with Close and Post buttons */}
-          <View
+          {/* Floating Action Button */}
+          <TouchableOpacity
             style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
+              position: "absolute",
+              bottom: 20,
+              right: 20,
+              backgroundColor: "#2B4763",
+              width: 50,
+              height: 50,
+              borderRadius: 30,
               alignItems: "center",
+              justifyContent: "center",
             }}
+            onPress={handlePlusButtonPress}
           >
-            <TouchableOpacity onPress={handleCloseNewPostScreen}>
-              <Image
-                source={icons.x}
-                style={{
-                  width: 24,
-                  height: 24,
-                  tintColor: "#000",
-                }}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={handlePost}
-              disabled={!postText.trim() && !newPostImage}
-            >
-              <Text
-                style={{
-                  fontSize: 18,
-                  color: postText.trim() || newPostImage ? "#007BFF" : "#ccc",
-                }}
-              >
-                Post
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Image added */}
-          {newPostImage && (
-            <View style={{ position: "relative", marginTop: 10 }}>
-              <Image
-                source={{ uri: newPostImage }}
-                style={{
-                  width: "100%",
-                  height: 200,
-                  borderRadius: 10,
-                }}
-              />
-              {/* Button to remove image */}
-              <TouchableOpacity
-                onPress={() => setNewPostImage(null)} // Hapus gambar yang dipilih
-                style={{
-                  position: "absolute",
-                  top: 10,
-                  right: 10,
-                  backgroundColor: "rgba(0, 0, 0, 0.6)",
-                  borderRadius: 15,
-                  padding: 5,
-                }}
-              >
-                <Image
-                  source={icons.close} // Pastikan Anda memiliki ikon close di file icons.js
-                  style={{
-                    width: 20,
-                    height: 20,
-                    tintColor: "#fff",
-                  }}
-                />
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* Text input */}
-          <TextInput
-            style={{
-              height: 120,
-              marginTop: 10,
-              padding: 10,
-              fontSize: 16,
-              textAlignVertical: "top",
-            }}
-            placeholder="What's new"
-            placeholderTextColor="#888"
-            multiline
-            value={postText}
-            onChangeText={setPostText}
-          />
-        </ScrollView>
-
-        {/* Add Image Button */}
-        <TouchableOpacity
-          onPress={handleAddImage}
-          style={{
-            position: "absolute",
-            bottom: 20,
-            right: 20,
-            width: 50,
-            height: 50,
-            justifyContent: "center",
-            alignItems: "center",
-            backgroundColor: "#2B4763",
-            borderRadius: 25,
-            shadowColor: "#000",
-            shadowOpacity: 0.2,
-            shadowRadius: 5,
-            elevation: 5,
-          }}
-        >
-          <Image
-            source={images.add_image}
-            style={{
-              width: 35,
-              height: 35,
-              tintColor: "#fff",
-            }}
-          />
-        </TouchableOpacity>
-      </Modal>
-
-      {/* Leave without saving popup */}
-      <Modal
-        visible={isLeaveModalVisible}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={handleCancelLeave}
-      >
-        <View
-          style={{
-            flex: 1,
-            justifyContent: "center",
-            alignItems: "center",
-            backgroundColor: "rgba(0, 0, 0, 0.5)",
-          }}
-        >
-          <View
-            style={{
-              backgroundColor: "#fff",
-              padding: 20,
-              borderRadius: 10,
-              width: 300,
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.1,
-              shadowRadius: 5,
-              elevation: 5,
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 15,
-                marginBottom: 20,
-                textAlign: "center",
-                color: "#666",
-              }}
-            >
-              Leave without saving your post? Your changes won’t be saved.
-            </Text>
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-              }}
-            >
-              <TouchableOpacity
-                onPress={handleCancelLeave}
-                style={{
-                  paddingVertical: 10,
-                  paddingHorizontal: 20,
-                  borderRadius: 20,
-                  borderWidth: 1,
-                  borderColor: "#ccc",
-                }}
-              >
-                <Text style={{ fontWeight: "bold", color: "black" }}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleLeaveWithoutSaving}
-                style={{
-                  paddingVertical: 10,
-                  paddingHorizontal: 20,
-                  borderRadius: 20,
-                  backgroundColor: "#ff4444",
-                }}
-              >
-                <Text style={{ fontWeight: "bold", color: "white" }}>Leave</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+            <Text style={{ color: "#fff", fontSize: 28 }}>+</Text>
+          </TouchableOpacity>
         </View>
-      </Modal>
-
-      {/* Floating Action Button */}
-      <TouchableOpacity
-        style={{
-          position: "absolute",
-          bottom: 20,
-          right: 20,
-          backgroundColor: "#2B4763",
-          width: 50,
-          height: 50,
-          borderRadius: 30,
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-        onPress={handlePlusButtonPress}
-      >
-        <Text style={{ color: "#fff", fontSize: 28 }}>+</Text>
-      </TouchableOpacity>
-    </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 

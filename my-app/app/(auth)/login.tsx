@@ -8,228 +8,289 @@ import {
   TouchableOpacity,
   Alert,
 } from "react-native";
-import Ionicons from "react-native-vector-icons/Ionicons";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import images from "../../constants/images";
-import icons from "../../constants/icons";
-import { useRouter } from "expo-router"; // Import useRouter hook
+import { ApiHelper } from '../helpers/ApiHelper';
+import { LoginResponse } from "../response/LoginResponse";
 
-const login = () => {
-  // State untuk email dan password
+const Login = () => {
+  const API_BASE_URL = 'http://10.68.111.137:8000';
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false); // State untuk toggle password
-  const router = useRouter(); // Initialize router hook
+  const [showPassword, setShowPassword] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
 
-  // Fungsi untuk menangani login
-  const handleLogin = () => {
+  const fetchUserData = async (accessToken) => { // Take accessToken as argument
+    try {
+      if (!accessToken) { // accessToken is now passed as argument, no need to get from AsyncStorage here.
+        return; // Exit if no token is provided, handle login error upstream if token is missing.
+      }
+
+      const response = await ApiHelper.request(
+        `${API_BASE_URL}/api/auth/getUserData`,
+        'GET',
+        null,
+        accessToken
+      );
+
+      if (response.error_schema.error_code === "S001") {
+        const userData = response.output_schema;
+        await AsyncStorage.setItem('userData', JSON.stringify(userData));
+      // Tidak perlu menyetel profileData dan profileImage di sini dalam komponen Login -> ke login
+      // Komponen Login hanya bertanggung jawab untuk login dan mengambil data pengguna ke AsyncStorage
+      } else {
+        throw new Error(response.error_schema.error_message);
+      }
+    } catch (error) {
+      console.error('Failed to fetch user data:', error);
+      Alert.alert('Error', 'Failed to fetch user data. Please try again.');
+    }
+  };
+
+
+  const handleLogin = async () => {
     if (!email || !password) {
-      // Menampilkan pesan jika email atau password belum diisi
       Alert.alert("Validation", "Please fill in both email and password");
       return;
     }
+  
+    try {
+      const loginData = { email, password };
+      const response = await ApiHelper.request<LoginResponse>(
+        `${API_BASE_URL}/api/auth/login`,
+        "POST",
+        loginData
+      );
+  
+      if (response?.error_schema.error_code != "S001") {
+        throw new Error(response.error_schema.error_message);
+      }
+  
+      // Simpan token dan data pengguna ke AsyncStorage
+      await AsyncStorage.setItem("access_token", response.output_schema.access_token);
+      
+      await AsyncStorage.setItem("isLoggedIn", "true");
+      await fetchUserData(response.output_schema.access_token);
+      
+      // Tampilkan pesan sukses dan arahkan ke halaman profile
+      await AsyncStorage.setItem("isGuest", "false");
+      Alert.alert(
+        'Success',
+        'You have successfully logged in.',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              router.push("/profile");
+            },
+          },
+        ]
+      );
+    } catch (error) {
+        // console.error('Login error:', error);
+        const errorMessage = error.message || "An error occurred during login";
+        Alert.alert("Login Failed", errorMessage);
+    }
+  };
 
-    // Jika email dan password sudah terisi, lakukan navigasi ke Homepage
-    router.push("../(tabs)/profile.tsx"); // Use router.push() for navigation
+  const handleResetPassword = async () => {
+    if (!email) {
+      Alert.alert('Error', 'Please enter your email address.');
+      return;
+    }
+  
+    setIsLoading(true);
+  
+    try {
+      const resetData = { email };
+      const response = await ApiHelper.request(
+        `${API_BASE_URL}/api/auth/resetPassword`,
+        'POST',
+        resetData
+      );
+    
+      // Jika API merespons dengan error, tampilkan pesan error
+      if (response?.error_schema.error_code != "S001") {
+        throw new Error(response.error_schema.additional_message);
+      }
+    
+      Alert.alert(
+        'Success',
+        'Password reset link has been sent to your email.',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              setShowForgotPassword(false);
+              router.push("/login");
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      // console.error("API Error:", error);
+      const errorMessage = error.message || "An error occurred";
+      Alert.alert("Login Failed", errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.topContainer}>
-        <Text style={styles.topText}>
-          Welcome Back! Glad{"\n"}to see you. Again!
-        </Text>
-      </View>
-
-      {/* Input Email */}
-      <View style={styles.inputContainerEmail}>
-        <TextInput
-          style={styles.textInput}
-          placeholder="Enter your email address"
-          value={email}
-          onChangeText={setEmail} // Update state ketika ada perubahan
-        />
-      </View>
-
-      {/* Input Password */}
-      <View style={styles.inputContainerPassword}>
-        <TextInput
-          style={[styles.textInput, { paddingRight: 30 }]} // Sesuaikan padding untuk ikon
-          placeholder="Enter your password"
-          value={password}
-          secureTextEntry={!showPassword}
-          onChangeText={setPassword}
-        />
-        {/* Toggle Icon */}
-        <TouchableOpacity
-          onPress={() => setShowPassword((prev) => !prev)} // Toggle visibilitas password
-        >
-          <Ionicons
-            name={showPassword ? "eye-outline" : "eye-off-outline"} // Ikon mata terbuka/tutup
-            size={24}
-            color="#aaa"
-          />
-        </TouchableOpacity>
-      </View>
-
-      <Text
-        style={styles.forgotText}
-        onPress={() => router.push("./register.tsx")}
-      >
-        Forgot Password
-      </Text>
-
-      {/* Tombol Login */}
-      <TouchableOpacity
-        style={styles.loginButtonContainer}
-        onPress={handleLogin} // Menangani login
-      >
-        <Text style={styles.loginText}>Login</Text>
-      </TouchableOpacity>
-
-      {/* Or login with */}
-      <View style={styles.orLoginWithContainer}>
-        <View style={styles.line} />
-        <Text style={styles.orText}>Or Login with</Text>
-        <View style={styles.line} />
-      </View>
-
-      <View style={styles.logoContainer}>
-        <Image source={images.google} style={styles.logo} />
-        <Image source={images.apple} style={styles.logo} />
-        <Image source={images.facebook} style={styles.logo} />
-        <Image source={images.twitter} style={styles.logo} />
-      </View>
-
-      <View style={styles.bottomContainer}>
-        <Text style={styles.bottomText}>
-          Don't have an account?{" "}
-          <Text
-            style={styles.registerText}
-            onPress={() => router.push("./register.tsx")}
-          >
-            Register
+    <View style={{ backgroundColor: "#FFFFFF", flex: 1, justifyContent: "center", alignItems: "center", paddingBottom: 20 }}>
+      {/* Welcome Back Text */}
+      {!showForgotPassword && (
+        <View style={{ marginRight: 20, paddingRight: 30, marginBottom: 60 }}>
+          <Text style={{ textAlign: "left", fontSize: 30, fontWeight: "bold" }}>
+            Welcome Back! Glad{"\n"}to see you. Again!
           </Text>
-        </Text>
+        </View>
+      )}
+
+      <View style={{ marginBottom: 50, alignItems: 'center', width: '100%' }}>
+        {/* Email and Password Input Fields */}
+        {!showForgotPassword && (
+          <>
+            <View style={{
+                flexDirection: 'row', alignItems: 'center', width: '85%', borderWidth: 1, borderColor: '#ddd',
+                backgroundColor: '#fff', borderRadius: 8, marginBottom: 20, paddingHorizontal: 10, elevation: 5
+            }}>
+                <TextInput
+                    style={{ flex: 1, fontSize: 16, paddingVertical: 12, color: '#000' }}
+                    placeholder="Enter your email address"
+                    placeholderTextColor="#8A8A8A"
+                    value={email}
+                    onChangeText={setEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                />
+            </View>
+
+            <View style={{
+                flexDirection: 'row', alignItems: 'center', width: '85%', borderWidth: 1, borderColor: '#ddd',
+                backgroundColor: '#fff', borderRadius: 8, marginBottom: 10, paddingHorizontal: 10, elevation: 5
+            }}>
+                <TextInput
+                    style={{ flex: 1, fontSize: 16, paddingVertical: 12, color: '#000' }}
+                    placeholder="Enter your password"
+                    placeholderTextColor="#8A8A8A"
+                    secureTextEntry={!showPassword}
+                    value={password}
+                    onChangeText={setPassword}
+                />
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                    <Ionicons
+                        name={showPassword ? "eye-outline" : "eye-off-outline"}
+                        size={24}
+                        color="#aaa"
+                    />
+                </TouchableOpacity>
+            </View>
+          </>
+        )}
+
+        {/* Forgot Password Link */}
+        {!showForgotPassword && (
+          <Text
+            style={{ left: 220, width: "78%", marginTop: 5 }}
+            onPress={() => setShowForgotPassword(!showForgotPassword)}
+          >
+            Forgot Password
+          </Text>
+        )}
+
+        {/* Forgot Password Form */}
+        {showForgotPassword && (
+          <View style={{ width: "85%", marginTop: 20 }}>
+            <Text style={{ fontSize: 16, marginBottom: 10, textAlign: "center" }}>
+              Enter your email to reset your password
+            </Text>
+            <TextInput
+              style={{
+                width: "100%",
+                height: 50,
+                borderWidth: 1,
+                borderColor: "#ddd",
+                borderRadius: 8,
+                paddingHorizontal: 10,
+                marginBottom: 20,
+                fontSize: 16,
+              }}
+              placeholder="Enter your email address"
+              placeholderTextColor="#8A8A8A"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+            <TouchableOpacity
+              style={{
+                width: "100%",
+                height: 50,
+                backgroundColor: "#2B4763",
+                justifyContent: "center",
+                alignItems: "center",
+                borderRadius: 8,
+              }}
+              onPress={handleResetPassword}
+              disabled={isLoading}
+            >
+              <Text style={{ color: "#FFFFFF", fontSize: 18, fontWeight: "bold" }}>
+                {isLoading ? "Sending..." : "Send Reset Link"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Login Button, Divider, Social Icons, and Register Link */}
+        {!showForgotPassword && (
+          <>
+            <TouchableOpacity
+              style={{ 
+                backgroundColor: "#E7E8EE", 
+                width: "70%", 
+                height: 60, 
+                justifyContent: "center", 
+                alignItems: "center", 
+                marginTop: 20, 
+                borderRadius: 10 
+              }}
+              onPress={handleLogin}
+            >
+              <Text style={{ color: "#000000", fontSize: 18, textAlign: "center", fontWeight: "bold" }}>Login</Text>
+            </TouchableOpacity>
+
+            <View style={{ flexDirection: "row", alignItems: "center", marginVertical: 20, width: "75%" }}>
+              <View style={{ flex: 1, height: 1, backgroundColor: "#EDEEF2" }} />
+              <Text style={{ color: "#ADB0BB", fontSize: 14, fontWeight: "bold", textAlign: "center" }}>Or Login with</Text>
+              <View style={{ flex: 1, height: 1, backgroundColor: "#EDEEF2" }} />
+            </View>
+
+            <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", marginBottom: 70 }}>
+              <Image source={images.google} style={{ width: 50, height: 50, resizeMode: "contain", marginHorizontal: 10, marginTop: 10 }} />
+              <Image source={images.apple} style={{ width: 50, height: 50, resizeMode: "contain", marginHorizontal: 10, marginTop: 10 }} />
+              <Image source={images.facebook} style={{ width: 50, height: 50, resizeMode: "contain", marginHorizontal: 10, marginTop: 10 }} />
+              <Image source={images.twitter} style={{ width: 50, height: 50, resizeMode: "contain", marginHorizontal: 10, marginTop: 10 }} />
+            </View>
+
+            <View style={{ marginTop: 5 }}>
+              <Text style={{ fontSize: 18, textAlign: "center" }}>
+                Don't have an account?{" "}
+                <Text style={{ color: "#2B4763", fontWeight: "bold" }} onPress={() => router.push("./register")}>
+                  Register
+                </Text>
+              </Text>
+            </View>
+          </>
+        )}
       </View>
     </View>
   );
 };
 
-export default login;
-
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: "#FFFFFF",
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingTop: 80,
-  },
-  topContainer: {
-    marginTop: 0,
-    marginBottom: 80,
-  },
-  topText: {
-    textAlign: "left",
-    fontSize: 30,
-    fontWeight: "bold",
-  },
-  textInput: {
-    flex: 1,
-    paddingLeft: 10, // Pastikan ada jarak di sebelah kiri
-    fontSize: 16,
-    textAlign: "left",
-    textAlignVertical: "center", // Vertikal rata tengah (khusus Android)
-  },
-  inputContainerEmail: {
-    backgroundColor: "#ffff",
-    flexDirection: "row",
-    width: "85%",
-    height: 60,
-    borderRadius: 10,
-    elevation: 15,
-    marginHorizontal: 40,
-    marginBottom: 10,
-    alignItems: "center",
-  },
-  inputContainerPassword: {
-    backgroundColor: "#ffff",
-    flexDirection: "row",
-    width: "85%",
-    height: 60,
-    borderRadius: 10,
-    elevation: 15,
-    marginHorizontal: 40,
-    marginBottom: 10,
-    alignItems: "center",
-    paddingRight: 10, // Berikan ruang untuk ikon toggle
-  },
-  forgotText: {
-    textAlign: "right",
-    width: "78%",
-    marginTop: 5,
-  },
-  loginButtonContainer: {
-    backgroundColor: "#E7E8EE",
-    width: "70%",
-    height: 60,
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: 60,
-    borderRadius: 10,
-  },
-  loginText: {
-    color: "#000000",
-    fontSize: 18,
-    textAlign: "center",
-    fontWeight: "bold",
-  },
-
-  orLoginWithContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginVertical: 10, // Mengurangi margin untuk mendekatkan dengan logo container
-    width: "75%",
-  },
-  line: {
-    flex: 1,
-    height: 1,
-    backgroundColor: "#EDEEF2",
-    marginTop: 30,
-  },
-  orText: {
-    color: "#ADB0BB",
-    fontSize: 14,
-    fontWeight: "bold",
-    textAlign: "center",
-    marginHorizontal: 10,
-    marginTop: 30,
-  },
-
-  logoContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: 25, // Mengurangi margin untuk mendekatkan dengan orLoginWithContainer
-  },
-  logo: {
-    width: 50,
-    height: 50,
-    resizeMode: "contain",
-    marginHorizontal: 10,
-    marginTop: 10,
-  },
-  bottomContainer: {
-    flex: 1,
-    marginTop: 100,
-  },
-  bottomText: {
-    fontSize: 18,
-    textAlign: "center",
-    // marginTop: 100,
-  },
-  registerText: {
-    color: "#2B4763",
-    fontWeight: "bold",
-  },
-});
+export default Login;

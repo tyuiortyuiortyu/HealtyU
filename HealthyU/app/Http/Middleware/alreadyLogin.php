@@ -17,8 +17,8 @@ class alreadyLogin
      */
     public function handle(Request $request, Closure $next)
     {
-        if(Auth::check()){
-            return redirect('/admin/challenges')->withErrors('You already login');
+        if(Auth::guard('web')->check()){
+            return redirect()->route('challenges.index')->withErrors('You already login');
         }return $next($request);
     }
 }

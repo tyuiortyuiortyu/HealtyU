@@ -4,8 +4,6 @@ import React, { useState } from 'react';
 import images from '../../constants/images';
 import icons from '../../constants/icons';
 
-import { setShouldAnimateExitingForTag } from 'react-native-reanimated/lib/typescript/core';
-
 const BMI = () => {
   const [selectedGender, setSelectedGender] = useState(null); // 'male' or 'female'
   const [continuePressed, setContinuePressed] = useState(false); // Controls main content visibility
@@ -38,8 +36,44 @@ const BMI = () => {
     setShowBMIResult(true); // Tampilin Hasil BMI
   };
 
+  const getBMIStatus = (bmi) => {
+    if (bmi < 18.5) {
+      return 'Underweight';
+    } else if (bmi >= 18.5 && bmi <= 24.9) {
+      return 'Normal (Ideal)';
+    } else if (bmi >= 25 && bmi <= 29.9) {
+      return 'Overweigh';
+    } else {
+      return 'Obesity';
+    }
+  };
+
+  const getBMIRange = (bmi) => {
+    if (bmi < 18.5) {
+      return 'Underweight: < 18.5 kg/m²';
+    } else if (bmi >= 18.5 && bmi <= 24.9) {
+      return 'Normal (Ideal): 18.5 kg/m² - 24.9 kg/m²';
+    } else if (bmi >= 25 && bmi <= 29.9) {
+      return 'Overweight: 25 kg/m² - 29.9 kg/m²';
+    } else {
+      return 'Obesity: ≥ 30 kg/m²';
+    }
+  };
+
+  const getAdvice = (bmi) => {
+    if (bmi < 18.5) {
+      return 'Pastikan asupan kalori sesuai dengan kebutuhan kalori harian & konsumsi makanan sehat.';
+    } else if (bmi >= 18.5 && bmi <= 24.9) {
+      return 'Pertahankan pola makan sehat dan rutin berolahraga.';
+    } else if (bmi >= 25 && bmi <= 29.9) {
+      return 'Kurangi asupan kalori dan tingkatkan aktivitas fisik.';
+    } else {
+      return 'Segera konsultasikan dengan dokter atau ahli gizi untuk rencana penurunan berat badan yang sehat.';
+    }
+  };
+
   return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'flex-start', padding: 25 }}>
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'flex-start', padding: 25, backgroundColor: 'white' }}>
       {/* Jika tombol Continue belum ditekan, tampilkan konten utama */}
       {!continuePressed ? (
         <>
@@ -411,19 +445,70 @@ const BMI = () => {
           {showBMIResult && (
             <Modal transparent={true} visible={showBMIResult} animationType="slide">
               <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
-                <View style={{ backgroundColor: '#FFFCF0', padding: 50, borderRadius: 10, alignItems: 'center', width: '80%' }}>
-                  <Text style={{ fontSize: 24, fontWeight: 'bold' }}>
-                    Your BMI:
+                <View style={{ 
+                  backgroundColor: '#FFFCF0', 
+                  padding: 30, 
+                  borderRadius: 20, 
+                  alignItems: 'center', 
+                  width: '80%',
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.8,
+                  shadowRadius: 4,
+                  elevation: 5,
+                }}>
+                  {/* Judul "Your BMI" */}
+                  <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#4C837A', marginBottom: 10 }}>
+                    Your BMI is
                   </Text>
-                  <Text style={{ fontSize: 60, fontWeight: 'bold', color: '#4C837A', marginVertical: 15 }}>
+
+                  {/* Hasil BMI */}
+                  <Text style={{ fontSize: 60, fontWeight: 'bold', color: '#FF6757', marginBottom: 15 }}>
                     {bmiResult}
                   </Text>
+
+                  {/* Status BMI */}
+                  <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#FF6757', marginBottom: 10 }}>
+                    {getBMIStatus(bmiResult)}
+                  </Text>
+
+                  {/* Informasi Range BMI Dinamis */}
+                  <Text style={{ fontSize: 16, color: '#4C837A', marginBottom: 10, textAlign: 'center' }}>
+                    {getBMIRange(bmiResult)}
+                  </Text>
+
+                  {/* Informasi Healthy Weight for the Height */}
+                  <Text style={{ fontSize: 16, color: '#4C837A', marginBottom: 20, textAlign: 'center' }}>
+                    Healthy weight for the height: {Math.round(18.5 * (height / 100) * (height / 100))} kg - {Math.round(24.9 * (height / 100) * (height / 100))} kg
+                  </Text>
+
+                  {/* Kotak untuk Notes */}
+                  <View style={{ 
+                    borderWidth: 1, 
+                    borderColor: '#4C837A', 
+                    borderRadius: 10, 
+                    padding: 15, 
+                    width: '100%', 
+                    marginBottom: 20,
+                    backgroundColor: '#F0F8FF', // Warna latar belakang yang lebih soft
+                  }}>
+                    <Text style={{ fontSize: 16, color: '#4C837A', textAlign: 'center' }}>
+                      Notes: {getAdvice(bmiResult)}
+                    </Text>
+                  </View>
+
+                  {/* Tombol Close */}
                   <TouchableOpacity
                     style={{
                       backgroundColor: '#2B4763',
                       paddingVertical: 10,
                       paddingHorizontal: 30,
                       borderRadius: 20,
+                      shadowColor: '#000',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.8,
+                      shadowRadius: 4,
+                      elevation: 5,
                     }}
                     onPress={() => setShowBMIResult(false)}
                   >

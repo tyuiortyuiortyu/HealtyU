@@ -6,6 +6,7 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Faker\Factory as Faker;
 use Carbon\Carbon;
+use App\Models\User;
 
 class UserSeeder extends Seeder
 {
@@ -19,59 +20,36 @@ class UserSeeder extends Seeder
         $faker = Faker::create();
         $now = Carbon::now()->format('Y-m-d H:i:s');
 
-        DB::table('users')->insert([
-            'name' => 'Michael Kurniawan',
-            'email' => 'mchlkk98@gmail.com',
-            'email_verified_at' => $now,
-            'username' => 'michaelkurniawan',
-            'password' => bcrypt('mikel123'),
-            'dob' => '2005-10-10',
-            'sex' => 'male',
-            'weight' => 58,
-            'height' => 177,
-            'last_login' => null,
-            'created_at' => $now,
-            'updated_at' => $now,
-            'role' => 'admin'
-        ]);
-
-        DB::table('users')->insert([
-            'name' => 'Flavianus Bodhi',
-            'email' => 'flavianus.thamzir@binus.ac.id',
-            'email_verified_at' => $now,
-            'username' => 'flavi_bodhi',
-            'password' => bcrypt('bodhi123'),
-            'dob' => '2005-03-11',
-            'sex' => 'male',
+        User::create([
+            'name' => 'admin',
+            'email' => 'admin@admin.com',
+            'username' => 'admin',
+            'password' => bcrypt('admin123'),
+            'dob' => $faker->date('Y-m-d', '2005-12-31'),
+            'sex' => $faker->randomElement(['male','female']),
             'weight' => $faker->randomFloat(2, 40, 100),
             'height' => $faker->randomFloat(2, 150, 200),
             'last_login' => null,
-            'created_at' => $now,
-            'updated_at' => $now,
             'role' => 'admin'
         ]);
 
-        DB::table('users')->insert([
-            'name' => 'Nikita',
-            'email' => 'nikita.niki2410@gmail.com',
-            'email_verified_at' => $now,
-            'username' => 'nikita_smile',
-            'password' => bcrypt('smile123'),
-            'dob' => '2005-10-24',
-            'sex' => 'female',
+        User::create([
+            'name' => 'user',
+            'email' => 'user@user.com',
+            'username' => 'user',
+            'password' => bcrypt('user123'),
+            'dob' => $faker->date('Y-m-d', '2005-12-31'),
+            'sex' => $faker->randomElement(['male','female']),
             'weight' => $faker->randomFloat(2, 40, 100),
             'height' => $faker->randomFloat(2, 150, 200),
             'last_login' => null,
-            'created_at' => $now,
-            'updated_at' => $now,
             'role' => 'user'
         ]);
-        
-        for ($i = 0; $i < 20; $i++) {
-            DB::table('users')->insert([
+
+        for ($i = 0; $i < 28; $i++) {
+            User::create([
                 'name' => $faker->name,
                 'email' => $faker->unique()->safeEmail,
-                'email_verified_at' => $now,
                 'username' => $faker->unique()->userName,
                 'password' => bcrypt('healthyu123'),
                 'dob' => $faker->date('Y-m-d', '2005-12-31'),
@@ -79,10 +57,74 @@ class UserSeeder extends Seeder
                 'weight' => $faker->randomFloat(2, 40, 100),
                 'height' => $faker->randomFloat(2, 150, 200),
                 'last_login' => null,
-                'created_at' => $now,
-                'updated_at' => $now,
-                'role' => $faker->randomElement(['user', 'admin'])
+                'role' => $faker->randomElement(['user', 'admin']),
+                'profile_picture' => 'This field is profile pic'
             ]);
         }
+
+        User::create([
+            'name' => 'Michael Kurniawan',
+            'email' => 'mchlkk98@gmail.com',
+            'username' => 'mikelaja',
+            'password' => bcrypt('Mikel123'),
+            'dob' => $faker->date('Y-m-d', '2005-12-31'),
+            'sex' => 'male',
+            'weight' => $faker->randomFloat(2, 40, 100),
+            'height' => $faker->randomFloat(2, 150, 200),
+            'last_login' => null,
+            'role' => 'user'
+        ]);
+
+        User::create([
+            'name' => 'Nikita',
+            'email' => 'nikitasmile@gmail.com',
+            'username' => 'smilee',
+            'password' => bcrypt('Niki1234'),
+            'dob' => $faker->date('Y-m-d', '2005-12-31'),
+            'sex' => 'female',
+            'weight' => $faker->randomFloat(2, 40, 100),
+            'height' => $faker->randomFloat(2, 150, 200),
+            'last_login' => null,
+            'role' => 'user'
+        ]);
+
+        User::create([
+            'name' => 'Felis',
+            'email' => 'ffhandoyo@gmail.com',
+            'username' => 'felisnavidad',
+            'password' => bcrypt('Felis123'),
+            'dob' => $faker->date('Y-m-d', '2005-12-31'),
+            'sex' => 'female',
+            'weight' => $faker->randomFloat(2, 40, 100),
+            'height' => $faker->randomFloat(2, 150, 200),
+            'last_login' => null,
+            'role' => 'user'
+        ]);
+
+        User::create([
+            'name' => 'Arya',
+            'email' => 'arya.shodiqi@gmail.com',
+            'username' => 'aryaaaaa',
+            'password' => bcrypt('Arya1234'),
+            'dob' => $faker->date('Y-m-d', '2005-12-31'),
+            'sex' => 'male',
+            'weight' => $faker->randomFloat(2, 40, 100),
+            'height' => $faker->randomFloat(2, 150, 200),
+            'last_login' => null,
+            'role' => 'user'
+        ]);
+
+        User::create([
+            'name' => 'Bodhi',
+            'email' => 'bodhi@gmail.com',
+            'username' => 'bod',
+            'password' => bcrypt('Bodhi123'),
+            'dob' => $faker->date('Y-m-d', '2005-12-31'),
+            'sex' => 'male',
+            'weight' => $faker->randomFloat(2, 40, 100),
+            'height' => $faker->randomFloat(2, 150, 200),
+            'last_login' => null,
+            'role' => 'user'
+        ]);
     }
 }

@@ -17,7 +17,7 @@
                 <ul class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
                     <li><a class="dropdown-item" href="{{ route('users.index') }}" data-table="Users">Users</a></li>
                     <li><a class="dropdown-item" href="{{ route('challenges.index') }}" data-table="Challenges">Challenges</a></li>
-                    <li><a class="dropdown-item" href="#" data-table="Challenge Detail">Challenge Details</a></li>
+                    <li><a class="dropdown-item" href="" data-table="Challenge Detail">Challenge Details</a></li>
                     <li><a class="dropdown-item" href="#" data-table="Cycle Detail">Cycle Details</a></li>
                     <li><a class="dropdown-item" href="#" data-table="Posts">Posts</a></li>
                     <li><a class="dropdown-item" href="#" data-table="Comments">Comments</a></li>
@@ -25,15 +25,15 @@
                     <li><a class="dropdown-item" href="#" data-table="Chat Rooms">Chat Rooms</a></li>
                     <li><a class="dropdown-item" href="#" data-table="Chat Details">Chat Details</a></li>
                     <li><a class="dropdown-item" href="#" data-table="Notifications">Notifications</a></li>
-                    <li><a class="dropdown-item" href="#" data-table="Medicines">Medicines</a></li>
-                    <li><a class="dropdown-item" href="#" data-table="Units">Units</a></li>
-                    <li><a class="dropdown-item" href="#" data-table="Med Schedules">Med Schedules</a></li>
+                    <li><a class="dropdown-item" href="{{ route('medicines.index') }}" data-table="Medicines">Medicines</a></li>
+                    <li><a class="dropdown-item" href="{{ route('units.index') }}" data-table="Units">Units</a></li>
+                    <li><a class="dropdown-item" href="{{ route('medSchedules.index') }}" data-table="Med Schedules">Med Schedules</a></li>
                 </ul>
             </li>
         </ul>
     </div>
     <div class="d-flex justify-content-end mx-3">
-        <span class="text-white text-end text-truncate">Welcome, {{ session('user_name') }}</span>
+        <span class="text-white text-end text-truncate">Welcome, {{ auth()->user()->name }}</span>
     </div>
     <div class="me-3">
         <a class="btn btn-danger" href="{{ route('session.logout') }}">

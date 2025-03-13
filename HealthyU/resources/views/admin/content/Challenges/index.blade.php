@@ -1,7 +1,7 @@
 @extends('admin/layout/layout')
 
 @section('content')
-    <a href="challenges/create" class="btn btn-primary mb-3 ms-3">+ Add Challenge</a>
+    <a href="{{ route('challenges.create') }}" class="btn btn-primary mb-3 ms-3">+ Add Challenge</a>
     <table class="table table-striped table-bordered rounded">
         <thead>
             <tr>
@@ -11,7 +11,7 @@
                 <th style="width: 5%;">Image</th>
                 <th style="width: 12.5%;">Created At</th>
                 <th style="width: 12.5%;">Updated At</th>
-                <th>Actions</th>
+                <th style="width: 7%">Actions</th>
             </tr>
         </thead>
         <tbody>
@@ -23,7 +23,7 @@
                     <td style="width: 5%;">{{ $item->image }}</td>
                     <td style="width: 12.5%;">{{ $item->created_at }}</td>
                     <td style="width: 12.5%;">{{ $item->updated_at }}</td>
-                    <td>
+                    <td style="width: 7%">
                         <div class="d-flex justify-content-center">
                             <a href='{{ url('/admin/challenges/' .$item->id)}}' class="btn btn-secondary btn-sm me-2">Detail</a>
                             <a href='{{ url('/admin/challenges/' .$item->id. '/edit')}}' class="btn btn-warning btn-sm me-2">Edit</a>

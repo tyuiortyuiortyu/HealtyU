@@ -1,12 +1,15 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { View, Text, StyleSheet, Image, TouchableOpacity } from "react-native";
 import { useRouter } from "expo-router";
 
 import images from "../../constants/images";
-import icons from "../../constants/icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const Welcome = () => {
   const router = useRouter(); // Menggunakan router dari Expo Router
+  const setIsGuest = async() => {
+    await AsyncStorage.setItem("isGuest", "true"); // Menyimpan data bahwa user adalah guest
+  }
 
   return (
     <View style={styles.container}>
@@ -14,7 +17,7 @@ const Welcome = () => {
         <Image source={images.logo} style={styles.logo} />
       </View>
 
-      <Text style={styles.welcomeText1}>Welcome</Text>
+      <Text style={styles.welcomeText1}>Welcome to</Text>
       <Text style={styles.welcomeText2}>HealthyU</Text>
 
       <Text style={styles.title}>
@@ -37,7 +40,10 @@ const Welcome = () => {
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity onPress={() => router.push("../(tabs)/profile")}>
+      <TouchableOpacity onPress={async () => {
+        await setIsGuest();
+        router.push("../(tabs)/profile");
+      }}>
         <Text style={styles.guestText}>Continue as a guest</Text>
       </TouchableOpacity>
     </View>
@@ -51,6 +57,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingTop: 80,
     paddingHorizontal: 20,
+    backgroundColor: 'white',
   },
 
   logoContainer: {
@@ -106,6 +113,10 @@ const styles = StyleSheet.create({
     width: "85%",
     paddingVertical: 20,
     elevation: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 5, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
   },
 
   buttonText: {
