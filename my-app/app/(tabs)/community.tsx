@@ -22,7 +22,7 @@ import icons from "../../constants/icons";
 import images from "../../constants/images";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_BASE_URL = 'http://192.168.139.141:8000'; // disini bang
+const API_BASE_URL = 'http://10.68.111.137:8000'; // disini bang
 
 interface Post {
   id: number;
@@ -80,7 +80,6 @@ const Community = () => {
 
   useEffect(() => {
     fetchPosts();
-    console.log(posts)
   }, []);
 
   // getpost
@@ -101,7 +100,6 @@ const Community = () => {
 
       
       const responseData = await response.json();
-      console.log(responseData.output_schema.content);
       if (responseData?.error_schema.error_code != "S001") {
         throw new Error(responseData?.error_schema.error_message || "Failed to fetch posts.");
       }
@@ -109,8 +107,8 @@ const Community = () => {
       const transformedPosts: Post[] = responseData.output_schema.map((post) => ({
         id: post.id,
         name: post.user.name,
-        profilePicture: post.user.profile_picture || "", // Jika null, default ke string kosong
-        postImage: post.content, // Jika content adalah URL gambar
+        profilePicture: post.user.profilePicture || "", // Jika null, default ke string kosong
+        postImage: post.content, // Content adalah URL gambar
         caption: post.description?.length > 15 ? post.description.slice(0, 15) + "..." : post.description || "",
         fullCaption: post.description || "",
         isCaptionExpanded: false,
@@ -120,6 +118,7 @@ const Community = () => {
       }));
 
       setPosts(transformedPosts);
+      console.log(transformedPosts);
     } catch (error) {
       console.error("Fetch error:", error);
       setError(error.message || "Failed to fetch posts.");
@@ -192,7 +191,6 @@ const Community = () => {
         });
 
         const responseData = await response.json();
-        console.log("API Response:", responseData);
 
         if (responseData?.error_schema?.error_code !== "S001") {
             throw new Error(responseData?.error_schema?.additional_message || "Failed to create post.");
@@ -203,7 +201,7 @@ const Community = () => {
                 id: responseData.output_schema.id,
                 name: responseData.output_schema.user.name,
                 profilePicture: responseData.output_schema.user.profilePicture, 
-                postImage: responseData.output_schema.content, // Pastikan ini URL penuh
+                postImage: responseData.output_schema.content,
                 caption: responseData.output_schema.description,
                 fullCaption: responseData.output_schema.description,
                 isCaptionExpanded: false,
@@ -230,10 +228,6 @@ const Community = () => {
 
 
 
-
-
-
-
   const handleAddImage = useCallback(async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
@@ -255,14 +249,11 @@ const Community = () => {
 
   // deletepost
   const handleDeletePost = async (postId: number) => {
-    console.log(postId);
     try {
         const response = await ApiHelper.request(
             `${API_BASE_URL}/api/community/deletePost/${postId}`,
             "DELETE"
         );
-
-        console.log(response);
 
         if (response?.error_schema.error_code !== "S001") {
             throw new Error(response?.error_schema.additional_message);
@@ -285,7 +276,6 @@ const Community = () => {
         "GET"
       );
       
-      console.log(response);
 
       if (response.output_schema) {
         const formattedComments: Comment[] = response.output_schema.map((item: any) => ({
@@ -348,7 +338,6 @@ const Community = () => {
   // deletecomment
   const handleDeleteComment = async (postId: number | null, commentId: number) => {
     if (postId === null) return;
-    console.log(postId, commentId)
 
     try {
       const response = await ApiHelper.request(
@@ -356,8 +345,6 @@ const Community = () => {
         "DELETE"
       );
 
-      console.log(response);
-  
       if (response?.error_schema.error_code === "S001") { // Pastikan API berhasil
         setComments((prevComments) => ({
           ...prevComments,
@@ -565,15 +552,17 @@ const Community = () => {
                     />
 
                     {/* Caption */}
-                    <Text style={{ fontSize: 14, color: "#333", marginBottom: 10 }}>
+                    {item.fullCaption.length > 15 && (
+                      <Text style={{ fontSize: 14, color: "#333", marginBottom: 10 }}>
                       {item.isCaptionExpanded ? item.fullCaption : item.caption}{" "}
                       <Text
                         style={{ color: "#007BFF" }}
                         onPress={() => toggleCaption(item.id)}
                       >
-                        {item.isCaptionExpanded ? "see less" : "...see more"}
+                        {item.isCaptionExpanded ? "see less" : "see more"}
                       </Text>
-                    </Text>
+                      </Text>
+                    )}
 
                     {/* Actions */}
                     <View

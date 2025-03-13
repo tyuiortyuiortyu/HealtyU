@@ -9,7 +9,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const RegisterScreen = () => {
     // URL API backend
-    const API_BASE_URL = 'http://192.168.139.141:8000'; // taruh di sini bang
+    const API_BASE_URL = 'http://10.68.111.137:8000'; // taruh di sini bang
 
     const [name, setName] = useState('');
     const [username, setUsername] = useState('');
@@ -64,12 +64,9 @@ const RegisterScreen = () => {
             const password_confirmation = confirmPassword;
             const registerData = { name, email, username, password, password_confirmation };
     
-            console.log('Data yang dikirim:', registerData); // Log data yang dikirim
-    
             // Panggil API menggunakan ApiHelper dengan URL lengkap
             const response = await ApiHelper.request<RegisterResponse>(`${API_BASE_URL}/api/auth/register`, 'POST', registerData);
     
-            console.log('Response dari API:', response); // Log response dari API
     
             // Cek jika response valid dan mengandung access_token
             if (response?.output_schema?.access_token) {

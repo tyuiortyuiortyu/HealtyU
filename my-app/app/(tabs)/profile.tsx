@@ -21,12 +21,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiHelper } from '../helpers/ApiHelper';
 import { ProfileResponse } from '../response/ProfileResponse';
 
-const API_BASE_URL = 'http://192.168.139.141:8000';
+const API_BASE_URL = 'http://10.68.111.137:8000';
 
 const Profile = () => {
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [isNotificationOn, setNotification] = useState(true);
-  const [isEditing, setEditing] = useState(false);
   const [showHalloPage, setShowHalloPage] = useState(false);
   const [isLeaveModalVisible, setLeaveModalVisible] = useState(false);
 
@@ -56,7 +55,6 @@ const Profile = () => {
     try {
       setIsLoading(true);
       const storedProfileData = await AsyncStorage.getItem('userData');
-      console.log('Stored Profile Data:', storedProfileData);
 
       if (storedProfileData) {
         const parsedProfileData = JSON.parse(storedProfileData);
@@ -87,7 +85,6 @@ const Profile = () => {
   // Memuat data profil dari AsyncStorage saat komponen pertama kali di-render
   const checkGuestStatus = async () => {
     const isGuest = await AsyncStorage.getItem('isGuest');
-    console.log('Is Guest:', isGuest);
 
     if (isGuest === 'true') {
       setIsLoading(true);
@@ -111,18 +108,6 @@ const Profile = () => {
   useEffect(() => {
     checkGuestStatus();
   }, []);
-
-  useEffect(() => {
-    if (isEditing) {
-      setInputUsername(profileData.username);
-      setInputName(profileData.name);
-      setInputEmail(profileData.email);
-      setInputDob(profileData.dob ? new Date(profileData.dob) : null);
-      setInputGender(profileData.gender);
-      setInputHeight(profileData.height.toString());
-      setInputWeight(profileData.weight.toString());
-    }
-  }, [isEditing, profileData]);
 
   const [inputUsername, setInputUsername] = useState('');
   const [inputName, setInputName] = useState('');
@@ -173,7 +158,6 @@ const Profile = () => {
         });
       }
   
-      console.log("FormData:", formData); // Debugging
   
       const response = await fetch(`${API_BASE_URL}/api/auth/updateProfile`, {
         method: "POST",
@@ -185,7 +169,6 @@ const Profile = () => {
       });
   
       const responseData = await response.json();
-      console.log("Response data:", responseData);
   
       if (!response.ok || responseData?.error_schema?.error_code !== "S001") {
         throw new Error(responseData?.error_schema?.error_message || "Failed to update profile.");
@@ -205,14 +188,12 @@ const Profile = () => {
       };
   
       await AsyncStorage.setItem("userData", JSON.stringify(updatedUserData));
-      console.log("Data saved to AsyncStorage:", updatedUserData);
   
       setProfileData(updatedUserData);
       if (responseData.output_schema.profile_picture) {
         setProfileImage(responseData.output_schema.profile_picture);
       }
   
-      setEditing(false);
       setShowHalloPage(false);
       setIsLoading(false);
   
@@ -310,7 +291,6 @@ const Profile = () => {
     setInputGender(profileData.gender);
     setInputHeight(profileData.height.toString());
     setInputWeight(profileData.weight.toString());
-    setEditing(false);
   };
 
   const hasChanges = () => {
@@ -330,7 +310,6 @@ const Profile = () => {
   const handleLogout = async () => {
     try {
       const accessToken = await AsyncStorage.getItem('access_token');
-      console.log('Access Token:', accessToken);
 
       if (accessToken) {
         await ApiHelper.logout();
@@ -341,7 +320,6 @@ const Profile = () => {
       await AsyncStorage.removeItem('access_token');
       await AsyncStorage.removeItem('userData');
 
-      console.log('Logged out successfully');
       router.push('/login');
     } catch (error) {
       console.error('Error during logout:', error);
@@ -453,7 +431,6 @@ const Profile = () => {
             }}
             value={profileData.username || inputUsername}
             onChangeText={setInputUsername}
-            editable={isEditing}
           />
 
           <Text style={{ fontSize: 16, marginBottom: 2, marginLeft: 4 }}>Name</Text>
@@ -706,235 +683,6 @@ const Profile = () => {
             </View>
           </View>
         </Modal>
-      </ScrollView>
-    );
-  }
-
-  if (isEditing) {
-    return (
-      <ScrollView style={{ flex: 1, padding: 10, marginTop: 10, marginLeft: 10, marginRight: 10 }}>
-        <TouchableOpacity
-          onPress={() => {
-            setEditing(false);
-            if (originalProfileData) {
-              setProfileData(originalProfileData);
-              setOriginalProfileData(null);
-            }
-          }}
-          style={{ marginBottom: 20 }}
-        >
-          <Text style={{ color: 'red', fontSize: 16, fontWeight: 'bold' }}>Cancel</Text>
-        </TouchableOpacity>
-
-        <View style={{ flex: 1, alignItems: 'center', padding: 20, marginBottom: 20 }}>
-          <TouchableOpacity onPress={pickImage}>
-            <View
-              style={{
-                width: 100,
-                height: 100,
-                borderRadius: 50,
-                justifyContent: 'center',
-                alignItems: 'center',
-                backgroundColor: '#ccc',
-              }}
-            >
-              {profileImage ? (
-                <Image
-                  source={{ uri: profileImage }}
-                  style={{ width: 100, height: 100, borderRadius: 50 }}
-                  resizeMode="cover"
-                />
-              ) : (
-                <MaterialIcons name="person" size={50} color="#fff" />
-              )}
-            </View>
-          </TouchableOpacity>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Text style={{ fontSize: 25, fontWeight: 'bold', marginRight: 10 }}>{profileData.name}</Text>
-            <TouchableOpacity onPress={() => setShowHalloPage(true)}>
-              <MaterialIcons name="edit" size={20} color="#000" />
-            </TouchableOpacity>
-          </View>
-          <Text style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>{profileData.email}</Text>
-        </View>
-
-        <View style={{ alignItems: 'flex-start' }}>
-          {/* Input Fields - Same as in showHalloPage with editable=false */}
-          <Text style={{ fontSize: 16, marginBottom: 2, marginLeft: 4 }}>Username</Text>
-          <TextInput
-            placeholder="Enter your username"
-            style={{
-              width: '100%',
-              backgroundColor: '#fff',
-              padding: 15,
-              borderRadius: 10,
-              marginBottom: 20,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.1,
-              shadowRadius: 4,
-              elevation: 2,
-            }}
-            value={inputUsername}
-            onChangeText={setInputUsername}
-            editable={false}
-          />
-
-          <Text style={{ fontSize: 16, marginBottom: 2, marginLeft: 4 }}>Name</Text>
-          <TextInput
-            placeholder="Enter your name"
-            style={{
-              width: '100%',
-              backgroundColor: '#fff',
-              padding: 15,
-              borderRadius: 10,
-              marginBottom: 20,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.1,
-              shadowRadius: 4,
-              elevation: 2,
-            }}
-            value={inputName}
-            onChangeText={setInputName}
-            editable={false}
-          />
-
-          <Text style={{ fontSize: 16, marginBottom: 2, marginLeft: 4 }}>Email</Text>
-          <TextInput
-            placeholder="Enter your email address"
-            style={{
-              width: '100%',
-              backgroundColor: '#fff',
-              padding: 15,
-              borderRadius: 10,
-              marginBottom: 20,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.1,
-              shadowRadius: 4,
-              elevation: 2,
-            }}
-            value={inputEmail}
-            onChangeText={setInputEmail}
-            editable={false}
-          />
-
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%' }}>
-            <View style={{ width: '48%' }}>
-              <Text style={{ fontSize: 16, marginBottom: 2, marginLeft: 4 }}>Date of Birth</Text>
-              <TouchableOpacity
-                style={{
-                  width: '100%',
-                  backgroundColor: '#fff',
-                  padding: 15,
-                  borderRadius: 10,
-                  marginBottom: 20,
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 4,
-                  elevation: 2,
-                  justifyContent: 'center',
-                  height: 50,
-                }}
-                disabled={true}
-              >
-                <Text style={{ color: inputDob ? '#000' : '#888' }}>
-                  {inputDob ? new Date(inputDob).toISOString().split('T')[0] : 'Enter your date of birth'}
-                </Text>
-              </TouchableOpacity>
-              {showDatePicker && (
-                <DateTimePicker
-                  value={inputDob || new Date()}
-                  mode="date"
-                  display="default"
-                  onChange={onChangeDate}
-                />
-              )}
-            </View>
-
-            <View style={{ width: '48%' }}>
-              <Text style={{ fontSize: 16, marginBottom: 2, marginLeft: 4 }}>Gender</Text>
-              <View
-                style={{
-                  width: '100%',
-                  backgroundColor: '#fff',
-                  borderRadius: 10,
-                  marginBottom: 20,
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 4,
-                  elevation: 2,
-                  height: 50,
-                  justifyContent: 'center',
-                }}
-              >
-                <Picker
-                  selectedValue={inputGender}
-                  enabled={false}
-                  mode="dropdown"
-                  style={{ fontSize: 14, width: '100%', color: inputGender ? 'black' : 'gray' }}
-                >
-                  <Picker.Item label="Select Gender" value="" color="gray" style={{ fontSize: 14 }} />
-                  <Picker.Item label="Female" value="Female" style={{ fontSize: 14 }} />
-                  <Picker.Item label="Male" value="Male" style={{ fontSize: 14 }} />
-                </Picker>
-              </View>
-            </View>
-          </View>
-
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%' }}>
-            <View style={{ width: '48%' }}>
-              <Text style={{ fontSize: 16, marginBottom: 2, marginLeft: 4 }}>Height</Text>
-              <TextInput
-                placeholder="Enter your height (in cm)"
-                style={{
-                  width: '100%',
-                  backgroundColor: '#fff',
-                  padding: 15,
-                  borderRadius: 10,
-                  marginBottom: 20,
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 4,
-                  elevation: 2,
-                  height: 50,
-                }}
-                value={inputHeight}
-                onChangeText={(text) => validateNumberInput(text, setInputHeight)}
-                keyboardType="numeric"
-                editable={false}
-              />
-            </View>
-
-            <View style={{ width: '48%' }}>
-              <Text style={{ fontSize: 16, marginBottom: 2, marginLeft: 4 }}>Weight</Text>
-              <TextInput
-                placeholder="Enter your weight (in kg)"
-                style={{
-                  width: '100%',
-                  backgroundColor: '#fff',
-                  padding: 15,
-                  borderRadius: 10,
-                  marginBottom: 20,
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 4,
-                  elevation: 2,
-                  height: 50,
-                }}
-                value={inputWeight}
-                onChangeText={(text) => validateNumberInput(text, setInputWeight)}
-                keyboardType="numeric"
-                editable={false}
-              />
-            </View>
-          </View>
-        </View>
       </ScrollView>
     );
   }
