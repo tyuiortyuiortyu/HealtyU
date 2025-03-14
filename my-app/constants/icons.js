@@ -20,24 +20,27 @@ import addMed from "../assets/icons/addMed.png";
 import cancelMed from "../assets/icons/cancelMed.png";
 import arrowDown from "../assets/icons/Bawah.png";
 
-import heart from "../assets/icons/heart.png"
-import fill_heart from "../assets/icons/fill_heart.png"
-import comment from "../assets/icons/comment.png"
-import share from "../assets/icons/share.png"
-import search from "../assets/icons/search.png"
+import heart from "../assets/icons/heart.png";
+import fill_heart from "../assets/icons/fill_heart.png";
+import comment from "../assets/icons/comment.png";
+import share from "../assets/icons/share.png";
+import search from "../assets/icons/search.png";
 
-import three_dots from "../assets/icons/three_dots.png"
-import x from "../assets/icons/x.png"
+import three_dots from "../assets/icons/three_dots.png";
+import x from "../assets/icons/x.png";
 
-import notification from "../assets/icons/notification.png"
-import back from "../assets/icons/back.png"
+import notification from "../assets/icons/notification.png";
+import back from "../assets/icons/back.png";
 
-import calories from "../assets/icons/calories.png"
-import Chest from "../assets/icons/Chest.png"
-import clock from "../assets/icons/clock.png"
-import notif from "../assets/icons/notif.png"
-import standing from "../assets/icons/standing.png"
-import trophy from "../assets/icons/trophy.png"
+import calories from "../assets/icons/calories.png";
+import Chest from "../assets/icons/Chest.png";
+import clock from "../assets/icons/clock.png";
+import notif from "../assets/icons/notif.png";
+import standing from "../assets/icons/standing.png";
+import trophy from "../assets/icons/trophy.png";
+
+import deleteItem from "../assets/icons/deleteItem.png";
+import edit from "../assets/icons/edit.png";
 
 export default {
   bmi,
@@ -89,5 +92,9 @@ export default {
   notif,
   standing,
   trophy,
-}
+
+  
+  deleteItem,
+  edit,
+};
 

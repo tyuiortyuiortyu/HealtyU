@@ -354,7 +354,7 @@ const Profile = () => {
 
   if (showHalloPage) {
     return (
-      <ScrollView style={{ flex: 1, padding: 10, marginTop: 10, marginLeft: 10, marginRight: 10 }}>
+      <ScrollView style={{ flex: 1, padding: 10, backgroundColor: "white"}}>
         <TouchableOpacity onPress={() => setShowHalloPage(false)} style={{ marginBottom: 20 }}>
           <Text style={{ color: 'red', fontSize: 16, fontWeight: 'bold' }}>Cancel</Text>
         </TouchableOpacity>
@@ -414,13 +414,11 @@ const Profile = () => {
         </View>
 
         <View style={{ alignItems: 'flex-start' }}>
-          <Text style={{ fontSize: 16, marginBottom: 2, marginLeft: 4 }}>Username</Text>
-          <TextInput
-            placeholder="Enter your username"
+        <Text style={{ fontSize: 16, marginBottom: 2, marginLeft: 4 }}>Name</Text>
+          <View
             style={{
               width: '100%',
               backgroundColor: '#fff',
-              padding: 15,
               borderRadius: 10,
               marginBottom: 20,
               shadowColor: '#000',
@@ -428,18 +426,29 @@ const Profile = () => {
               shadowOpacity: 0.1,
               shadowRadius: 4,
               elevation: 2,
+              height: 50,
+              justifyContent: 'center',
             }}
-            value={profileData.username || inputUsername}
-            onChangeText={setInputUsername}
-          />
+          >
+            <TextInput
+              placeholder="Enter your name"
+              style={{
+                fontSize: 14,
+                width: '100%',
+                paddingHorizontal: 15,
+                color: 'black',
+              }}
+              value={inputName || profileData.name}
+              onChangeText={setInputName}
+              editable={true}
+            />
+          </View>
 
-          <Text style={{ fontSize: 16, marginBottom: 2, marginLeft: 4 }}>Name</Text>
-          <TextInput
-            placeholder="Enter your name"
+          <Text style={{ fontSize: 16, marginBottom: 2, marginLeft: 4 }}>Username</Text>
+          <View
             style={{
               width: '100%',
               backgroundColor: '#fff',
-              padding: 15,
               borderRadius: 10,
               marginBottom: 20,
               shadowColor: '#000',
@@ -447,31 +456,53 @@ const Profile = () => {
               shadowOpacity: 0.1,
               shadowRadius: 4,
               elevation: 2,
+              height: 50,
+              justifyContent: 'center',
             }}
-            value={profileData.name || inputName}
-            onChangeText={setInputName}
-            editable={true}
-          />
+          >
+            <TextInput
+              placeholder="Enter your username"
+              style={{
+                fontSize: 14,
+                width: '100%',
+                paddingHorizontal: 15,
+                color: 'black',
+              }}
+              value={inputName || profileData.username}
+              onChangeText={setInputName}
+              editable={true}
+            />
+          </View>
 
           <Text style={{ fontSize: 16, marginBottom: 2, marginLeft: 4 }}>Email</Text>
-          <TextInput
-            placeholder="Enter your email address"
-            style={{
-              width: '100%',
-              backgroundColor: '#fff',
-              padding: 15,
-              borderRadius: 10,
-              marginBottom: 20,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.1,
-              shadowRadius: 4,
-              elevation: 2,
-            }}
-            value={profileData.email || inputEmail}
-            onChangeText={setInputEmail}
-            editable={true}
-          />
+            <View
+              style={{
+                width: '100%',
+                backgroundColor: '#fff',
+                borderRadius: 10,
+                marginBottom: 20,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 4,
+                elevation: 2,
+                height: 50,
+                justifyContent: 'center',
+              }}
+            >
+              <TextInput
+                placeholder="Enter your email address"
+                style={{
+                  fontSize: 14,
+                  width: '100%',
+                  paddingHorizontal: 15,
+                  color: 'black',
+                }}
+                value={inputEmail || profileData.email}
+                onChangeText={setInputEmail}
+                editable={true}
+              />
+            </View>
 
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%' }}>
             <View style={{ width: '48%' }}>
@@ -504,7 +535,7 @@ const Profile = () => {
 
               {showDatePicker && (
                 <DateTimePicker
-                  value={inputDob ? new Date(inputDob) : profileData.dob ? new Date(profileData.dob) : new Date()}
+                  value={inputDob || new Date(profileData.dob)}
                   mode="date"
                   display="default"
                   onChange={onChangeDate}
@@ -530,14 +561,14 @@ const Profile = () => {
                 }}
               >
                 <Picker
-                  selectedValue={inputGender || profileData.gender || ""}
+                  selectedValue={inputGender || profileData.gender}
                   onValueChange={(itemValue) => setInputGender(itemValue)}
                   mode="dropdown"
                   style={{ fontSize: 14, width: '100%', color: inputGender || profileData.gender ? 'black' : 'gray' }}
                 >
                   <Picker.Item label="Select Gender" value="" color="gray" style={{ fontSize: 14 }} />
-                  <Picker.Item label="Female" value="female" style={{ fontSize: 14 }} />
-                  <Picker.Item label="Male" value="male" style={{ fontSize: 14 }} />
+                  <Picker.Item label="female" value="female" style={{ fontSize: 14 }} />
+                  <Picker.Item label="male" value="male" style={{ fontSize: 14 }} />
                 </Picker>
               </View>
             </View>
@@ -547,12 +578,10 @@ const Profile = () => {
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%' }}>
             <View style={{ width: '48%' }}>
               <Text style={{ fontSize: 16, marginBottom: 2, marginLeft: 4 }}>Height</Text>
-              <TextInput
-                placeholder="Enter your height (in cm)"
+              <View
                 style={{
                   width: '100%',
                   backgroundColor: '#fff',
-                  padding: 15,
                   borderRadius: 10,
                   marginBottom: 20,
                   shadowColor: '#000',
@@ -561,22 +590,30 @@ const Profile = () => {
                   shadowRadius: 4,
                   elevation: 2,
                   height: 50,
+                  justifyContent: 'center',
                 }}
-                value={profileData.height.toString() || inputHeight}
-                onChangeText={(text) => validateNumberInput(text, setInputHeight)}
-                keyboardType="numeric"
-                editable={true}
-              />
+              >
+                <TextInput
+                  placeholder="Enter your height (in cm)"
+                  style={{
+                    fontSize: 14,
+                    width: '100%',
+                    paddingHorizontal: 15,
+                    color: 'black',
+                  }}
+                  value={profileData.height.toString() || inputHeight}
+                  onChangeText={(text) => validateNumberInput(text, setInputHeight)}
+                  keyboardType="numeric"
+                  editable={true}
+                />
+              </View>
             </View>
-
             <View style={{ width: '48%' }}>
               <Text style={{ fontSize: 16, marginBottom: 2, marginLeft: 4 }}>Weight</Text>
-              <TextInput
-                placeholder="Enter your weight (in kg)"
+              <View
                 style={{
                   width: '100%',
                   backgroundColor: '#fff',
-                  padding: 15,
                   borderRadius: 10,
                   marginBottom: 20,
                   shadowColor: '#000',
@@ -585,25 +622,42 @@ const Profile = () => {
                   shadowRadius: 4,
                   elevation: 2,
                   height: 50,
+                  justifyContent: 'center',
                 }}
-                value={profileData.weight.toString() || inputWeight}
-                onChangeText={(text) => validateNumberInput(text, setInputWeight)}
-                keyboardType="numeric"
-                editable={true}
-              />
+              >
+                <TextInput
+                  placeholder="Enter your weight (in kg)"
+                  style={{
+                    fontSize: 14,
+                    width: '100%',
+                    paddingHorizontal: 15,
+                    color: 'black',
+                  }}
+                  value={profileData.weight.toString() || inputWeight}
+                  onChangeText={(text) => validateNumberInput(text, setInputWeight)}
+                  keyboardType="numeric"
+                  editable={true}
+                />
+              </View>
             </View>
+
           </View>
         </View>
 
         <TouchableOpacity
           style={{
             alignSelf: 'center',
-            backgroundColor: isFormValid ? '#2B4763' : '#ccc',
-            paddingVertical: 15,
-            paddingHorizontal: 30,
-            borderRadius: 30,
-            marginTop: 15,
-            marginBottom: 30,
+              backgroundColor: isFormValid ? '#2B4763' : 'white',
+              elevation: 10,
+              shadowColor: "#000",
+              shadowOffset: {width: 5, height: 4},
+              shadowOpacity: 0.5,
+              shadowRadius: 4,
+              paddingVertical: 15,
+              paddingHorizontal: 30,
+              borderRadius: 30,
+              marginTop: 15,
+              marginBottom: 35
           }}
           onPress={handleSave}
           disabled={!hasChanges()} // Nonaktifkan tombol jika tidak ada perubahan
@@ -688,7 +742,7 @@ const Profile = () => {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: 'white', marginTop: 25 }}>
+    <View style={{ flex: 1, backgroundColor: "white", marginTop: 25 }}>
       <View style={{ alignItems: 'center', padding: 20 }}>
         <TouchableOpacity onPress={pickImage}>
           <View
@@ -764,7 +818,7 @@ const Profile = () => {
           }}
         >
           <MaterialIcons name="edit" size={20} color="#000" style={{ marginRight: 10 }} />
-          <Text style={{ fontSize: 16, flex: 1, fontWeight: '600' }}>Ubah Informasi Profil</Text>
+          <Text style={{ fontSize: 16, flex: 1, fontWeight: '600' }}>Change Profile Information</Text>
         </TouchableOpacity>
 
         <View
@@ -781,13 +835,13 @@ const Profile = () => {
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', padding: 15, marginTop: -8, marginBottom: -10 }}>
             <MaterialIcons name="notifications" size={20} color="#000" style={{ marginRight: 10 }} />
-            <Text style={{ fontSize: 16, flex: 1, fontWeight: '600' }}>Notifikasi</Text>
+            <Text style={{ fontSize: 16, flex: 1, fontWeight: '600' }}>Notification</Text>
             <Switch value={isNotificationOn} onValueChange={toggleNotification} />
           </View>
 
           <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', padding: 15, marginTop: -8 }}>
             <MaterialIcons name="security" size={20} color="#000" style={{ marginRight: 10 }} />
-            <Text style={{ fontSize: 16, flex: 1, fontWeight: '600' }}>Keamanan</Text>
+            <Text style={{ fontSize: 16, flex: 1, fontWeight: '600' }}>Security</Text>
           </TouchableOpacity>
         </View>
 
@@ -811,17 +865,17 @@ const Profile = () => {
             }}
           >
             <MaterialIcons name="help-outline" size={20} color="#000" style={{ marginRight: 10 }} />
-            <Text style={{ fontSize: 16, flex: 1, fontWeight: '600' }}>Bantuan & Dukungan</Text>
+            <Text style={{ fontSize: 16, flex: 1, fontWeight: '600' }}>Help & Support</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', padding: 15, marginTop: -8 }}>
             <MaterialIcons name="contact-support" size={20} color="#000" style={{ marginRight: 10 }} />
-            <Text style={{ fontSize: 16, flex: 1, fontWeight: '600' }}>Hubungi Kami</Text>
+            <Text style={{ fontSize: 16, flex: 1, fontWeight: '600' }}>Contact Us</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', padding: 15, marginTop: -8 }}>
             <MaterialIcons name="privacy-tip" size={20} color="#000" style={{ marginRight: 10 }} />
-            <Text style={{ fontSize: 16, flex: 1, fontWeight: '600' }}>Kebijakan Privasi</Text>
+            <Text style={{ fontSize: 16, flex: 1, fontWeight: '600' }}>Terms & Conditions</Text>
           </TouchableOpacity>
 
           <TouchableOpacity

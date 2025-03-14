@@ -11,6 +11,7 @@
     use App\Helpers\ApiResponse;
     use Tymon\JWTAuth\Facades\JWTAuth;
     use App\Helpers\ValidateJwt;
+    use Illuminate\Support\Facades\Validator;
 
     class MedReminderController extends Controller
     {
@@ -159,49 +160,69 @@
          */
         public function update(Request $request, $id)
         {
-            // Cari data schedule berdasarkan ID
-            $schedule = MedSchedule::findOrFail($id);
-        
-            // Cari data medicine berdasarkan foreign key di med_schedules
-            $medicine = Medicine::findOrFail($schedule->med_id);
-        
-            // Cek apakah user yang login adalah pemilik data
-            if ($medicine->user_id !== auth()->id()) {
-                return ApiResponse::mapResponse(null, "E002", "Unauthorized");
+            $user = ValidateJwt::validateAndGetUser();
+
+            if (!$user) {
+                return ApiResponse::mapResponse(null, "E002");
             }
-        
-            // Validasi input
-            $validatedData = $request->validate([
+
+            $validator = Validator::make($request->all(), [
                 'med_name' => 'required|string|max:255',
                 'unit' => 'required|string|in:ml,mg',
-                'med_dose' => 'required|string|max:50',
+                'med_dose' => 'required|numeric|max:50',
                 'type' => 'required|string|in:Pil,Sirup,Tetes,Krim,Tablet',
                 'time_to_take' => 'required|date_format:H:i:s',
-                'date_to_take' => 'required|date_format:Y-m-d'
+                'monday' => 'required|boolean',
+                'tuesday' => 'required|boolean',
+                'wednesday' => 'required|boolean',
+                'thursday' => 'required|boolean',
+                'friday' => 'required|boolean',
+                'saturday' => 'required|boolean',
+                'sunday' => 'required|boolean',
             ]);
-        
-            // Konversi nama unit menjadi unit_id
-            $unitId = ($validatedData['unit'] === 'mg') ? 1 : 2;
-        
+
+            if ($validator->fails()) {
+                return ApiResponse::mapResponse(null, "E002", $validator->errors());
+            }
+
+            // Ambil schedule berdasarkan ID
+            $schedule = MedSchedule::where('id', $id)->first();
+            if (!$schedule) {
+                return ApiResponse::mapResponse(null, "E002", "Data tidak ditemukan");
+            }
+
+            // Ambil medicine berdasarkan med_id dari schedule
+            $medicine = Medicine::where('id', $schedule->med_id)->first();
+            if (!$medicine) {
+                return ApiResponse::mapResponse(null, "E002", "Medicine data not found");
+            }
+
             // Update data medicine
             $medicine->update([
-                'med_name' => $validatedData['med_name'],
-                'unit_id' => $unitId,
-                'med_dose' => $validatedData['med_dose'],
-                'type' => $validatedData['type'],
+                'med_name' => $request->med_name,
+                'unit_id' => $request->unit === 'mg' ? 1 : 2,
+                'med_dose' => $request->med_dose,
+                'type' => $request->type,
             ]);
-        
+
             // Update data schedule
             $schedule->update([
-                'time_to_take' => $validatedData['time_to_take'],
-                'date_to_take' => $validatedData['date_to_take']
+                'time_to_take' => $request->time_to_take,
+                'monday' => $request->monday,
+                'tuesday' => $request->tuesday,
+                'wednesday' => $request->wednesday,
+                'thursday' => $request->thursday,
+                'friday' => $request->friday,
+                'saturday' => $request->saturday,
+                'sunday' => $request->sunday,
             ]);
-        
+
             return ApiResponse::mapResponse([
                 'medicine' => $medicine,
                 'schedule' => $schedule
             ], "S001", "Medicine and schedule updated successfully");
         }
+
 
         /**
          * Remove the specified resource from storage.

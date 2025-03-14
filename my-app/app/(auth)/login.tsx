@@ -7,6 +7,7 @@ import {
   TextInput,
   TouchableOpacity,
   Alert,
+  ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -14,6 +15,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import images from "../../constants/images";
 import { ApiHelper } from '../helpers/ApiHelper';
 import { LoginResponse } from "../response/LoginResponse";
+// import { ScrollView } from "react-native-reanimated/lib/typescript/Animated";
 
 const Login = () => {
   const API_BASE_URL = 'http://192.168.50.141:8000';
@@ -142,154 +144,156 @@ const Login = () => {
   };
 
   return (
-    <View style={{ backgroundColor: "#FFFFFF", flex: 1, justifyContent: "center", alignItems: "center", paddingBottom: 20 }}>
-      {/* Welcome Back Text */}
-      {!showForgotPassword && (
-        <View style={{ marginRight: 20, paddingRight: 30, marginBottom: 60 }}>
-          <Text style={{ textAlign: "left", fontSize: 30, fontWeight: "bold" }}>
-            Welcome Back! Glad{"\n"}to see you. Again!
-          </Text>
-        </View>
-      )}
-
-      <View style={{ marginBottom: 50, alignItems: 'center', width: '100%' }}>
-        {/* Email and Password Input Fields */}
+    <ScrollView style={{ flex: 1, padding: 17, paddingTop: 30, backgroundColor: "white"}}>
+      <View style={{ backgroundColor: "#FFFFFF", flex: 1, justifyContent: "center", alignItems: "center", paddingBottom: 20 }}>
+        {/* Welcome Back Text */}
         {!showForgotPassword && (
-          <>
-            <View style={{
-                flexDirection: 'row', alignItems: 'center', width: '85%', borderWidth: 1, borderColor: '#ddd',
-                backgroundColor: '#fff', borderRadius: 8, marginBottom: 20, paddingHorizontal: 10, elevation: 5
-            }}>
-                <TextInput
-                    style={{ flex: 1, fontSize: 16, paddingVertical: 12, color: '#000' }}
-                    placeholder="Enter your email address"
-                    placeholderTextColor="#8A8A8A"
-                    value={email}
-                    onChangeText={setEmail}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                />
-            </View>
-
-            <View style={{
-                flexDirection: 'row', alignItems: 'center', width: '85%', borderWidth: 1, borderColor: '#ddd',
-                backgroundColor: '#fff', borderRadius: 8, marginBottom: 10, paddingHorizontal: 10, elevation: 5
-            }}>
-                <TextInput
-                    style={{ flex: 1, fontSize: 16, paddingVertical: 12, color: '#000' }}
-                    placeholder="Enter your password"
-                    placeholderTextColor="#8A8A8A"
-                    secureTextEntry={!showPassword}
-                    value={password}
-                    onChangeText={setPassword}
-                />
-                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                    <Ionicons
-                        name={showPassword ? "eye-outline" : "eye-off-outline"}
-                        size={24}
-                        color="#aaa"
-                    />
-                </TouchableOpacity>
-            </View>
-          </>
-        )}
-
-        {/* Forgot Password Link */}
-        {!showForgotPassword && (
-          <Text
-            style={{ left: 220, width: "78%", marginTop: 5 }}
-            onPress={() => setShowForgotPassword(!showForgotPassword)}
-          >
-            Forgot Password
-          </Text>
-        )}
-
-        {/* Forgot Password Form */}
-        {showForgotPassword && (
-          <View style={{ width: "85%", marginTop: 20 }}>
-            <Text style={{ fontSize: 16, marginBottom: 10, textAlign: "center" }}>
-              Enter your email to reset your password
+          <View style={{ marginRight: 20, paddingRight: 30, marginBottom: 60 }}>
+            <Text style={{ textAlign: "left", fontSize: 30, fontWeight: "bold" }}>
+              Welcome Back! Glad{"\n"}to see you. Again!
             </Text>
-            <TextInput
-              style={{
-                width: "100%",
-                height: 50,
-                borderWidth: 1,
-                borderColor: "#ddd",
-                borderRadius: 8,
-                paddingHorizontal: 10,
-                marginBottom: 20,
-                fontSize: 16,
-              }}
-              placeholder="Enter your email address"
-              placeholderTextColor="#8A8A8A"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-            <TouchableOpacity
-              style={{
-                width: "100%",
-                height: 50,
-                backgroundColor: "#2B4763",
-                justifyContent: "center",
-                alignItems: "center",
-                borderRadius: 8,
-              }}
-              onPress={handleResetPassword}
-              disabled={isLoading}
-            >
-              <Text style={{ color: "#FFFFFF", fontSize: 18, fontWeight: "bold" }}>
-                {isLoading ? "Sending..." : "Send Reset Link"}
-              </Text>
-            </TouchableOpacity>
           </View>
         )}
 
-        {/* Login Button, Divider, Social Icons, and Register Link */}
-        {!showForgotPassword && (
-          <>
-            <TouchableOpacity
-              style={{ 
-                backgroundColor: "#E7E8EE", 
-                width: "70%", 
-                height: 60, 
-                justifyContent: "center", 
-                alignItems: "center", 
-                marginTop: 20, 
-                borderRadius: 10 
-              }}
-              onPress={handleLogin}
+        <View style={{ marginBottom: 50, alignItems: 'center', width: '100%' }}>
+          {/* Email and Password Input Fields */}
+          {!showForgotPassword && (
+            <>
+              <View style={{
+                  flexDirection: 'row', alignItems: 'center', width: '85%', borderWidth: 1, borderColor: '#ddd',
+                  backgroundColor: '#fff', borderRadius: 8, marginBottom: 20, paddingHorizontal: 10, elevation: 5
+              }}>
+                  <TextInput
+                      style={{ flex: 1, fontSize: 16, paddingVertical: 12, color: '#000' }}
+                      placeholder="Enter your email address"
+                      placeholderTextColor="#8A8A8A"
+                      value={email}
+                      onChangeText={setEmail}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                  />
+              </View>
+
+              <View style={{
+                  flexDirection: 'row', alignItems: 'center', width: '85%', borderWidth: 1, borderColor: '#ddd',
+                  backgroundColor: '#fff', borderRadius: 8, marginBottom: 10, paddingHorizontal: 10, elevation: 5
+              }}>
+                  <TextInput
+                      style={{ flex: 1, fontSize: 16, paddingVertical: 12, color: '#000' }}
+                      placeholder="Enter your password"
+                      placeholderTextColor="#8A8A8A"
+                      secureTextEntry={!showPassword}
+                      value={password}
+                      onChangeText={setPassword}
+                  />
+                  <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                      <Ionicons
+                          name={showPassword ? "eye-outline" : "eye-off-outline"}
+                          size={24}
+                          color="#aaa"
+                      />
+                  </TouchableOpacity>
+              </View>
+            </>
+          )}
+
+          {/* Forgot Password Link */}
+          {!showForgotPassword && (
+            <Text
+              style={{ left: 200, width: "78%", marginTop: 5 }}
+              onPress={() => setShowForgotPassword(!showForgotPassword)}
             >
-              <Text style={{ color: "#000000", fontSize: 18, textAlign: "center", fontWeight: "bold" }}>Login</Text>
-            </TouchableOpacity>
+              Forgot Password
+            </Text>
+          )}
 
-            <View style={{ flexDirection: "row", alignItems: "center", marginVertical: 20, width: "75%" }}>
-              <View style={{ flex: 1, height: 1, backgroundColor: "#EDEEF2" }} />
-              <Text style={{ color: "#ADB0BB", fontSize: 14, fontWeight: "bold", textAlign: "center" }}>Or Login with</Text>
-              <View style={{ flex: 1, height: 1, backgroundColor: "#EDEEF2" }} />
-            </View>
-
-            <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", marginBottom: 70 }}>
-              <Image source={images.google} style={{ width: 50, height: 50, resizeMode: "contain", marginHorizontal: 10, marginTop: 10 }} />
-              <Image source={images.apple} style={{ width: 50, height: 50, resizeMode: "contain", marginHorizontal: 10, marginTop: 10 }} />
-              <Image source={images.facebook} style={{ width: 50, height: 50, resizeMode: "contain", marginHorizontal: 10, marginTop: 10 }} />
-              <Image source={images.twitter} style={{ width: 50, height: 50, resizeMode: "contain", marginHorizontal: 10, marginTop: 10 }} />
-            </View>
-
-            <View style={{ marginTop: 5 }}>
-              <Text style={{ fontSize: 18, textAlign: "center" }}>
-                Don't have an account?{" "}
-                <Text style={{ color: "#2B4763", fontWeight: "bold" }} onPress={() => router.push("./register")}>
-                  Register
-                </Text>
+          {/* Forgot Password Form */}
+          {showForgotPassword && (
+            <View style={{ width: "85%", marginTop: 20 }}>
+              <Text style={{ fontSize: 16, marginBottom: 10, textAlign: "center" }}>
+                Enter your email to reset your password
               </Text>
+              <TextInput
+                style={{
+                  width: "100%",
+                  height: 50,
+                  borderWidth: 1,
+                  borderColor: "#ddd",
+                  borderRadius: 8,
+                  paddingHorizontal: 10,
+                  marginBottom: 20,
+                  fontSize: 16,
+                }}
+                placeholder="Enter your email address"
+                placeholderTextColor="#8A8A8A"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+              <TouchableOpacity
+                style={{
+                  width: "100%",
+                  height: 50,
+                  backgroundColor: "#2B4763",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  borderRadius: 8,
+                }}
+                onPress={handleResetPassword}
+                disabled={isLoading}
+              >
+                <Text style={{ color: "#FFFFFF", fontSize: 18, fontWeight: "bold" }}>
+                  {isLoading ? "Sending..." : "Send Reset Link"}
+                </Text>
+              </TouchableOpacity>
             </View>
-          </>
-        )}
+          )}
+
+          {/* Login Button, Divider, Social Icons, and Register Link */}
+          {!showForgotPassword && (
+            <>
+              <TouchableOpacity
+                style={{ 
+                  backgroundColor: "#E7E8EE", 
+                  width: "70%", 
+                  height: 60, 
+                  justifyContent: "center", 
+                  alignItems: "center", 
+                  marginTop: 20, 
+                  borderRadius: 10 
+                }}
+                onPress={handleLogin}
+              >
+                <Text style={{ color: "#000000", fontSize: 18, textAlign: "center", fontWeight: "bold" }}>Login</Text>
+              </TouchableOpacity>
+
+              <View style={{ flexDirection: "row", alignItems: "center", marginVertical: 20, width: "75%" }}>
+                <View style={{ flex: 1, height: 1, backgroundColor: "#EDEEF2" }} />
+                <Text style={{ color: "#ADB0BB", fontSize: 14, fontWeight: "bold", textAlign: "center" }}>Or Login with</Text>
+                <View style={{ flex: 1, height: 1, backgroundColor: "#EDEEF2" }} />
+              </View>
+
+              <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", marginBottom: 70 }}>
+                <Image source={images.google} style={{ width: 50, height: 50, resizeMode: "contain", marginHorizontal: 10, marginTop: 10 }} />
+                <Image source={images.apple} style={{ width: 50, height: 50, resizeMode: "contain", marginHorizontal: 10, marginTop: 10 }} />
+                <Image source={images.facebook} style={{ width: 50, height: 50, resizeMode: "contain", marginHorizontal: 10, marginTop: 10 }} />
+                <Image source={images.twitter} style={{ width: 50, height: 50, resizeMode: "contain", marginHorizontal: 10, marginTop: 10 }} />
+              </View>
+
+              <View style={{ marginTop: 5 }}>
+                <Text style={{ fontSize: 18, textAlign: "center" }}>
+                  Don't have an account?{" "}
+                  <Text style={{ color: "#2B4763", fontWeight: "bold" }} onPress={() => router.push("./register")}>
+                    Register
+                  </Text>
+                </Text>
+              </View>
+            </>
+          )}
+        </View>
       </View>
-    </View>
+    </ScrollView>
   );
 };
 

@@ -15,7 +15,8 @@ import {
   Platform,
 } from "react-native";
 
-// import * as Notifications from "expo-notifications";
+import * as Notifications from "expo-notifications";
+import * as Device from "expo-device";
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
@@ -35,6 +36,14 @@ import icons from "../../constants/icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const { width, height } = Dimensions.get("window");
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 const MedReminder = () => {
   const router = useRouter();
@@ -62,6 +71,214 @@ const MedReminder = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [scheduledReminders, setScheduledReminders] = useState([]);
 
+  const mapHariKeExpo = {
+    sunday: 1,
+    monday: 2,
+    tuesday: 3,
+    wednesday: 4,
+    thursday: 5,
+    friday: 6,
+    saturday: 7,
+  };
+  
+  const [permissionsGranted, setPermissionsGranted] = useState(false);
+  useEffect(() => {
+    const requestPermissions = async() => {
+      if (Device.isDevice) {
+        const { status: existingStatus} =
+          await Notifications.getPermissionsAsync();
+        let finalStatus = existingStatus;
+        if (existingStatus !== "granted") {
+          const {status} = await Notifications.requestPermissionsAsync();
+          finalStatus = status;
+        }
+        setPermissionsGranted(finalStatus === "granted")
+      }else {
+        console.log("Must use a physical device for Push Notifications");
+      }
+    };
+
+    requestPermissions();
+  }, []);
+
+  const scheduleNotifications = async (med) => {
+    try {
+      await Notifications.cancelAllScheduledNotificationsAsync();
+  
+      const mapHariKeExpo = {
+        sunday: 0,
+        monday: 1,
+        tuesday: 2,
+        wednesday: 3,
+        thursday: 4,
+        friday: 5,
+        saturday: 6,
+      };
+  
+      const activeDays = Object.keys(mapHariKeExpo).filter(
+        (day) => med[day] === 1
+      );
+  
+      if (activeDays.length === 0) return console.warn("Tidak ada hari terpilih.");
+  
+      const [hours, minutes, seconds] = med.time_to_take
+        .split(":")
+        .map(Number);
+  
+      const now = new Date();
+      let notificationsScheduled = 0; // To track how many notifications are set
+  
+      for (const day of activeDays) {
+        const targetDay = mapHariKeExpo[day];
+        const currentDay = now.getDay();
+  
+        // Hitung waktu hingga notifikasi berikutnya
+        let daysUntilNext = (targetDay - currentDay + 7) % 7;
+        if (daysUntilNext === 0) {
+          const targetTime = new Date();
+          targetTime.setHours(hours, minutes, 0, 0);
+          if (now >= targetTime) daysUntilNext = 7; // Jika sudah lewat, tunggu minggu depan
+        }
+  
+        const triggerTime = new Date(now);
+        triggerTime.setDate(now.getDate() + daysUntilNext);
+        triggerTime.setHours(hours, minutes, 0, 0);
+  
+        // Pastikan timeDiff bernilai positif (selisih waktu dalam ms)
+        const timeDiff = triggerTime - now;
+        if (timeDiff <= 0) {
+          console.warn(`Waktu tidak valid: ${med.med_name} untuk ${day}`);
+          continue; // Lewati jika waktu telah lewat
+        }
+  
+        // Menunjukkan waktu trigger yang sudah dihitung
+        console.log(
+          `Menjadwalkan notifikasi: ${med.med_name} pada ${day} di ${triggerTime.toLocaleString()}`
+        );
+  
+        // Simulasi notifikasi di Expo Go dengan setTimeout
+        setTimeout(async () => {
+          try {
+            await Notifications.scheduleNotificationAsync({
+              content: {
+                title: "Waktunya Minum Obat 💊",
+                body: `${med.med_name} - ${med.med_dose} ${med.unit}`,
+                sound: "default",
+              },
+              trigger: null, // Langsung kirim
+            });
+            console.log(`Notifikasi dikirim: ${med.med_name} pada ${day}`);
+          } catch (error) {
+            console.error(`Error dalam mengirim notifikasi: ${med.med_name} pada ${day}`, error);
+          }
+        }, timeDiff);
+  
+        notificationsScheduled++; // Increment when a notification is scheduled
+      }
+  
+      if (notificationsScheduled === 0) {
+        console.warn("Tidak ada notifikasi yang dijadwalkan.");
+      }
+    } catch (error) {
+      console.error("Gagal menjadwalkan notifikasi:", error);
+    }
+  };
+  
+
+  // const scheduleNotifications = async (med) => {
+  //   try {
+  //     // Bersihkan notifikasi lama agar tidak duplikat
+  //     await Notifications.cancelAllScheduledNotificationsAsync();
+
+  //     console.log("Med untuk dijadwalkan:", med)
+
+  //     const [hours, minutes, seconds] = med.time_to_take
+  //     .split(":")
+  //     .map((num) => Number(num).toString().padStart(2, "0"));
+
+  //     const days = Object.keys(mapHariKeExpo).filter(
+  //       (day) => med[day] === 1
+  //     );
+
+  //     if (days.length === 0) {
+  //       console.warn("Tidak ada hari aktif untuk notifikasi.");
+  //       return;
+  //     }
+      
+  //     const now = new Date();
+
+  //     for (const day of days) {
+  //       const targetDay = mapHariKeExpo[day];
+  //       const currentDay = now.getDay();
+
+  //       let daysUntilNext = (targetDay - currentDay + 7) % 7;
+  //       if (daysUntilNext === 0) {
+  //         const targetTime = new Date();
+  //         targetTime.setHours(hours, minutes, 0, 0);
+  //         if (now >= targetTime) daysUntilNext = 7; // Jika sudah lewat, tunggu minggu depan
+  //       }
+
+  //       const triggerTime = new Date(now);
+  //       triggerTime.setDate(now.getDate() + daysUntilNext);
+  //       triggerTime.setHours(hours, minutes, 0, 0);
+
+  //       const timeDiff = triggerTime - now; // Selisih waktu dalam ms
+
+
+  //       // if (
+  //       //   now.getDay() + 1 > expoDay || // Jika hari ini sudah lewat
+  //       //   (now.getDay() + 1 === expoDay &&
+  //       //     (now.getHours() > hours ||
+  //       //       (now.getHours() === hours && now.getMinutes() >= minutes)))
+  //       // ) {
+  //       //   // Setel ke minggu depan
+  //       //   nextNotification.setDate(nextNotification.getDate() + 7);
+  //       // } else {
+  //       //   // Setel ke hari target minggu ini
+  //       //   const daysUntilNext = expoDay - (now.getDay() + 1);
+  //       //   nextNotification.setDate(nextNotification.getDate() + daysUntilNext);
+  //       // }
+
+  //       console.log(
+  //         `Menjadwalkan notifikasi: ${med.med_name} pada ${day} dalam ${timeDiff / 1000} detik`
+  //       );  
+
+  //   //     await Notifications.scheduleNotificationAsync({
+  //   //       content: {
+  //   //         title: "Waktunya Minum Obat 💊",
+  //   //         body: `${med.med_name} - ${med.med_dose} ${med.unit}`,
+  //   //         sound: "default",
+  //   //       },
+  //   //       trigger: {
+  //   //         // type: Notifications.TriggerType.DATE,
+  //   //         date: nextNotification,
+  //   //         repeats: true,
+  //   //       },
+  //   //     });
+  //   //     // console.log(
+  //   //     //   `Notifikasi disetel: ${med.med_name} pada ${day} jam ${hours}:${minutes}`
+  //   //     // );
+  //   //   }
+  //   // } catch (error) {
+  //   //   console.error("Gagal menjadwalkan notifikasi:", error);
+
+  //   // Simulasi notifikasi di Expo Go
+  //   setTimeout(async () => {
+  //     await Notifications.scheduleNotificationAsync({
+  //       content: {
+  //         title: "Waktunya Minum Obat 💊",
+  //         body: `${med.med_name} - ${med.med_dose} ${med.unit}`,
+  //         sound: "default",
+  //       },
+  //       trigger: null, // Langsung kirim
+  //     });
+  //     console.log(`Notifikasi dikirim: ${med.med_name} pada ${day}`);
+  //     }, timeDiff);
+  //   }
+  //   } catch (error) {
+  //     console.error("Gagal menjadwalkan notifikasi:", error);
+  //   }
+  // };
 
   const days = [
     { id: 0, label: "S" },
@@ -125,17 +342,6 @@ const MedReminder = () => {
     }
   };
 
-  // const fetchMedications = async () => {
-  //   try {
-  //     const medications = await getMedications();
-  //     console.log("Fetched medications:", medications);
-  //     setMedList(medications); 
-  //   } catch (error) {
-  //     console.error("Error fetching medications:", error);
-  //     setMedList([]); 
-  //   }
-  // };
-
   useEffect(() => {
     fetchMedications();
   }, []);
@@ -156,30 +362,12 @@ const MedReminder = () => {
     setDropdownVisible(false);
   };
 
-  // const handleEditReminder = (index) => {
-  //   const medToEdit = medList[index];
-  //   setMedName(medToEdit.med_name);
-  //   // setSelectedUnit(medToEdit.unit);
-  //   setMedDose(medToEdit.med_dose);
-  //   setSelectedMedType(medToEdit.type);
-  //   setSelectedTime(new Date(`1970-01-01T${medToEdit.time_to_take}`));
-  //   setSelectedDays({
-  //     monday: medToEdit.monday,
-  //     tuesday: medToEdit.tuesday,
-  //     wednesday: medToEdit.wednesday,
-  //     thursday: medToEdit.thursday,
-  //     friday: medToEdit.friday,
-  //     saturday: medToEdit.saturday,
-  //     sunday: medToEdit.sunday,
-  //   });
-  //   setSelectedIndex(index); // Tandai item yang sedang diedit
-  //   setShowImages(!showImages);
-  // };
-  
-
   const handleEditReminder = (index) => {
+    console.log("Selected Index:", index); // Tambahkan log ini
+    console.log("Med edit: ", medList[index])
+
     const medToEdit = medList[index];
-    if (!medToEdit) return; // Ensure medToEdit is defined
+    // if (!medToEdit) return; // Ensure medToEdit is defined
   
     setMedName(medToEdit.med_name);
     setMedDose(medToEdit.med_dose);
@@ -326,7 +514,7 @@ const MedReminder = () => {
       if (isGuest === "true") {
         updatedMedList.push(newMed);
       } else {
-        if (selectedIndex !== null) {
+        if (selectedIndex !== null && medList[selectedIndex]?.schedules?.length > 0) {
           const updatedMed = await updateMedication(
             medList[selectedIndex].schedules[0].id,
             newMed
@@ -343,24 +531,13 @@ const MedReminder = () => {
           alert("Medication reminder successfully saved!");
         }
       }
+      console.log("Isi med:", newMed);
+      console.log("Isi schedules:", newMed.schedules);
       setMedList(updatedMedList);
       resetForm();
       setShowReminderModal(false);
       fetchMedications();
-
-      // await scheduleMedReminder(newMed);
-
-      // setScheduledReminders((prevReminders) => [
-      //   ...prevReminders,
-      //   {
-      //     name: newMed.med_name,
-      //     dose: newMed.med_dose,
-      //     time: newMed.time_to_take,
-      //     days: convertScheduleToString(newMed),
-      //   }
-      // ]);
-
-  
+      await scheduleNotifications(newMed);
     } catch (error) {
       console.error("Error saving medication:", error);
     }
@@ -383,71 +560,6 @@ const MedReminder = () => {
     setSelectedUnit("mg");
     setSelectedIndex(null);
   };
-  
-  // useEffect(() => {
-  //   // Pastikan medList terisi sebelum mengatur pengingat
-  //   if (medList.length > 0) {
-  //     medList.forEach(med => {
-  //       // Pastikan med memiliki data yang benar
-  //       if (med.med_name && med.schedules[0].time_to_take) {
-  //         console.log("Scheduling reminder for:", med.med_name);
-  //         scheduleMedReminder(med);
-  //       }
-  //     });
-  //   }
-  // }, [medList]); // Menjalankan useEffect setiap kali medList berubah
-  
-  // const scheduleMedReminder = async (medication) => {
-  //   const now = new Date();
-    
-  //   // Pastikan waktu pengingat sudah valid
-  //   const medTime = new Date(1970-01-01T${medication.schedules[0].time_to_take});
-  
-  //   // Jika time_to_take tidak valid, keluar dari fungsi
-  //   if (isNaN(medTime.getTime())) {
-  //     console.warn("Invalid time format for medication:", medication);
-  //     return;
-  //   }
-
-  //   console.log("Now:", now);
-  //   console.log("Medication Time:", medTime);
-  
-  //   // Set waktu reminder sesuai dengan waktu yang ada di medTime
-  //   const notificationTime = new Date(now);
-  //   notificationTime.setHours(medTime.getHours());
-  //   notificationTime.setMinutes(medTime.getMinutes());
-  //   notificationTime.setSeconds(0);
-  
-  //   // Jika waktu sekarang sudah lewat untuk hari ini, set waktu notifikasi untuk besok
-  //   if (notificationTime.getTime() <= now.getTime()) {
-  //     notificationTime.setDate(now.getDate() + 1); // Set ke hari berikutnya
-  //   }
-  
-  //   // Jadwalkan notifikasi menggunakan Expo Notifications
-  //   await Notifications.scheduleNotificationAsync({
-  //     content: {
-  //       title: Time to take your medication: ${medication.med_name},
-  //       body: ${medication.med_dose} ${medication.unit} of ${medication.med_name},
-  //     },
-  //     trigger: {
-  //       year: notificationTime.getFullYear(),
-  //       month: notificationTime.getMonth(),
-  //       day: notificationTime.getDate(),
-  //       hour: notificationTime.getHours(),
-  //       minute: notificationTime.getMinutes(),
-  //       repeats: true, // Berulang setiap hari pada jam yang sama
-  //     },
-  //   });
-  
-  //   // Tampilkan alert ketika reminder dijadwalkan
-  //   Alert.alert(
-  //     'Medication Reminder Scheduled',
-  //     Reminder for ${medication.med_name} scheduled at ${medication.time_to_take}.
-  //   );
-  
-  //   console.log(Scheduled reminder for ${medication.med_name} at ${medication.time_to_take});
-  // };
-  
 
   const toggleTimePicker = () => {
     setIsTimePickerVisible(!isTimePickerVisible);
@@ -494,6 +606,7 @@ const convertScheduleToString = (schedule) => {
     2: 'ml'
   };
 
+
   return (
     // <SafeAreaView>
     <View style={styles.container}>
@@ -504,7 +617,8 @@ const convertScheduleToString = (schedule) => {
       <View style={styles.box}>
         <View style={styles.textContainer}>
           <View style={styles.layout1}>
-            <Text style={styles.text1Box}>What are your plans for today</Text>
+            <Text style={styles.text1Box}>What are your plans for today 😊</Text>
+            <Text style={styles.text2Box}>Did you remember to take your medicine or vitamine?</Text>
           </View>
         </View>
         <Image source={images.reminder1} style={styles.reminder1} />
@@ -562,8 +676,8 @@ const convertScheduleToString = (schedule) => {
                 <View style={styles.statusContainer}>
                   <TouchableOpacity onPress={() => handleSkipItem(index)}>
                     <View style={styles.statusItemRight}>
-                      <Image source={icons.skipped} style={styles.statusIcon} />
-                      <Text style={styles.statusText}>Delete</Text>
+                      <Image source={icons.deleteItem} style={styles.statusIcon} />
+                      {/* <Text style={styles.statusText}>Delete</Text> */}
                     </View>
                   </TouchableOpacity>
                 </View>
@@ -652,7 +766,7 @@ const convertScheduleToString = (schedule) => {
               <Text style={styles.detailTitle}>Add Details</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Name"
+                placeholder ="Name"
                 value={medName}
                 onChangeText={setMedName}
               />
@@ -803,13 +917,13 @@ const styles = StyleSheet.create({
     padding: 20, // Ruang dalam modal
     alignItems: "center", // Elemen di tengah horizontal
     width: "100%", // Sesuaikan lebar modal
-    height: "33%", // Tinggi modal (atur sesuai kebutuhan)
+    height: "35%", // Tinggi modal (atur sesuai kebutuhan)
     elevation: 5, // Bayangan di Android
     shadowColor: "#000", // Bayangan di iOS
     shadowOpacity: 0.2,
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 4,
-    top: 200,
+    top: 180,
   },
   detailModalContainer: {
     justifyContent: "flex-start", // Posisikan ke bawah layar
@@ -818,18 +932,18 @@ const styles = StyleSheet.create({
     padding: 20, // Ruang dalam modal
     alignItems: "center", // Elemen di tengah horizontal
     width: "100%", // Sesuaikan lebar modal
-    height: "33%", // Tinggi modal (atur sesuai kebutuhan)
+    height: "35%", // Tinggi modal (atur sesuai kebutuhan)
     elevation: 5, // Bayangan di Android
     shadowColor: "#000", // Bayangan di iOS
     shadowOpacity: 0.2,
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 4,
-    top: 200,
+    top: 180,
   },
   reminderTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "bold",
-    marginBottom: 20,
+    marginBottom: 10,
   },
   picker: {
     width: "100%",
@@ -838,16 +952,21 @@ const styles = StyleSheet.create({
     backgroundColor: "#EAEAEA",
     borderRadius: 10,
   },
-  detailTitle: { fontSize: 18, fontWeight: "bold", marginBottom: 10 },
+  detailTitle: { fontSize: 20, fontWeight: "bold", marginBottom: 10 },
   input: {
     width: 350,
     height: 60,
     borderWidth: 1,
     borderColor: "#ccc",
-    borderRadius: 10,
+    borderRadius: 20,
     padding: 10,
     marginVertical: 5,
-    backgroundColor: "#EAEAEA",
+    backgroundColor: "white",
+    elevation: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 5, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 4
     // borderWidth: 1, // Debugging border
     // borderColor: "blue",
   },
@@ -859,12 +978,19 @@ const styles = StyleSheet.create({
     // borderColor: "green",
   },
   nextButton: {
-    backgroundColor: "#000000",
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 10,
+    backgroundColor: '#2B4763',
+    elevation: 10,
+    shadowColor: "#000",
+    shadowOffset: {width: 5, height: 3},
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
+    paddingVertical: 15,
+    paddingHorizontal: 30,
+    borderRadius: 30,
+    marginTop: -10,
   },
-  nextButtonText: { color: "#B9BCC6", fontSize: 16, fontWeight: "bold" },
+
+  nextButtonText: { color: "white", fontSize: 16, fontWeight: "bold" },
   topContainer: {
     justifyContent: "flex-start",
     alignItems: "flex-start",
@@ -873,11 +999,11 @@ const styles = StyleSheet.create({
     marginLeft: 20,
   },
   title: {
-    fontSize: 40,
+    fontSize: 30,
     fontWeight: "bold",
   },
   subtitle: {
-    fontSize: 40,
+    fontSize: 30,
   },
   box: {
     width: "85%",
@@ -899,13 +1025,14 @@ const styles = StyleSheet.create({
     width: "100%",
     // height: 10,
     marginLeft: 10,
-    marginTop: 30,
+    marginTop: 10,
     // marginBottom: 20
     alignItems: "center",
   },
   text1Box: {
     fontSize: 25,
     fontWeight: "bold",
+    // marginTop: 20
   },
   layout2: {
     flex: 1,
@@ -914,9 +1041,10 @@ const styles = StyleSheet.create({
     // marginTop: 5,
   },
   text2Box: {
-    fontSize: 14,
-    color: "#666",
-    marginTop: 10,
+    fontSize: 15,
+    color: "red",
+    marginLeft: 7,
+    marginTop: 8
   },
   layout3: {
     flex: 1,
@@ -933,15 +1061,15 @@ const styles = StyleSheet.create({
   reminder1: {
     width: 200,
     height: 200,
-    marginRight: -50,
+    marginRight: -30,
     marginTop: -100,
   },
   midText: {
     marginTop: 20,
     marginLeft: 30,
-    marginBottom: 20,
-    fontSize: 30,
-    color: "#000000",
+    marginBottom: 10,
+    fontSize: 18,
+    fontWeight: "bold",
   },
   iconAdd: {
     position: "absolute",
@@ -991,7 +1119,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap", // Membungkus gambar jika layar sempit
     justifyContent: "center", // Pusatkan elemen
-    gap: 15, // Jarak antar gambar
+    gap: 10, // Jarak antar gambar
     marginTop: 10,
   },
   image: {
@@ -1016,25 +1144,28 @@ const styles = StyleSheet.create({
   timeBox: {
     width: 350,
     height: 60,
-    backgroundColor: "#EAEAEA",
+    borderWidth: 1,
     borderColor: "#ccc",
-    borderRadius: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 20,
+    borderRadius: 20,
+    padding: 10,
+    marginVertical: 5,
+    backgroundColor: "white",
+    elevation: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 5, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 4, marginBottom: 30,
   },
   placeholderText: {
     fontSize: 16,
     color: "#B0B0B0", // Warna placeholder (abu-abu terang)
+    marginTop: 10,
+    marginLeft: 10,
+    alignItems: "center",
   },
   iconWrapper: {
     position: "absolute",
-    top: 10,
+    top: 15,
     right: 10,
   },
   icon: {
@@ -1181,7 +1312,7 @@ const styles = StyleSheet.create({
   statusIcon: {
     width: 25,
     height: 25,
-    marginRight: 5,
+    marginRight: 105,
   },
   statusText: {
     fontSize: 14,
@@ -1199,6 +1330,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginVertical: 10,
     gap: 10,
+    marginBottom: 15,
   },
   dayButton: {
     width: 40,
@@ -1215,6 +1347,9 @@ const styles = StyleSheet.create({
   dayText: {
     fontSize: 18,
     color: "black",
+    marginBottom: 5,
+    marginLeft: 3,
+    marginTop: 3,
   },
   selectedDayText: {
     color: "white",

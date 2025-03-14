@@ -27,7 +27,7 @@ export const addMedication = async (medication) => {
 
 export const updateMedication = async (id, medication) => {
   try {
-    return await ApiHelper.request(`${BASE_URL}/update/${id}`, 'POST', medication);
+    return await ApiHelper.request(`${BASE_URL}/update/${id}`, 'PUT', medication);
   } catch (error) {
     console.error('Error updating medication:', error);
     throw error;

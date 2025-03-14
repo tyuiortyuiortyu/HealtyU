@@ -15,12 +15,19 @@ import {
   Platform,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
-import { MaterialIcons } from "@expo/vector-icons";
+// import { MaterialIcons } from "@expo/vector-icons";
 import { ApiHelper } from "../helpers/ApiHelper";
 import { CommunityResponse } from "../response/CommunityResponse";
 import icons from "../../constants/icons";
 import images from "../../constants/images";
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// import React from 'react';
+// import { View, Text, TouchableOpacity, Modal } from 'react-native';
+import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+// import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+// import Share from 'react-native-share';
 
 const API_BASE_URL = 'http://192.168.50.141:8000'; // disini bang
 
@@ -128,6 +135,19 @@ const Community = () => {
   };
 
 
+    // const shareContent = async (platform: string) => {
+    //   try {
+    //     const shareOptions = {
+    //       title: 'Share via',
+    //       message: 'Check this out! https:...',
+    //       social: platform,
+    //       ...(platform === Share.Social.FACEBOOK && { appId: 'your_facebook_app_id' }),
+    //     };
+    //     await Share.shareSingle(shareOptions);
+    //   } catch (error) {
+    //     console.log('Error sharing:', error);
+    //   }
+    // };
   
   // likepost
   const handleLike = async (postId: number) => {
@@ -422,6 +442,7 @@ const Community = () => {
 
   const onClose = () => {
     setCommentModalVisible(false);
+    setShareModalVisible(false);
   };
 
   if (isLoading) {
@@ -624,7 +645,7 @@ const Community = () => {
 
 
               {/* Share Modal */}
-              <Modal
+              {/* <Modal
                 visible={shareModalVisible}
                 transparent={true}
                 animationType="slide"
@@ -721,7 +742,58 @@ const Community = () => {
                         <Text style={{ color: "#007BFF" }}>Close</Text>
                     </TouchableOpacity>
                 </View>
-            </Modal>
+            </Modal> */}
+
+            <Modal
+                  visible={shareModalVisible}
+                  transparent={true}
+                  animationType="slide"
+                  onRequestClose={onClose}
+                >
+                  <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+                    <View style={{ backgroundColor: '#fff', padding: 20, borderTopLeftRadius: 20, borderTopRightRadius: 20 }}>
+                      {/* Header */}
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                        <Text style={{ fontSize: 18, fontWeight: 'bold' }}>Share</Text>
+                        <TouchableOpacity onPress={onClose}>
+                          <MaterialIcons name="close" size={24} color="black" />
+                        </TouchableOpacity>
+                      </View>
+
+                      {/* Icons for Google, Apple, Facebook, Twitter, WhatsApp using MaterialIcons */}
+                      <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", marginBottom: 20 }}>
+                        <TouchableOpacity onPress={() => { /* Handle Google share */ }}>
+                          <MaterialCommunityIcons name="google" size={40} color="#DB4437" style={{ marginHorizontal: 10 }} />
+                        </TouchableOpacity>
+                        
+                        <TouchableOpacity onPress={() => { /* Handle Apple share */ }}>
+                          <MaterialIcons name="apple" size={40} color="#000000" style={{ marginHorizontal: 10 }} />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => { /* Handle Facebook share */ }}>
+                          <MaterialIcons name="facebook" size={40} color="#1877F2" style={{ marginHorizontal: 10 }} />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => { /* Handle Twitter share */ }}>
+                          <MaterialCommunityIcons name="twitter" size={40} color="#1DA1F2" style={{ marginHorizontal: 10 }} />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => { /* Handle WhatsApp share */ }}>
+                          <MaterialCommunityIcons name="whatsapp" size={40} color="#25D366" style={{ marginHorizontal: 10 }} />
+                        </TouchableOpacity>
+                      </View>
+
+                      {/* Copy Link Button */}
+                      <TouchableOpacity 
+                        style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 20 }}
+                        onPress={() => {
+                          // Handle copy link logic here
+                          console.log("Link copied!");
+                        }}
+                      >
+                        <MaterialIcons name="content-copy" size={24} color="black" />
+                        <Text style={{ marginLeft: 10, fontSize: 16 }}>Copy Link</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </Modal>
 
               {/* Comment Modal */}
               <Modal

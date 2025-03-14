@@ -480,7 +480,7 @@ const Cycle = () => {
 
   return (
     <ScrollView style={{ flex: 1 }}>
-      <View style={{ flexGrow: 1, padding: 20, backgroundColor: '#f5f5f5' }}>
+      <View style={{ flexGrow: 1, padding: 20, backgroundColor: '#ffff' }}>
         <Text style={{ fontSize: 30, fontWeight: 'bold', marginBottom: 5 }}>{getGreeting()},</Text>
         <Text style={{ fontSize: 30, color: '#333', marginBottom: 20 }}>{currentUser.name}</Text>
 
@@ -542,7 +542,7 @@ const Cycle = () => {
         <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10 }}>Last Menstrual Period</Text>
         <View style={{ padding: 10, backgroundColor: '#fff', borderRadius: 20, marginBottom: 20, shadowColor: '#000', shadowOffset: { width: 2, height: 2 }, shadowOpacity: 0.4, shadowRadius: 4, elevation: 5 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-            <Text>Start Date:</Text>
+            <Text style={{marginTop: 10, marginBottom: 4}}>Start Date:</Text>
             <Text style={{ marginLeft: 30 }}>{periodStartDate ? format(periodStartDate, 'dd MMM yyyy') : 'Not set'}</Text>
           </View>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>

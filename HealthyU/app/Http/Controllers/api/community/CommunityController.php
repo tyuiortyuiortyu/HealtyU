@@ -217,7 +217,7 @@ class CommunityController extends Controller
                 'user' => [
                     'id' => $post->user->id,
                     'name' => $post->user->name,
-                    'profilePicture' => $post->user->profile_picture // URL lengkap foto profil
+                    'profilePicture' => $post->user->profile_picture ? $post->user->profile_picture : asset('storage/profile_pic/default.png') // URL lengkap foto profil atau default
                 ],
                 'created_at' => $post->created_at,
             ];

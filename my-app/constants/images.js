@@ -30,6 +30,8 @@ import monster1 from "../assets/images/monster1.png";
 import monster2 from "../assets/images/monster2.png";
 import monster3 from "../assets/images/monster3.png";
 
+import default_profile from "../assets/images/default_profile.png";
+
 export default {
   female,
   male,
@@ -60,4 +62,5 @@ export default {
   monster2,
   monster3,
 
+  default_profile,
 };

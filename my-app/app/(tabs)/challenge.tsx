@@ -15,6 +15,17 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import images from "../../constants/images";
 import icons from "../../constants/icons";
 
+import * as Notifications from "expo-notifications";
+import * as Device from "expo-device";    
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
+
 const initialNotifications = [
   { id: "1", text: "Tantangan Notification #1" },
   { id: "2", text: "Tantangan Notification #2" },
@@ -41,6 +52,41 @@ const Challenge = () => {
   const [rewards, setRewards] = useState(0); // Starting rewards count
   const [finalGoalReached, setFinalGoalReached] = useState(false); 
 
+  const [permissionsGranted, setPermissionsGranted] = useState(false);
+  
+  useEffect(() => {
+    const requestPermissions = async () => {
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+      if (existingStatus !== "granted") {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+      setPermissionsGranted(finalStatus === "granted");
+    };
+  
+    requestPermissions();
+  }, []);
+
+  const sendGoalNotification = async (goal) => {
+    const title = `Goal Achieved! 🎉`;
+    const body = `Congratulations! You have reached your target of ${goal} steps.`;
+  
+    // Kirim notifikasi ke perangkat
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title,
+        body,
+        sound: "default",
+      },
+      trigger: null, // Langsung kirim notifikasi
+    });
+  
+    // Simpan notifikasi ke daftar manual
+    addManualNotification(title, body);
+  };
+  
+
   // const goal = 10000;
 
   useEffect(() => {
@@ -51,10 +97,12 @@ const Challenge = () => {
       if (rewards < 10) { // Only increase rewards if they are less than 10
         setRewards(prevRewards => Math.min(prevRewards + 1, 10)); // Increase rewards
       }
+      sendGoalNotification(goal);
     }
     
     if (steps >= 10000) {
       setFinalGoalReached(true); // Final goal reached
+      sendGoalNotification(10000)
     }
 
     // Update calories burned (example logic)
@@ -83,8 +131,38 @@ const Challenge = () => {
     return () => clearTimeout(resetTimeout);
   }, []);  
 
+
   // State untuk menyimpan data pengguna
-  const [currentUser, setCurrentUser] = useState({ name: "Guest" });
+  const [currentUser, setCurrentUser] = useState({ name: "Guest", profilePicture: "" });
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      const userData = await AsyncStorage.getItem("userData");
+      const parsedUserData = userData ? JSON.parse(userData) : { name: "Guest", profilePicture: "" };
+      setCurrentUser({ name: parsedUserData.name, profilePicture: parsedUserData.profilePicture });
+    };
+
+    fetchUserData();
+  }, []);
+
+  
+  // useEffect(() => {
+  //   const fetchUserData = async () => {
+  //     try {
+  //       const userData = await AsyncStorage.getItem("userData");
+  //       const parsedUserData = userData ? JSON.parse(userData) : { name: "Guest", profilePicture: "" };
+  //       setCurrentUser({ 
+  //         name: parsedUserData.name, 
+  //         profilePicture: parsedUserData.profilePicture || images.profile // Fallback ke gambar default
+  //       });
+  //     } catch (error) {
+  //       console.error("Gagal mengambil data pengguna:", error);
+  //       setCurrentUser({ name: "Guest", profilePicture: images.profile }); // Fallback ke guest dengan gambar default
+  //     }
+  //   };
+  
+  //   fetchUserData();
+  // }, []);
 
   // Fungsi untuk memeriksa status pengguna (guest atau terdaftar)
   const checkUserStatus = async () => {
@@ -226,16 +304,31 @@ const Challenge = () => {
   // - done
 
   const [showNotifications, setShowNotifications] = useState(false);
-  const [notifications, setNotifications] = useState(initialNotifications);
+  // const [notifications, setNotifications] = useState(initialNotifications);
   const [showRewardPage, setShowRewardPage] = useState(true);
   const [showMainPage, setShowMainPage] = useState(false);
   const [selectedNotifications, setSelectedNotifications] = useState<string[]>(
     []
   );
+  // const [notifications, setNotifications] = useState([]);
   const [showAfterClaimRewardPage, setShowAfterClaimRewardPage] =
     useState(false);
   const [selectedBox, setSelectedBox] = useState<string | null>(null);
   const [activePage, setActivePage] = useState("afterClaimReward");
+
+  // State untuk menyimpan notifikasi manual
+  const [notifications, setNotifications] = useState([]);
+
+  // Fungsi untuk menambah notifikasi ke daftar manual
+  const addManualNotification = (title, body) => {
+    const newNotification = {
+      id: Date.now().toString(), // ID unik
+      title,
+      text: body,
+      timestamp: new Date().toLocaleString(), // Waktu notifikasi
+    };
+    setNotifications((prev) => [newNotification, ...prev]); // Menambahkan notifikasi terbaru ke atas
+  };
 
   const toggleNotifications = () => setShowNotifications(!showNotifications);
 
@@ -351,16 +444,16 @@ const Challenge = () => {
                 ? {
                     width: 148.18,
                     height: 148.18,
-                    marginRight: 20,
+                    marginRight: 10,
                     marginTop: -20,
-                    marginLeft: 40,
+                    marginLeft: 20,
                     marginBottom: -10,
                   }
                 : {
                     width: 148.18,
                     height: 148.18,
                     marginRight: 10,
-                    marginLeft: 50,
+                    marginLeft: 20,
                   }
             }
           />
@@ -674,7 +767,12 @@ const Challenge = () => {
           </View>
 
           <Image
-            source={images.profile}
+            // source={images.profile}
+            source={
+              currentUser.profilePicture
+                ? { uri: currentUser.profilePicture }
+                : images.default_profile // ini set fallback dulu
+            }
             style={{
               width: 100,
               height: 100,
@@ -857,6 +955,118 @@ const Challenge = () => {
     </View>
   );
 
+  // const NotificationsPage = () => (
+  //   <View style={{ flex: 1 }}>
+  //     <View
+  //       style={{
+  //         flexDirection: "row",
+  //         justifyContent: "space-between",
+  //         alignItems: "center",
+  //         padding: 16,
+  //         backgroundColor: "#ffffff",
+  //         borderBottomWidth: 1,
+  //         borderBottomColor: "#ccc",
+  //       }}
+  //     >
+  //       <TouchableOpacity
+  //         onPress={() => setShowNotifications(false)}
+  //         style={{ padding: 8 }}
+  //       >
+  //         <MaterialIcons name="arrow-back" size={24} color="#000" />
+  //       </TouchableOpacity>
+  //       <View style={{ flexDirection: "row", alignItems: "center" }}>
+  //         <TouchableOpacity onPress={closeRewardPage}>
+  //           <Image
+  //             source={icons.trophy}
+  //             style={{ width: 24, height: 24, marginRight: 10 }}
+  //           />
+  //         </TouchableOpacity>
+  //         <TouchableOpacity
+  //           onPress={toggleNotifications}
+  //           style={{ padding: 8 }}
+  //         >
+  //           <FontAwesome name="bell" size={24} color="#000" />
+  //         </TouchableOpacity>
+  //       </View>
+  //     </View>
+
+  //     <ScrollView
+  //       contentContainerStyle={{
+  //         flexGrow: 1,
+  //         padding: 20,
+  //         backgroundColor: "#f8f9fa",
+  //       }}
+  //     >
+  //       {notifications.length === 0 ? (
+  //         <View
+  //           style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+  //         >
+  //           <Text style={{ fontSize: 18, color: "#D9D9D9" }}>
+  //             No Notifications!
+  //           </Text>
+  //         </View>
+  //       ) : (
+  //         <>
+  //           <FlatList
+  //             data={notifications}
+  //             keyExtractor={(item) => item.id}
+  //             renderItem={({ item }) => (
+  //               <TouchableOpacity
+  //                 style={{
+  //                   padding: 16,
+  //                   backgroundColor: selectedNotifications.includes(item.id)
+  //                     ? "#2B4763"
+  //                     : "#ffffff",
+  //                   borderRadius: 8,
+  //                   marginBottom: 10,
+  //                 }}
+  //                 onPress={() => toggleNotificationSelection(item.id)}
+  //               >
+  //                 <Text
+  //                   style={{
+  //                     color: selectedNotifications.includes(item.id)
+  //                       ? "#fff"
+  //                       : "#000",
+  //                   }}
+  //                 >
+  //                   {item.text}
+  //                 </Text>
+  //               </TouchableOpacity>
+  //             )}
+  //           />
+  //           <TouchableOpacity
+  //             style={{
+  //               alignSelf: "center",
+  //               backgroundColor:
+  //                 selectedNotifications.length > 0 ? "#2B4763" : "#ffffff",
+  //               paddingVertical: 15,
+  //               paddingHorizontal: 30,
+  //               borderRadius: 30,
+  //               marginTop: 20,
+  //             }}
+  //             onPress={
+  //               selectedNotifications.length > 0
+  //                 ? clearSelectedNotifications
+  //                 : clearAllNotifications
+  //             }
+  //           >
+  //             <Text
+  //               style={{
+  //                 color: selectedNotifications.length > 0 ? "#D9D9D9" : "#000",
+  //                 fontWeight: "bold",
+  //               }}
+  //             >
+  //               {selectedNotifications.length > 0
+  //                 ? "Clear Selected"
+  //                 : "Clear All"}
+  //             </Text>
+  //           </TouchableOpacity>
+  //         </>
+  //       )}
+  //     </ScrollView>
+  //   </View>
+  // );
+
   const NotificationsPage = () => (
     <View style={{ flex: 1 }}>
       <View
@@ -891,14 +1101,9 @@ const Challenge = () => {
           </TouchableOpacity>
         </View>
       </View>
-
-      <ScrollView
-        contentContainerStyle={{
-          flexGrow: 1,
-          padding: 20,
-          backgroundColor: "#f8f9fa",
-        }}
-      >
+  
+      {/* FlatList langsung tanpa ScrollView */}
+      <View style={{ flex: 1 }}>
         {notifications.length === 0 ? (
           <View
             style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
@@ -908,66 +1113,84 @@ const Challenge = () => {
             </Text>
           </View>
         ) : (
-          <>
-            <FlatList
-              data={notifications}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={{
-                    padding: 16,
-                    backgroundColor: selectedNotifications.includes(item.id)
-                      ? "#2B4763"
-                      : "#ffffff",
-                    borderRadius: 8,
-                    marginBottom: 10,
-                  }}
-                  onPress={() => toggleNotificationSelection(item.id)}
-                >
-                  <Text
-                    style={{
-                      color: selectedNotifications.includes(item.id)
-                        ? "#fff"
-                        : "#000",
-                    }}
-                  >
-                    {item.text}
-                  </Text>
-                </TouchableOpacity>
-              )}
-            />
-            <TouchableOpacity
-              style={{
-                alignSelf: "center",
-                backgroundColor:
-                  selectedNotifications.length > 0 ? "#2B4763" : "#ffffff",
-                paddingVertical: 15,
-                paddingHorizontal: 30,
-                borderRadius: 30,
-                marginTop: 20,
-              }}
-              onPress={
-                selectedNotifications.length > 0
-                  ? clearSelectedNotifications
-                  : clearAllNotifications
-              }
-            >
-              <Text
+          <FlatList
+            data={notifications}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <TouchableOpacity
                 style={{
-                  color: selectedNotifications.length > 0 ? "#D9D9D9" : "#000",
-                  fontWeight: "bold",
+                  padding: 16,
+                  backgroundColor: selectedNotifications.includes(item.id)
+                    ? "#2B4763"
+                    : "#ffffff",
+                  borderRadius: 8,
+                  top: 20,
+                  marginBottom: 10,
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.8,
+                  shadowRadius: 2,
+                  elevation: 5, // For Android shadow
                 }}
+                onPress={() => toggleNotificationSelection(item.id)}
               >
-                {selectedNotifications.length > 0
-                  ? "Clear Selected"
-                  : "Clear All"}
-              </Text>
-            </TouchableOpacity>
-          </>
+                <Text
+                  style={{
+                    color: selectedNotifications.includes(item.id)
+                      ? "#fff"
+                      : "#000",
+                    fontSize: 16,
+                  }}
+                >
+                  {item.text}
+                </Text>
+              </TouchableOpacity>
+            )}
+            contentContainerStyle={{
+              paddingHorizontal: 20,
+              paddingBottom: 20, // Ensures there's some space at the bottom
+            }}
+          />
         )}
-      </ScrollView>
+      </View>
+  
+      {/* Button Clear */}
+      <TouchableOpacity
+        style={{
+          alignSelf: "center",
+          backgroundColor:
+            selectedNotifications.length > 0 ? "#2B4763" : "#ffffff",
+          paddingVertical: 15,
+          paddingHorizontal: 30,
+          borderRadius: 30,
+          marginTop: 20,
+          marginBottom: 30,
+          borderWidth: 1,
+          borderColor: selectedNotifications.length > 0
+            ? "#2B4763"
+            : "#ccc",
+        }}
+        onPress={
+          selectedNotifications.length > 0
+            ? clearSelectedNotifications
+            : clearAllNotifications
+        }
+      >
+        <Text
+          style={{
+            color: selectedNotifications.length > 0 ? "#D9D9D9" : "#000",
+            fontWeight: "bold",
+          }}
+        >
+          {selectedNotifications.length > 0
+            ? "Clear Selected"
+            : "Clear All"}
+        </Text>
+      </TouchableOpacity>
     </View>
   );
+  
+  
 
   const RewardsPage = () => (
     <View
@@ -1173,7 +1396,12 @@ const Challenge = () => {
               />
             </View>
             <Image
-              source={images.profile}
+              // source={images.profile}
+              source={
+                currentUser.profilePicture
+                  ? { uri: currentUser.profilePicture }
+                  : images.default_profile // ini set fallback dulu
+              }
               style={{
                 width: 100,
                 height: 100,

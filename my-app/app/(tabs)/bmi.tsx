@@ -108,10 +108,18 @@ const BMI = () => {
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'flex-start',
-              backgroundColor: selectedGender === 'male' ? '#E7F3FB' : 'white',
-              padding: 40,
               borderRadius: 30,
-              marginTop: 15,
+              marginBottom: 15,
+              width: "85%",
+              paddingVertical: 40, // Padding vertikal untuk mengatur tinggi
+              elevation: 10,
+              shadowColor: '#000',
+              shadowOffset: { width: 5, height: 4 },
+              shadowOpacity: 0.5,
+              shadowRadius: 4,
+              backgroundColor: selectedGender === 'male' ? '#E7F3FB' : 'white',
+              paddingHorizontal: 40, // Padding horizontal untuk konten
+              marginTop: 15,
             }}
             onPress={() => setSelectedGender('male')}
           >
@@ -131,10 +139,18 @@ const BMI = () => {
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'flex-start',
-              backgroundColor: selectedGender === 'female' ? '#FBE7E7' : 'white',
-              padding: 40,
               borderRadius: 30,
-              marginTop: 15,
+              marginBottom: 15,
+              width: "85%",
+              paddingVertical: 40, // Padding vertikal untuk mengatur tinggi
+              elevation: 10,
+              shadowColor: '#000',
+              shadowOffset: { width: 5, height: 4 },
+              shadowOpacity: 0.5,
+              shadowRadius: 4,
+              backgroundColor: selectedGender === 'female' ? '#FBE7E7' : 'white',
+              paddingHorizontal: 40, // Padding horizontal untuk konten
+              marginTop: 15,
             }}
             onPress={() => setSelectedGender('female')}
           >
@@ -153,10 +169,16 @@ const BMI = () => {
               alignSelf: 'center',
               // Biru jika gender dipilih, putih jika belum
               backgroundColor: selectedGender ? '#2B4763' : 'white',
+              elevation: 10,
+              shadowColor: "#000",
+              shadowOffset: {width: 5, height: 4},
+              shadowOpacity: 0.5,
+              shadowRadius: 4,
               paddingVertical: 15,
               paddingHorizontal: 30,
               borderRadius: 30,
               marginTop: 20,
+
             }}
             onPress={() => {
               if (selectedGender) {
@@ -428,9 +450,15 @@ const BMI = () => {
               alignSelf: 'center',
               // Biru jika semua input > 0, putih jika ada yang 0
               backgroundColor: (weight > 0 && age > 0 && height > 0) ? '#2B4763' : 'white',
+              elevation: 10,
+              shadowColor: "#000",
+              shadowOffset: {width: 5, height: 4},
+              shadowOpacity: 0.5,
+              shadowRadius: 4,
               paddingVertical: 15,
               paddingHorizontal: 30,
               borderRadius: 30,
+              marginTop: 20,
             }}
             onPress={calculateBMI}
           >

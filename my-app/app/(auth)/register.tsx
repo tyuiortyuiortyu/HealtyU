@@ -230,7 +230,7 @@ const RegisterScreen = () => {
                 {/* Confirm Password Input */}
                 <View style={{
                     flexDirection: 'row', alignItems: 'center', width: '85%', borderWidth: 1, borderColor: '#ddd',
-                    backgroundColor: '#fff', borderRadius: 8, marginBottom: 20, paddingHorizontal: 10, elevation: 5
+                    backgroundColor: '#fff', borderRadius: 8, marginBottom: 30, paddingHorizontal: 10, elevation: 5
                 }}>
                     <TextInput
                         style={{ flex: 1, fontSize: 16, paddingVertical: 12, color: '#000' }}

@@ -82,7 +82,7 @@ class AuthController extends Controller
             'sex' => $user->sex,
             'weight' => $user->weight,
             'height' => $user->height,
-            'profile_picture' => $user->profile_picture ? url($user->profile_picture) : null,
+            'profile_picture' => $user->profile_picture ? asset($user->profile_picture) : asset('storage/profile_pic/default.png'),
         ];
 
         return ApiResponse::mapResponse($data, "S001");
